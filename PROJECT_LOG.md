@@ -63,8 +63,17 @@ $$\text{Summary Progress} = \sum_{i=1}^N \left(\text{Progress}_i \times \frac{W_
 * `Insert` inserts an activity below the selection.
 * `Ctrl+Delete` removes the activity and children.
 
-### 7. File Compatibility & Exports
+### 7. File Compatibility & Multi-Format Exports
 * **Native File Format (`.wbs`)**: Clean human-readable JSON storing all tasks, calendars, WBS hierarchy, and baselines.
 * **Microsoft Excel (`.xlsx`)**: Full structured export with indentations and computed metrics.
-* **PDF & High-Resolution Print**: Print-ready styling with timeline and KPIs.
+* **Comprehensive Export to PDF & PNG Modal**:
+  * Modeled after the OnlineGantt export interface with customizable settings.
+  * **Formats**: PDF Document (`.pdf`) and High-Resolution PNG Image (`.png`).
+  * **Header**: Project Name & Date, Project Name, or None.
+  * **Footer**: Schedule Summary, Total Duration, or None.
+  * **Columns**: Core Columns (WBS, Name, Duration, Dates, Progress), WBS + Name only, or All Columns.
+  * **Timeline**: Zoom to fit or Full Timeline.
+  * **Page Setup**: A4 / A3 (Wide) / Letter in Landscape or Portrait orientation.
+  * **Resolution**: 1x (Standard), 2x (High-Res 300 DPI Print Quality), or 3x (Ultra Sharp).
+  * Uses vector/canvas rendering to capture the unconstrained full schedule without clipping or scrollbars.
 * **Browser LocalStorage**: Auto-saves every change instantly.

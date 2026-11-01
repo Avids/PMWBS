@@ -5,7 +5,7 @@ import {
   FolderOpen,
   Save,
   FileSpreadsheet,
-  Printer,
+  FileDown,
   BookmarkCheck,
   Eye,
   EyeOff,
@@ -20,7 +20,7 @@ interface ToolbarProps {
   onSaveWBS: () => void;
   onLoadWBS: (file: File) => void;
   onExportExcel: () => void;
-  onPrintPDF: () => void;
+  onOpenExportModal: () => void;
   onOpenBaselineModal: () => void;
   onOpenSettingsModal: () => void;
   totalTasks: number;
@@ -37,7 +37,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSaveWBS,
   onLoadWBS,
   onExportExcel,
-  onPrintPDF,
+  onOpenExportModal,
   onOpenBaselineModal,
   onOpenSettingsModal,
   totalTasks,
@@ -158,12 +158,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </button>
 
           <button
-            onClick={onPrintPDF}
+            onClick={onOpenExportModal}
             className="px-2.5 py-1 rounded-md hover:bg-slate-700 text-slate-200 flex items-center space-x-1.5 transition-colors"
-            title="Export to PDF or Print"
+            title="Export Schedule to PDF or Image with Custom Settings"
           >
-            <Printer className="w-3.5 h-3.5 text-sky-400" />
-            <span>PDF / Print</span>
+            <FileDown className="w-3.5 h-3.5 text-sky-400" />
+            <span>Export (PDF / Image)</span>
           </button>
 
           <div className="h-4 w-px bg-slate-700 mx-2"></div>

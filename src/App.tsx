@@ -8,6 +8,7 @@ import { GanttTimeline } from './components/GanttTimeline';
 import { BaselineModal } from './components/BaselineModal';
 import { ProjectSettingsModal } from './components/ProjectSettingsModal';
 import { PredecessorModal } from './components/PredecessorModal';
+import { ExportModal } from './components/ExportModal';
 
 const DEFAULT_CALENDAR = {
   workingDays: [1, 2, 3, 4, 5], // Mon - Fri
@@ -197,7 +198,6 @@ const INITIAL_TASKS: Task[] = [
     endDate: '2026-12-28',
     duration: 10,
     progress: 0,
-    // Demonstrating FS + 5d gap!
     predecessors: [{ taskId: 't-7', type: 'FS', lag: 5 }],
     plannedManHours: 150,
     actualManHours: 0,
@@ -276,6 +276,7 @@ export function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPredecessorModalOpen, setIsPredecessorModalOpen] = useState(false);
   const [predecessorModalTask, setPredecessorModalTask] = useState<Task | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Auto recalculate whenever tasks, calendar, or weightMode change
   const tasks = useMemo(() => {
@@ -533,10 +534,6 @@ export function App() {
     exportToExcel(tasks, settings, `${settings.name.replace(/\s+/g, '_')}.xlsx`);
   };
 
-  const handlePrintPDF = () => {
-    window.print();
-  };
-
   // Baseline Manager
   const handleSaveBaseline = (name: string) => {
     const taskSnapshots: BaselineData['tasks'] = {};
@@ -599,7 +596,7 @@ export function App() {
         onSaveWBS={handleSaveWBS}
         onLoadWBS={handleLoadWBS}
         onExportExcel={handleExportExcel}
-        onPrintPDF={handlePrintPDF}
+        onOpenExportModal={() => setIsExportModalOpen(true)}
         onOpenBaselineModal={() => setIsBaselineModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         totalTasks={tasks.length}
@@ -679,6 +676,13 @@ export function App() {
         task={predecessorModalTask}
         allTasks={tasks}
         onSaveDependencies={handleSaveDependencies}
+      />
+
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        tasks={tasks}
+        settings={settings}
       />
     </div>
   );
