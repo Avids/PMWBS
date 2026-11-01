@@ -7,6 +7,7 @@ interface GanttTimelineProps {
   allTasks?: Task[];
   calendar: ProjectCalendar;
   showBaseline: boolean;
+  showTaskLabels?: boolean;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onAddDependency: (fromTaskId: string, toTaskId: string, type: DependencyType) => void;
   onSelectTask: (taskId: string) => void;
@@ -85,6 +86,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   tasks,
   calendar,
   showBaseline,
+  showTaskLabels = true,
   onUpdateTask,
   onAddDependency,
   onSelectTask,
@@ -100,7 +102,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   const [dragStartX, setDragStartX] = useState<number>(0);
   const [originalStartDate, setOriginalStartDate] = useState<string>('');
   const [originalDuration, setOriginalDuration] = useState<number>(1);
-  const [connectingFromId, setConnectingFromId] = useState<string | null>(null);
+  const [connectingFrom, setConnectingFrom] = useState<{ taskId: string; fromEnd: 'start' | 'finish' } | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
   // Height sizing derived from selected font size
@@ -227,7 +229,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (connectingFromId && containerRef.current) {
+    if (connectingFrom && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       setMousePos({
         x: e.clientX - rect.left + containerRef.current.scrollLeft,
@@ -258,13 +260,13 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   const handleMouseUp = () => {
     setDraggingTaskId(null);
     setDragType(null);
-    setConnectingFromId(null);
+    setConnectingFrom(null);
     setMousePos(null);
   };
 
-  const handleConnectStart = (e: React.MouseEvent, taskId: string) => {
+  const handleConnectStart = (e: React.MouseEvent, taskId: string, fromEnd: 'start' | 'finish') => {
     e.stopPropagation();
-    setConnectingFromId(taskId);
+    setConnectingFrom({ taskId, fromEnd });
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       setMousePos({
@@ -274,12 +276,22 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     }
   };
 
-  const handleConnectEnd = (e: React.MouseEvent, targetTaskId: string) => {
+  const handleConnectEnd = (e: React.MouseEvent, targetTaskId: string, toEnd: 'start' | 'finish') => {
     e.stopPropagation();
-    if (connectingFromId && connectingFromId !== targetTaskId) {
-      onAddDependency(connectingFromId, targetTaskId, 'FS');
+    if (connectingFrom && connectingFrom.taskId !== targetTaskId) {
+      let relType: DependencyType = 'FS';
+      if (connectingFrom.fromEnd === 'finish' && toEnd === 'start') {
+        relType = 'FS';
+      } else if (connectingFrom.fromEnd === 'start' && toEnd === 'start') {
+        relType = 'SS';
+      } else if (connectingFrom.fromEnd === 'finish' && toEnd === 'finish') {
+        relType = 'FF';
+      } else if (connectingFrom.fromEnd === 'start' && toEnd === 'finish') {
+        relType = 'SF';
+      }
+      onAddDependency(connectingFrom.taskId, targetTaskId, relType);
     }
-    setConnectingFromId(null);
+    setConnectingFrom(null);
     setMousePos(null);
   };
 
@@ -499,17 +511,27 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                 </text>
               </g>
             ))}
-            {connectingFromId && mousePos && (
-              <line
-                x1={dateToX(tasks.find((t) => t.id === connectingFromId)?.endDate || '') + dayWidth}
-                y1={headerHeight + tasks.findIndex((t) => t.id === connectingFromId) * rowHeight + rowHeight / 2}
-                x2={mousePos.x}
-                y2={mousePos.y}
-                stroke="#0284c7"
-                strokeWidth="2.5"
-                strokeDasharray="4 4"
-              />
-            )}
+            {connectingFrom && mousePos && (() => {
+              const sourceTask = tasks.find((t) => t.id === connectingFrom.taskId);
+              if (!sourceTask) return null;
+              const sourceIdx = tasks.findIndex((t) => t.id === connectingFrom.taskId);
+              const startX = connectingFrom.fromEnd === 'start'
+                ? dateToX(sourceTask.startDate)
+                : dateToX(sourceTask.endDate) + dayWidth;
+              const startY = headerHeight + sourceIdx * rowHeight + rowHeight / 2;
+
+              return (
+                <line
+                  x1={startX}
+                  y1={startY}
+                  x2={mousePos.x}
+                  y2={mousePos.y}
+                  stroke="#0284c7"
+                  strokeWidth="2.5"
+                  strokeDasharray="4 4"
+                />
+              );
+            })()}
           </svg>
 
           {/* Task Bars Layer (OnlineGantt Style) */}
@@ -569,9 +591,11 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                         className="h-full rounded-l-[4px]"
                       />
                       
-                      <span className="absolute left-full ml-2 text-xs font-bold text-slate-900 whitespace-nowrap">
-                        {task.name} ({task.progress}%)
-                      </span>
+                      {showTaskLabels && (
+                        <span className="absolute left-full ml-2 text-xs font-bold text-slate-900 whitespace-nowrap">
+                          {task.name} ({task.progress}%)
+                        </span>
+                      )}
                     </div>
                   ) : task.isMilestone || task.duration === 0 ? (
                     /* Milestone Diamond (Crisp Dark Diamond) */
@@ -579,11 +603,32 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       style={{ left: `${startX + dayWidth / 2 - 8}px` }}
                       className="absolute w-4 h-4 bg-slate-900 rotate-45 border-2 border-white shadow-md cursor-grab active:cursor-grabbing group hover:scale-110 transition-transform"
                       onMouseDown={(e) => handleMouseDown(e, task, 'move')}
+                      onMouseUp={(e) => {
+                        if (connectingFrom && connectingFrom.taskId !== task.id) {
+                          handleConnectEnd(e, task.id, 'start');
+                        }
+                      }}
                       title={`Milestone: ${task.name} (${task.startDate})`}
                     >
-                      <span className="absolute left-full ml-3 -top-1 -rotate-45 text-xs font-bold text-slate-900 whitespace-nowrap">
-                        {task.name}
-                      </span>
+                      {/* Milestone Connect Handles on Both Ends */}
+                      <div
+                        onMouseDown={(e) => handleConnectStart(e, task.id, 'start')}
+                        onMouseUp={(e) => handleConnectEnd(e, task.id, 'start')}
+                        className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-indigo-600 opacity-0 group-hover:opacity-100 cursor-crosshair z-20"
+                        title="Connect from Milestone (Start)"
+                      />
+                      <div
+                        onMouseDown={(e) => handleConnectStart(e, task.id, 'finish')}
+                        onMouseUp={(e) => handleConnectEnd(e, task.id, 'finish')}
+                        className="absolute -right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-indigo-600 opacity-0 group-hover:opacity-100 cursor-crosshair z-20"
+                        title="Connect from Milestone (Finish)"
+                      />
+
+                      {showTaskLabels && (
+                        <span className="absolute left-full ml-3 -top-1 -rotate-45 text-xs font-bold text-slate-900 whitespace-nowrap">
+                          {task.name}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     /* Normal Work Activity Bar (Standard Unified Color per WBS Level) */
@@ -596,8 +641,23 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                         borderColor: style.border
                       }}
                       onMouseDown={(e) => handleMouseDown(e, task, 'move')}
+                      onMouseUp={(e) => {
+                        if (connectingFrom && connectingFrom.taskId !== task.id) {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const isLeftHalf = (e.clientX - rect.left) < rect.width / 2;
+                          handleConnectEnd(e, task.id, isLeftHalf ? 'start' : 'finish');
+                        }
+                      }}
                       className="absolute rounded-[4px] shadow-xs border flex items-center overflow-visible cursor-grab active:cursor-grabbing group"
                     >
+                      {/* Left Connection Point (Start: SS / SF) */}
+                      <div
+                        onMouseDown={(e) => handleConnectStart(e, task.id, 'start')}
+                        onMouseUp={(e) => handleConnectEnd(e, task.id, 'start')}
+                        className="absolute -left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-indigo-600 shadow-sm opacity-0 group-hover:opacity-100 hover:scale-125 transition-all cursor-crosshair z-20"
+                        title="Connect from Start (SS / SF)"
+                      />
+
                       {/* Interior Progress fill */}
                       <div
                         style={{ width: `${task.progress}%`, backgroundColor: style.progress }}
@@ -605,12 +665,14 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       />
 
                       {/* Text Label next to bar (High contrast dark) */}
-                      <span className="absolute left-full ml-2 text-xs font-semibold text-slate-900 whitespace-nowrap pointer-events-none">
-                        {task.name} ({task.progress}%)
-                        {task.baselineVarianceDays !== undefined && task.baselineVarianceDays > 0 && (
-                          <span className="ml-1 text-red-600 font-bold">+{task.baselineVarianceDays}d</span>
-                        )}
-                      </span>
+                      {showTaskLabels && (
+                        <span className="absolute left-full ml-2 text-xs font-semibold text-slate-900 whitespace-nowrap pointer-events-none">
+                          {task.name} ({task.progress}%)
+                          {task.baselineVarianceDays !== undefined && task.baselineVarianceDays > 0 && (
+                            <span className="ml-1 text-red-600 font-bold">+{task.baselineVarianceDays}d</span>
+                          )}
+                        </span>
+                      )}
 
                       {/* Right Edge: Duration Resize Handle */}
                       <div
@@ -619,12 +681,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                         title="Drag to resize duration"
                       />
 
-                      {/* Connect Handle for Dependency Dragging */}
+                      {/* Right Connection Point (Finish: FS / FF) */}
                       <div
-                        onMouseDown={(e) => handleConnectStart(e, task.id)}
-                        onMouseUp={(e) => handleConnectEnd(e, task.id)}
+                        onMouseDown={(e) => handleConnectStart(e, task.id, 'finish')}
+                        onMouseUp={(e) => handleConnectEnd(e, task.id, 'finish')}
                         className="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-indigo-600 shadow-sm opacity-0 group-hover:opacity-100 hover:scale-125 transition-all cursor-crosshair z-20"
-                        title="Drag to connect dependency"
+                        title="Connect from Finish (FS / FF)"
                       />
                     </div>
                   )}

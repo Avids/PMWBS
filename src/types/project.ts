@@ -94,6 +94,7 @@ export interface ProjectSettings {
   currency: string;
   showBaseline: boolean;
   showCriticalPath: boolean;
+  showTaskLabels?: boolean;      // Toggle text labels next to bars on timeline
   fontSize?: FontSizeOption;     // 'small' (8pt), 'normal' (10pt), 'large' (12pt)
 }
 

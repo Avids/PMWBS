@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   currency: '$',
   showBaseline: true,
   showCriticalPath: true,
+  showTaskLabels: true,
   fontSize: 'normal'
 };
 
@@ -742,6 +743,8 @@ export function App() {
           isSummarySelected={!!tasks.find(x => x.id === selectedTaskId)?.isSummary}
           fontSize={settings.fontSize || 'normal'}
           onChangeFontSize={(size) => setSettings(s => ({ ...s, fontSize: size }))}
+          showTaskLabels={settings.showTaskLabels ?? true}
+          onToggleTaskLabels={() => setSettings(s => ({ ...s, showTaskLabels: !(s.showTaskLabels ?? true) }))}
           zoom={zoomTier}
           onChangeZoom={handleZoomChange}
           onZoomIn={handleZoomIn}
@@ -789,6 +792,7 @@ export function App() {
               allTasks={tasks}
               calendar={settings.calendar}
               showBaseline={settings.showBaseline}
+              showTaskLabels={settings.showTaskLabels ?? true}
               onUpdateTask={handleUpdateTask}
               onAddDependency={handleAddDependency}
               onSelectTask={setSelectedTaskId}

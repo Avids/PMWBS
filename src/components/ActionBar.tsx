@@ -11,7 +11,8 @@ import {
   ZoomIn,
   ZoomOut,
   Scan,
-  Type
+  Type,
+  Tag
 } from 'lucide-react';
 
 interface ActionBarProps {
@@ -28,6 +29,10 @@ interface ActionBarProps {
   // Font Size
   fontSize: FontSizeOption;
   onChangeFontSize: (size: FontSizeOption) => void;
+
+  // Chart Text Labels Toggle
+  showTaskLabels: boolean;
+  onToggleTaskLabels: () => void;
 
   // Zoom Controls
   zoom: ZoomTier;
@@ -50,6 +55,8 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   isSummarySelected,
   fontSize,
   onChangeFontSize,
+  showTaskLabels,
+  onToggleTaskLabels,
   zoom,
   onChangeZoom,
   onZoomIn,
@@ -174,6 +181,22 @@ export const ActionBar: React.FC<ActionBarProps> = ({
             12 Large
           </button>
         </div>
+
+        <div className="h-5 w-px bg-slate-300"></div>
+
+        {/* Chart Text Labels Toggle */}
+        <button
+          onClick={onToggleTaskLabels}
+          className={`px-2.5 py-1 text-[11px] font-semibold rounded flex items-center space-x-1.5 border transition-all ${
+            showTaskLabels
+              ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-2xs'
+              : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'
+          }`}
+          title="Toggle Activity Text Labels On/Off on Gantt Chart"
+        >
+          <Tag className="w-3.5 h-3.5" />
+          <span>Labels: <strong className={showTaskLabels ? 'text-indigo-800' : 'text-slate-600'}>{showTaskLabels ? 'ON' : 'OFF'}</strong></span>
+        </button>
 
         <div className="h-5 w-px bg-slate-300"></div>
 
