@@ -704,9 +704,9 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 p-2 sm:p-3 font-sans">
-      {/* Framed Application Container Floating with Margins/Space Around */}
-      <div className="flex-1 flex flex-col overflow-hidden rounded-xl border border-slate-700/80 shadow-2xl bg-white">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 p-2 sm:p-3 font-sans">
+      {/* Framed Application Container Floating with Calm Margins/Space Around */}
+      <div className="flex-1 flex flex-col overflow-hidden rounded-xl border border-slate-300 shadow-md bg-white">
         {/* Top Ribbon Toolbar */}
         <Toolbar
           settings={settings}
