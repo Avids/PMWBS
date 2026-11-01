@@ -705,98 +705,101 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 font-sans">
-      {/* Top Ribbon Toolbar */}
-      <Toolbar
-        settings={settings}
-        onUpdateSettings={(u) => setSettings(s => ({ ...s, ...u }))}
-        onNewProject={handleNewProject}
-        onSaveWBS={handleSaveWBS}
-        onLoadWBS={handleLoadWBS}
-        onImportMSP={handleImportMSP}
-        onExportExcel={handleExportExcel}
-        onOpenExportModal={() => setIsExportModalOpen(true)}
-        onOpenBaselineModal={() => setIsBaselineModalOpen(true)}
-        onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
-        totalTasks={tasks.length}
-        overallProgress={overallProgress}
-        totalPlannedMH={totalPlannedMH}
-        totalActualMH={totalActualMH}
-        finishDate={finishDate}
-      />
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 p-2 sm:p-3 font-sans">
+      {/* Framed Application Container Floating with Margins/Space Around */}
+      <div className="flex-1 flex flex-col overflow-hidden rounded-xl border border-slate-700/80 shadow-2xl bg-white">
+        {/* Top Ribbon Toolbar */}
+        <Toolbar
+          settings={settings}
+          onUpdateSettings={(u) => setSettings(s => ({ ...s, ...u }))}
+          onNewProject={handleNewProject}
+          onSaveWBS={handleSaveWBS}
+          onLoadWBS={handleLoadWBS}
+          onImportMSP={handleImportMSP}
+          onExportExcel={handleExportExcel}
+          onOpenExportModal={() => setIsExportModalOpen(true)}
+          onOpenBaselineModal={() => setIsBaselineModalOpen(true)}
+          onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+          totalTasks={tasks.length}
+          overallProgress={overallProgress}
+          totalPlannedMH={totalPlannedMH}
+          totalActualMH={totalActualMH}
+          finishDate={finishDate}
+        />
 
-      {/* OnlineGantt-Style Unified Action & Navigation Bar */}
-      <ActionBar
-        onAddTask={() => handleAddTask(selectedTaskId || undefined)}
-        onExpandAll={handleExpandAll}
-        onCollapseAll={handleCollapseAll}
-        onIndentTask={() => selectedTaskId && handleIndentTask(selectedTaskId)}
-        onOutdentTask={() => selectedTaskId && handleOutdentTask(selectedTaskId)}
-        onOpenRelationships={() => {
-          const t = tasks.find(x => x.id === selectedTaskId);
-          if (t && !t.isSummary) handleOpenPredecessorModal(t);
-        }}
-        onDeleteTask={() => selectedTaskId && handleDeleteTask(selectedTaskId)}
-        selectedTaskId={selectedTaskId}
-        isSummarySelected={!!tasks.find(x => x.id === selectedTaskId)?.isSummary}
-        fontSize={settings.fontSize || 'normal'}
-        onChangeFontSize={(size) => setSettings(s => ({ ...s, fontSize: size }))}
-        zoom={zoomTier}
-        onChangeZoom={handleZoomChange}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onZoomFit={handleZoomFit}
-        showBaseline={settings.showBaseline}
-      />
+        {/* OnlineGantt-Style Unified Action & Navigation Bar */}
+        <ActionBar
+          onAddTask={() => handleAddTask(selectedTaskId || undefined)}
+          onExpandAll={handleExpandAll}
+          onCollapseAll={handleCollapseAll}
+          onIndentTask={() => selectedTaskId && handleIndentTask(selectedTaskId)}
+          onOutdentTask={() => selectedTaskId && handleOutdentTask(selectedTaskId)}
+          onOpenRelationships={() => {
+            const t = tasks.find(x => x.id === selectedTaskId);
+            if (t && !t.isSummary) handleOpenPredecessorModal(t);
+          }}
+          onDeleteTask={() => selectedTaskId && handleDeleteTask(selectedTaskId)}
+          selectedTaskId={selectedTaskId}
+          isSummarySelected={!!tasks.find(x => x.id === selectedTaskId)?.isSummary}
+          fontSize={settings.fontSize || 'normal'}
+          onChangeFontSize={(size) => setSettings(s => ({ ...s, fontSize: size }))}
+          zoom={zoomTier}
+          onChangeZoom={handleZoomChange}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onZoomFit={handleZoomFit}
+          showBaseline={settings.showBaseline}
+        />
 
-      {/* Main Splitter Work Area */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Pane: Spreadsheet Grid (MSP / Excel table) */}
-        <div
-          style={{ width: `${splitterWidth}px` }}
-          className="h-full flex-shrink-0 flex flex-col overflow-hidden"
-        >
-          <SpreadsheetGrid
-            tasks={visibleTasks}
-            allTasks={tasks}
-            selectedTaskId={selectedTaskId}
-            onSelectTask={setSelectedTaskId}
-            onUpdateTask={handleUpdateTask}
-            onAddTask={handleAddTask}
-            onDeleteTask={handleDeleteTask}
-            onIndentTask={handleIndentTask}
-            onOutdentTask={handleOutdentTask}
-            onOpenPredecessorModal={handleOpenPredecessorModal}
-            onToggleCollapse={handleToggleCollapse}
-            weightMode={settings.weightMode}
-            fontSize={settings.fontSize || 'normal'}
-          />
-        </div>
+        {/* Main Splitter Work Area */}
+        <div className="flex-1 flex overflow-hidden relative">
+          {/* Left Pane: Spreadsheet Grid (MSP / Excel table) */}
+          <div
+            style={{ width: `${splitterWidth}px` }}
+            className="h-full flex-shrink-0 flex flex-col overflow-hidden"
+          >
+            <SpreadsheetGrid
+              tasks={visibleTasks}
+              allTasks={tasks}
+              selectedTaskId={selectedTaskId}
+              onSelectTask={setSelectedTaskId}
+              onUpdateTask={handleUpdateTask}
+              onAddTask={handleAddTask}
+              onDeleteTask={handleDeleteTask}
+              onIndentTask={handleIndentTask}
+              onOutdentTask={handleOutdentTask}
+              onOpenPredecessorModal={handleOpenPredecessorModal}
+              onToggleCollapse={handleToggleCollapse}
+              weightMode={settings.weightMode}
+              fontSize={settings.fontSize || 'normal'}
+            />
+          </div>
 
-        {/* Resizable Splitter Divider Bar */}
-        <div
-          onMouseDown={handleSplitterMouseDown}
-          className="w-2 bg-slate-300 hover:bg-indigo-600 active:bg-indigo-700 cursor-col-resize z-30 transition-colors flex items-center justify-center select-none shadow-xs"
-        >
-          <div className="h-8 w-1 bg-slate-500 rounded-full"></div>
-        </div>
+          {/* Resizable Splitter Divider Bar */}
+          <div
+            onMouseDown={handleSplitterMouseDown}
+            className="w-2 bg-slate-300 hover:bg-indigo-600 active:bg-indigo-700 cursor-col-resize z-30 transition-colors flex items-center justify-center select-none shadow-xs"
+          >
+            <div className="h-8 w-1 bg-slate-500 rounded-full"></div>
+          </div>
 
-        {/* Right Pane: Gantt Timeline */}
-        <div className="flex-1 h-full flex flex-col overflow-hidden">
-          <GanttTimeline
-            tasks={visibleTasks}
-            allTasks={tasks}
-            calendar={settings.calendar}
-            showBaseline={settings.showBaseline}
-            onUpdateTask={handleUpdateTask}
-            onAddDependency={handleAddDependency}
-            onSelectTask={setSelectedTaskId}
-            selectedTaskId={selectedTaskId}
-            onOpenPredecessorModal={handleOpenPredecessorModal}
-            fontSize={settings.fontSize || 'normal'}
-            zoom={zoomTier}
-            dayWidth={dayWidth}
-          />
+          {/* Right Pane: Gantt Timeline */}
+          <div className="flex-1 h-full flex flex-col overflow-hidden">
+            <GanttTimeline
+              tasks={visibleTasks}
+              allTasks={tasks}
+              calendar={settings.calendar}
+              showBaseline={settings.showBaseline}
+              onUpdateTask={handleUpdateTask}
+              onAddDependency={handleAddDependency}
+              onSelectTask={setSelectedTaskId}
+              selectedTaskId={selectedTaskId}
+              onOpenPredecessorModal={handleOpenPredecessorModal}
+              fontSize={settings.fontSize || 'normal'}
+              zoom={zoomTier}
+              dayWidth={dayWidth}
+            />
+          </div>
         </div>
       </div>
 

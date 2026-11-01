@@ -512,9 +512,6 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                         style={{ width: `${task.progress}%` }}
                         className="h-full bg-slate-900 rounded-l-[4px]"
                       />
-                      {/* Sub-brackets */}
-                      <div className="absolute -left-0.5 -bottom-1 w-2 h-2 border-l-2 border-b-2 border-slate-900"></div>
-                      <div className="absolute -right-0.5 -bottom-1 w-2 h-2 border-r-2 border-b-2 border-slate-900"></div>
                       
                       <span className="absolute left-full ml-2 text-xs font-bold text-slate-900 whitespace-nowrap">
                         {task.name} ({task.progress}%)
