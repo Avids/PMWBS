@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Task, WeightMode } from '../types/project';
-import { ChevronDown, Flag, Plus, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { ChevronDown, Flag, Plus, Trash2, ArrowRight, ArrowLeft, GitCommit } from 'lucide-react';
 import { parsePredecessors } from '../engine/scheduler';
 
 interface SpreadsheetGridProps {
@@ -12,6 +12,7 @@ interface SpreadsheetGridProps {
   onDeleteTask: (taskId: string) => void;
   onIndentTask: (taskId: string) => void;
   onOutdentTask: (taskId: string) => void;
+  onOpenPredecessorModal: (task: Task) => void;
   weightMode: WeightMode;
 }
 
@@ -40,7 +41,7 @@ const COLUMNS: { field: ColumnField; label: string; width: number; readonly?: bo
   { field: 'endDate', label: 'End Date', width: 110 },
   { field: 'progress', label: '% Complete', width: 85 },
   { field: 'weight', label: 'Weight %', width: 80, readonly: true },
-  { field: 'predecessors', label: 'Predecessors', width: 120 },
+  { field: 'predecessors', label: 'Predecessors', width: 140 },
   { field: 'plannedManHours', label: 'Plan MH', width: 80 },
   { field: 'actualManHours', label: 'Act MH', width: 80 },
   { field: 'remainingManHours', label: 'Rem MH', width: 80, readonly: true },
@@ -59,6 +60,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   onDeleteTask,
   onIndentTask,
   onOutdentTask,
+  onOpenPredecessorModal,
   weightMode
 }) => {
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
@@ -88,7 +90,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     else if (col.field === 'progress') updates.progress = Math.min(100, Math.max(0, parseInt(editValue, 10) || 0));
     else if (col.field === 'predecessors') {
       updates.predecessorText = editValue;
-      updates.predecessors = parsePredecessors(editValue);
+      // Resolve row numbers (e.g. 2FS+5d) against tasks
+      updates.predecessors = parsePredecessors(editValue, tasks);
     } else if (col.field === 'plannedManHours') updates.plannedManHours = Math.max(0, parseFloat(editValue) || 0);
     else if (col.field === 'actualManHours') updates.actualManHours = Math.max(0, parseFloat(editValue) || 0);
 
@@ -122,12 +125,10 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       if (e.key === 'Enter') {
         e.preventDefault();
         commitEdit();
-        // Move down to next row
         if (editingCell.rowIdx < tasks.length - 1) {
           setActiveCell({ rowIdx: editingCell.rowIdx + 1, colIdx: editingCell.colIdx });
           onSelectTask(tasks[editingCell.rowIdx + 1].id);
         } else {
-          // If at the last row, automatically append a new task!
           onAddTask(tasks[editingCell.rowIdx].id);
         }
       } else if (e.key === 'Tab') {
@@ -219,8 +220,22 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
             <span className="hidden sm:inline">Add Task</span>
           </button>
           <button
+            onClick={() => {
+              const currentTask = tasks.find(t => t.id === selectedTaskId);
+              if (currentTask && !currentTask.isSummary) {
+                onOpenPredecessorModal(currentTask);
+              }
+            }}
+            disabled={!selectedTaskId || tasks.find(t => t.id === selectedTaskId)?.isSummary}
+            title="Edit Task Relationships & Lag (FS, SS, FF, SF)"
+            className="p-1.5 hover:bg-slate-200 text-indigo-600 rounded-md transition-colors flex items-center space-x-1 disabled:opacity-40"
+          >
+            <GitCommit className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Relationships</span>
+          </button>
+          <button
             onClick={() => selectedTaskId && onDeleteTask(selectedTaskId)}
-            title="Delete Selected Task"
+            title="Delete Selected Task (Ctrl+Delete)"
             className="p-1.5 hover:bg-slate-200 text-red-600 rounded-md transition-colors flex items-center space-x-1"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -322,7 +337,26 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                     } else if (col.field === 'weight') {
                       displayVal = <span className="font-mono text-slate-600">{task.weight}%</span>;
                     } else if (col.field === 'predecessors') {
-                      displayVal = <span className="font-mono text-slate-700">{task.predecessorText || '-'}</span>;
+                      displayVal = (
+                        <div className="flex items-center justify-between group/pred">
+                          <span className="font-mono text-slate-700 font-medium">
+                            {task.predecessorText || '-'}
+                          </span>
+                          {!task.isSummary && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onOpenPredecessorModal(task);
+                              }}
+                              className="opacity-0 group-hover/pred:opacity-100 p-0.5 hover:bg-indigo-100 text-indigo-600 rounded transition-opacity"
+                              title="Open Relationship Dialog"
+                            >
+                              <GitCommit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      );
                     } else if (col.field === 'plannedManHours') {
                       displayVal = <span className="font-mono">{task.plannedManHours || 0}</span>;
                     } else if (col.field === 'actualManHours') {
@@ -369,6 +403,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
                             onBlur={commitEdit}
+                            placeholder={col.field === 'predecessors' ? 'e.g. 2FS+5d' : ''}
                             className="w-full h-full p-0 m-0 border-none outline-none bg-white text-xs text-slate-900"
                           />
                         ) : (

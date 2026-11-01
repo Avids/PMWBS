@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Task, ProjectSettings, ProjectFile, BaselineData } from './types/project';
+import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency } from './types/project';
 import { recalculateSchedule, formatDate, addWorkingDays } from './engine/scheduler';
 import { saveNativeWBSFile, loadNativeWBSFile, exportToExcel } from './engine/importers';
 import { Toolbar } from './components/Toolbar';
@@ -7,6 +7,7 @@ import { SpreadsheetGrid } from './components/SpreadsheetGrid';
 import { GanttTimeline } from './components/GanttTimeline';
 import { BaselineModal } from './components/BaselineModal';
 import { ProjectSettingsModal } from './components/ProjectSettingsModal';
+import { PredecessorModal } from './components/PredecessorModal';
 
 const DEFAULT_CALENDAR = {
   workingDays: [1, 2, 3, 4, 5], // Mon - Fri
@@ -153,8 +154,8 @@ const INITIAL_TASKS: Task[] = [
     parentId: 't-5',
     isSummary: false,
     isMilestone: false,
-    startDate: '2026-11-30',
-    endDate: '2026-12-11',
+    startDate: '2026-11-25',
+    endDate: '2026-12-08',
     duration: 10,
     progress: 10,
     predecessors: [{ taskId: 't-6', type: 'SS', lag: 2 }],
@@ -162,8 +163,8 @@ const INITIAL_TASKS: Task[] = [
     actualManHours: 10,
     remainingManHours: 110,
     earnedManHours: 12,
-    baselineStartDate: '2026-11-30',
-    baselineEndDate: '2026-12-11',
+    baselineStartDate: '2026-11-25',
+    baselineEndDate: '2026-12-08',
     baselineDuration: 10,
     weight: 66.7
   },
@@ -174,8 +175,8 @@ const INITIAL_TASKS: Task[] = [
     parentId: null,
     isSummary: true,
     isMilestone: false,
-    startDate: '2026-12-14',
-    endDate: '2027-01-22',
+    startDate: '2026-12-15',
+    endDate: '2027-01-25',
     duration: 30,
     progress: 0,
     predecessors: [],
@@ -192,17 +193,18 @@ const INITIAL_TASKS: Task[] = [
     parentId: 't-8',
     isSummary: false,
     isMilestone: false,
-    startDate: '2026-12-14',
-    endDate: '2026-12-25',
+    startDate: '2026-12-15',
+    endDate: '2026-12-28',
     duration: 10,
     progress: 0,
-    predecessors: [{ taskId: 't-7', type: 'FS', lag: 0 }],
+    // Demonstrating FS + 5d gap!
+    predecessors: [{ taskId: 't-7', type: 'FS', lag: 5 }],
     plannedManHours: 150,
     actualManHours: 0,
     remainingManHours: 150,
     earnedManHours: 0,
-    baselineStartDate: '2026-12-14',
-    baselineEndDate: '2026-12-25',
+    baselineStartDate: '2026-12-15',
+    baselineEndDate: '2026-12-28',
     baselineDuration: 10,
     weight: 20
   },
@@ -213,8 +215,8 @@ const INITIAL_TASKS: Task[] = [
     parentId: 't-8',
     isSummary: false,
     isMilestone: false,
-    startDate: '2026-12-28',
-    endDate: '2027-01-22',
+    startDate: '2026-12-29',
+    endDate: '2027-01-25',
     duration: 20,
     progress: 0,
     predecessors: [{ taskId: 't-9', type: 'FS', lag: 0 }],
@@ -222,8 +224,8 @@ const INITIAL_TASKS: Task[] = [
     actualManHours: 0,
     remainingManHours: 700,
     earnedManHours: 0,
-    baselineStartDate: '2026-12-28',
-    baselineEndDate: '2027-01-22',
+    baselineStartDate: '2026-12-29',
+    baselineEndDate: '2027-01-25',
     baselineDuration: 20,
     weight: 80
   },
@@ -234,8 +236,8 @@ const INITIAL_TASKS: Task[] = [
     parentId: 't-8',
     isSummary: false,
     isMilestone: true,
-    startDate: '2027-01-22',
-    endDate: '2027-01-22',
+    startDate: '2027-01-25',
+    endDate: '2027-01-25',
     duration: 0,
     progress: 0,
     predecessors: [{ taskId: 't-10', type: 'FS', lag: 0 }],
@@ -243,8 +245,8 @@ const INITIAL_TASKS: Task[] = [
     actualManHours: 0,
     remainingManHours: 0,
     earnedManHours: 0,
-    baselineStartDate: '2027-01-22',
-    baselineEndDate: '2027-01-22',
+    baselineStartDate: '2027-01-25',
+    baselineEndDate: '2027-01-25',
     baselineDuration: 0,
     weight: 0
   }
@@ -267,11 +269,13 @@ export function App() {
   });
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>('t-1');
-  const [splitterWidth, setSplitterWidth] = useState<number>(680); // width of grid pane
+  const [splitterWidth, setSplitterWidth] = useState<number>(680);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
 
   const [isBaselineModalOpen, setIsBaselineModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isPredecessorModalOpen, setIsPredecessorModalOpen] = useState(false);
+  const [predecessorModalTask, setPredecessorModalTask] = useState<Task | null>(null);
 
   // Auto recalculate whenever tasks, calendar, or weightMode change
   const tasks = useMemo(() => {
@@ -324,7 +328,6 @@ export function App() {
     let actualMH = 0;
     let maxEnd = '';
 
-    // Sum from top-level summary tasks or root tasks
     const rootTasks = tasks.filter(t => t.parentId === null);
     let totalWeightedProg = 0;
     let weightSum = 0;
@@ -396,7 +399,6 @@ export function App() {
 
   const handleDeleteTask = useCallback((taskId: string) => {
     setRawTasks(prev => {
-      // Delete task and all its recursive children
       const idsToDelete = new Set<string>([taskId]);
       let added = true;
       while (added) {
@@ -415,7 +417,7 @@ export function App() {
   const handleIndentTask = useCallback((taskId: string) => {
     setRawTasks(prev => {
       const idx = prev.findIndex(t => t.id === taskId);
-      if (idx <= 0) return prev; // Cannot indent the first task
+      if (idx <= 0) return prev;
 
       const prevTask = prev[idx - 1];
       return prev.map((t, i) => {
@@ -430,7 +432,7 @@ export function App() {
   const handleOutdentTask = useCallback((taskId: string) => {
     setRawTasks(prev => {
       const current = prev.find(t => t.id === taskId);
-      if (!current || !current.parentId) return prev; // Already at root level
+      if (!current || !current.parentId) return prev;
 
       const parentTask = prev.find(t => t.id === current.parentId);
       const grandParentId = parentTask ? parentTask.parentId : null;
@@ -453,6 +455,21 @@ export function App() {
         if (existing.some(d => d.taskId === fromTaskId)) return t;
         const newDeps = [...existing, { taskId: fromTaskId, type: 'FS' as const, lag: 0 }].slice(0, 10);
         return { ...t, predecessors: newDeps };
+      }
+      return t;
+    }));
+  }, []);
+
+  // Predecessor Modal Handlers
+  const handleOpenPredecessorModal = useCallback((task: Task) => {
+    setPredecessorModalTask(task);
+    setIsPredecessorModalOpen(true);
+  }, []);
+
+  const handleSaveDependencies = useCallback((taskId: string, dependencies: TaskDependency[]) => {
+    setRawTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        return { ...t, predecessors: dependencies };
       }
       return t;
     }));
@@ -542,7 +559,6 @@ export function App() {
 
     setBaselines(prev => [...prev, newBaseline]);
 
-    // Apply as active baseline on all tasks
     setRawTasks(prev => prev.map(t => ({
       ...t,
       baselineStartDate: t.startDate,
@@ -609,6 +625,7 @@ export function App() {
             onDeleteTask={handleDeleteTask}
             onIndentTask={handleIndentTask}
             onOutdentTask={handleOutdentTask}
+            onOpenPredecessorModal={handleOpenPredecessorModal}
             weightMode={settings.weightMode}
           />
         </div>
@@ -631,6 +648,7 @@ export function App() {
             onAddDependency={handleAddDependency}
             onSelectTask={setSelectedTaskId}
             selectedTaskId={selectedTaskId}
+            onOpenPredecessorModal={handleOpenPredecessorModal}
           />
         </div>
       </div>
@@ -650,6 +668,17 @@ export function App() {
         onClose={() => setIsSettingsModalOpen(false)}
         settings={settings}
         onUpdateSettings={(u) => setSettings(s => ({ ...s, ...u }))}
+      />
+
+      <PredecessorModal
+        isOpen={isPredecessorModalOpen}
+        onClose={() => {
+          setIsPredecessorModalOpen(false);
+          setPredecessorModalTask(null);
+        }}
+        task={predecessorModalTask}
+        allTasks={tasks}
+        onSaveDependencies={handleSaveDependencies}
       />
     </div>
   );

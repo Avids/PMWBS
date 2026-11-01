@@ -10,6 +10,7 @@ interface GanttTimelineProps {
   onAddDependency: (fromTaskId: string, toTaskId: string) => void;
   onSelectTask: (taskId: string) => void;
   selectedTaskId: string | null;
+  onOpenPredecessorModal?: (task: Task) => void;
 }
 
 export type ZoomTier = 'day' | 'week' | 'month';
@@ -21,7 +22,8 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   onUpdateTask,
   onAddDependency,
   onSelectTask,
-  selectedTaskId
+  selectedTaskId,
+  onOpenPredecessorModal
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<ZoomTier>('day');
@@ -60,7 +62,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
       if (t.baselineEndDate && t.baselineEndDate > max) max = t.baselineEndDate;
     });
 
-    // Add 7 days padding before and 21 days after
+    // Add 7 days padding before and 28 days after
     const startDateObj = new Date(min + 'T00:00:00');
     startDateObj.setDate(startDateObj.getDate() - 7);
     const paddedMin = formatDate(startDateObj);
@@ -93,7 +95,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
   // Dragging event handlers
   const handleMouseDown = (e: React.MouseEvent, task: Task, type: 'move' | 'resize') => {
-    if (task.isSummary) return; // Summary tasks move automatically with children
+    if (task.isSummary) return;
     e.stopPropagation();
     setDraggingTaskId(task.id);
     setDragType(type);
@@ -137,7 +139,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     setMousePos(null);
   };
 
-  // Dependency Line Paths calculation
+  // Dependency Line Paths and Labels calculation
   const dependencyLines = useMemo(() => {
     const taskIndexMap = new Map<string, number>();
     tasks.forEach((t, index) => taskIndexMap.set(t.id, index));
@@ -146,6 +148,10 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
       id: string;
       fromTaskId: string;
       toTaskId: string;
+      targetTask: Task;
+      label: string;
+      labelX: number;
+      labelY: number;
       d: string;
       isCritical: boolean;
     }> = [];
@@ -158,27 +164,36 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
         if (sourceIdx === undefined) return;
         const sourceTask = tasks[sourceIdx];
 
-        const sourceX = dateToX(sourceTask.endDate) + dayWidth;
+        // Anchor source point according to relationship type (FS/FF vs SS/SF)
+        const sourceStarts = dep.type === 'SS' || dep.type === 'SF';
+        const sourceX = sourceStarts ? dateToX(sourceTask.startDate) : dateToX(sourceTask.endDate) + dayWidth;
         const sourceY = headerHeight + sourceIdx * rowHeight + rowHeight / 2;
 
-        const targetX = dateToX(targetTask.startDate);
+        // Anchor target point according to relationship type (FS/SS vs FF/SF)
+        const targetEnds = dep.type === 'FF' || dep.type === 'SF';
+        const targetX = targetEnds ? dateToX(targetTask.endDate) + dayWidth : dateToX(targetTask.startDate);
         const targetY = headerHeight + targetIdx * rowHeight + rowHeight / 2;
 
-        // Path routing: create orthogonal line
-        const midX = sourceX + 12;
+        const midX = sourceX + 16;
         let path = '';
-        if (targetX >= sourceX + 20) {
+        if (targetX >= sourceX + 24) {
           path = `M ${sourceX} ${sourceY} H ${midX} V ${targetY} H ${targetX}`;
         } else {
-          // Backward curve
           const detourY = sourceY < targetY ? sourceY + rowHeight / 2 : sourceY - rowHeight / 2;
           path = `M ${sourceX} ${sourceY} H ${sourceX + 8} V ${detourY} H ${targetX - 12} V ${targetY} H ${targetX}`;
         }
 
+        const lagText = dep.lag > 0 ? `+${dep.lag}d` : dep.lag < 0 ? `${dep.lag}d` : '';
+        const label = `${dep.type}${lagText}`;
+
         lines.push({
-          id: `${sourceTask.id}-${targetTask.id}`,
+          id: `${sourceTask.id}-${targetTask.id}-${dep.type}`,
           fromTaskId: sourceTask.id,
           toTaskId: targetTask.id,
+          targetTask,
+          label,
+          labelX: (sourceX + targetX) / 2,
+          labelY: (sourceY + targetY) / 2,
           d: path,
           isCritical: !!(sourceTask.isCritical && targetTask.isCritical)
         });
@@ -254,7 +269,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
         >
           {/* Header Tier 1 (Months) & Tier 2 (Days) */}
           <div className="sticky top-0 z-20 flex flex-col bg-slate-100 border-b border-slate-300 shadow-xs">
-            {/* Day columns header */}
+            {/* Month Tier */}
             <div className="flex h-7 border-b border-slate-200">
               {datesList.map((d, i) => {
                 const dateObj = new Date(d + 'T00:00:00');
@@ -268,11 +283,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       isWeekend ? 'bg-slate-200/60 text-slate-400' : 'text-slate-600'
                     }`}
                   >
-                    {isFirstOfMonth ? dateObj.toLocaleString('default', { month: 'short' }) : ''}
+                    {isFirstOfMonth ? dateObj.toLocaleString('default', { month: 'short', year: 'numeric' }) : ''}
                   </div>
                 );
               })}
             </div>
+            {/* Day Tier */}
             <div className="flex h-7">
               {datesList.map((d) => {
                 const dateObj = new Date(d + 'T00:00:00');
@@ -293,7 +309,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
             </div>
           </div>
 
-          {/* Grid Background Columns & Alternating Rows */}
+          {/* Grid Background Columns */}
           <div className="absolute top-[56px] left-0 right-0 bottom-0 pointer-events-none flex">
             {datesList.map((d) => {
               const dateObj = new Date(d + 'T00:00:00');
@@ -343,15 +359,38 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
               </marker>
             </defs>
             {dependencyLines.map((line) => (
-              <path
-                key={line.id}
-                d={line.d}
-                fill="none"
-                stroke={line.isCritical ? '#ef4444' : '#6366f1'}
-                strokeWidth={line.isCritical ? 2.5 : 1.75}
-                markerEnd={line.isCritical ? 'url(#arrowhead-critical)' : 'url(#arrowhead)'}
-                className="opacity-90 transition-all"
-              />
+              <g key={line.id} className="pointer-events-auto cursor-pointer group">
+                <path
+                  d={line.d}
+                  fill="none"
+                  stroke={line.isCritical ? '#ef4444' : '#6366f1'}
+                  strokeWidth={line.isCritical ? 2.5 : 1.75}
+                  markerEnd={line.isCritical ? 'url(#arrowhead-critical)' : 'url(#arrowhead)'}
+                  className="opacity-90 group-hover:opacity-100 group-hover:stroke-indigo-800 transition-all"
+                  onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
+                />
+                {/* Dependency Tag badge (e.g. FS+5d) */}
+                <rect
+                  x={line.labelX - 18}
+                  y={line.labelY - 8}
+                  width="36"
+                  height="16"
+                  rx="4"
+                  fill="#ffffff"
+                  stroke="#6366f1"
+                  strokeWidth="1"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
+                />
+                <text
+                  x={line.labelX}
+                  y={line.labelY + 4}
+                  textAnchor="middle"
+                  className="text-[9px] fill-indigo-700 font-mono font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                >
+                  {line.label}
+                </text>
+              </g>
             ))}
             {connectingFromId && mousePos && (
               <line
@@ -375,7 +414,6 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
               const topY = idx * rowHeight;
               const isSelected = selectedTaskId === task.id;
 
-              // Baseline bar positioning
               const hasBaseline = showBaseline && task.baselineStartDate && task.baselineEndDate;
               const bStartX = hasBaseline ? dateToX(task.baselineStartDate!) : 0;
               const bEndX = hasBaseline ? dateToX(task.baselineEndDate!) + dayWidth : 0;
@@ -411,7 +449,6 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     >
                       <div className="absolute -left-1 top-2 w-2 h-2.5 border-l-2 border-b-2 border-slate-900 rotate-45"></div>
                       <div className="absolute -right-1 top-2 w-2 h-2.5 border-r-2 border-b-2 border-slate-900 -rotate-45"></div>
-                      {/* Summary progress fill */}
                       <div
                         style={{ width: `${task.progress}%` }}
                         className="h-full bg-slate-600/80 rounded-xs"

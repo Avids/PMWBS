@@ -27,15 +27,22 @@ Three distinct weight distribution modes:
 Summary Progress rollup:
 $$\text{Summary Progress} = \sum_{i=1}^N \left(\text{Progress}_i \times \frac{W_i}{100}\right)$$
 
-### 3. Task Relationships (Up to 10 Dependencies)
+### 3. Task Relationships & Lag Duration (Up to 10 Dependencies)
 * Supports all four standard CPM dependency types:
-  * **FS** (Finish-to-Start)
-  * **SS** (Start-to-Start)
-  * **FF** (Finish-to-Finish)
-  * **SF** (Start-to-Finish)
-* Positive and negative lag (e.g. `2FS+3d`, `4SS-2d`, `5FF`).
-* Auto-scheduling engine propagates dates through dependency chains.
-* Interactive drag-and-drop dependency creation directly on the Gantt chart.
+  * **FS** (Finish-to-Start): Successor starts after predecessor completes.
+  * **SS** (Start-to-Start): Successor starts simultaneously with predecessor.
+  * **FF** (Finish-to-Finish): Successor finishes simultaneously with predecessor.
+  * **SF** (Start-to-Finish): Successor finishes after predecessor starts.
+* **Positive and Negative Lag / Duration Gap**:
+  * e.g. `2FS+5d` (5 working days gap between task 2 finish and task start).
+  * e.g. `3SS+2d` (starts 2 days after task 3 starts).
+  * e.g. `4FF-1d` (finishes 1 day before task 4 finishes).
+* **Two Ways to Configure**:
+  1. **Direct Keyboard Entry**: Type e.g. `2FS+5d` directly in the Predecessors cell. The parser automatically resolves row numbers, WBS codes, or IDs.
+  2. **Visual Predecessor Modal**: Click the Relationship button or icon on the cell to configure up to 10 predecessors with task dropdowns, relationship types, and numeric lag in days.
+* **Interactive Gantt Dependency Badges**:
+  * Relationship lines display relationship tags (e.g., `FS+5d`).
+  * Clicking a dependency line on the Gantt chart opens the relationship editor directly.
 
 ### 4. Actual vs Plan & Baseline Variance Tracking
 * **Baseline Manager**: Snapshot and save baseline plans (Baseline 1, Baseline 2, etc.).

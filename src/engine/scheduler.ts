@@ -43,31 +43,53 @@ export function countWorkingDays(startDateStr: string, endDateStr: string, calen
 }
 
 /**
- * Adds working days to a start date. If days is 0 (milestone), returns startDateStr.
+ * Moves forward or backward by N working days.
+ * If offset === 0, returns the date (or nearest working day).
+ */
+export function addWorkingDaysOffset(dateStr: string, offset: number, calendar: ProjectCalendar): string {
+  if (!dateStr) return formatDate(new Date());
+  const curr = new Date(dateStr + 'T00:00:00');
+
+  // Align to working day first
+  while (!isWorkingDay(formatDate(curr), calendar)) {
+    curr.setDate(curr.getDate() + (offset >= 0 ? 1 : -1));
+  }
+
+  if (offset === 0) return formatDate(curr);
+
+  const step = offset > 0 ? 1 : -1;
+  let remaining = Math.abs(offset);
+
+  while (remaining > 0) {
+    curr.setDate(curr.getDate() + step);
+    if (isWorkingDay(formatDate(curr), calendar)) {
+      remaining--;
+    }
+  }
+
+  return formatDate(curr);
+}
+
+/**
+ * Adds duration (in working days) to a start date.
+ * If days === 0 (milestone), returns startDateStr.
+ * If days === 1, returns startDateStr (if working day).
+ * If days > 1, counts startDateStr as day 1 and finds the end date.
  */
 export function addWorkingDays(startDateStr: string, days: number, calendar: ProjectCalendar): string {
   if (!startDateStr) return formatDate(new Date());
   if (days <= 0) return startDateStr;
 
   const curr = new Date(startDateStr + 'T00:00:00');
-  let added = 0;
 
   // If start is non-working, move forward to first working day
   while (!isWorkingDay(formatDate(curr), calendar)) {
     curr.setDate(curr.getDate() + 1);
   }
 
-  // Count start date as day 1
-  added = 1;
+  if (days === 1) return formatDate(curr);
 
-  while (added < days) {
-    curr.setDate(curr.getDate() + 1);
-    if (isWorkingDay(formatDate(curr), calendar)) {
-      added++;
-    }
-  }
-
-  return formatDate(curr);
+  return addWorkingDaysOffset(formatDate(curr), days - 1, calendar);
 }
 
 /**
@@ -83,34 +105,72 @@ export function getNextWorkingDay(dateStr: string, calendar: ProjectCalendar): s
 }
 
 /**
- * Formats dependencies into MSP/Primavera string e.g. "2FS, 3SS+2d"
+ * Formats dependencies into MSP/Primavera string using human-friendly row numbers.
+ * e.g. "2FS+5d, 3SS-1d"
  */
-export function formatPredecessors(deps: TaskDependency[]): string {
+export function formatPredecessors(deps: TaskDependency[], taskList?: Task[]): string {
   if (!deps || deps.length === 0) return '';
+  
+  // Build a lookup from task ID to row number (1-based index)
+  const idToRowMap = new Map<string, number>();
+  if (taskList) {
+    taskList.forEach((t, i) => {
+      idToRowMap.set(t.id, i + 1);
+    });
+  }
+
   return deps.map(d => {
+    const rowNum = idToRowMap.get(d.taskId);
+    const displayRef = rowNum !== undefined ? String(rowNum) : d.taskId;
+
     let lagStr = '';
     if (d.lag > 0) lagStr = `+${d.lag}d`;
     else if (d.lag < 0) lagStr = `${d.lag}d`;
-    return `${d.taskId}${d.type}${lagStr}`;
+    
+    return `${displayRef}${d.type}${lagStr}`;
   }).join(', ');
 }
 
 /**
- * Parses predecessor string e.g. "2, 3FS, 4SS+2d, 5FF-1" up to 10 dependencies.
+ * Parses predecessor string e.g. "2, 2FS, 2FS+5d, 3SS-2d, 4FF+1, 5SF" up to 10 dependencies.
+ * Resolves row numbers (e.g. '2') to task IDs if taskList is provided.
  */
-export function parsePredecessors(text: string): TaskDependency[] {
+export function parsePredecessors(text: string, taskList?: Task[]): TaskDependency[] {
   if (!text || typeof text !== 'string') return [];
   const parts = text.split(/[,;]/).map(s => s.trim()).filter(Boolean);
   const result: TaskDependency[] = [];
 
+  // Build row number (1-based) to taskId mapping
+  const rowToIdMap = new Map<number, string>();
+  const idSet = new Set<string>();
+  if (taskList) {
+    taskList.forEach((t, i) => {
+      rowToIdMap.set(i + 1, t.id);
+      idSet.add(t.id);
+    });
+  }
+
   for (const part of parts.slice(0, 10)) {
-    // Regex matches: (ID)(FS|SS|FF|SF optional)(+lag | -lag optional)
-    const match = part.match(/^([A-Za-z0-9_-]+)(FS|SS|FF|SF)?([+-]\d+)?d?$/i);
+    // Regex matches: (RowNumber or TaskID)(FS|SS|FF|SF optional)([+-]number optional)(d optional)
+    // Examples: "2", "2FS", "2FS+5d", "2+5d", "2FS+5", "2SS-2d", "t-1FS+3d"
+    const match = part.match(/^([A-Za-z0-9_-]+)\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+)?\s*d?$/i);
     if (match) {
-      const taskId = match[1];
+      const rawRef = match[1];
       const type = (match[2]?.toUpperCase() as DependencyType) || 'FS';
-      const lag = match[3] ? parseInt(match[3], 10) : 0;
-      result.push({ taskId, type, lag });
+      const lag = match[3] ? parseInt(match[3].replace(/\s+/g, ''), 10) : 0;
+
+      // Determine actual taskId
+      let resolvedId = rawRef;
+      const parsedRowNum = parseInt(rawRef, 10);
+      if (!isNaN(parsedRowNum) && rowToIdMap.has(parsedRowNum)) {
+        resolvedId = rowToIdMap.get(parsedRowNum)!;
+      } else if (!idSet.has(rawRef) && taskList) {
+        // Check if rawRef matches wbsCode
+        const matchedWBS = taskList.find(t => t.wbsCode === rawRef);
+        if (matchedWBS) resolvedId = matchedWBS.id;
+      }
+
+      result.push({ taskId: resolvedId, type, lag });
     }
   }
 
@@ -119,7 +179,7 @@ export function parsePredecessors(text: string): TaskDependency[] {
 
 /**
  * Recalculates the entire project schedule (WBS numbering, hierarchy,
- * CPM dependency scheduling, activity weights, and summary rollups).
+ * CPM dependency scheduling with exact lag/duration support, activity weights, and summary rollups).
  */
 export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, defaultWeightMode: WeightMode = 'duration'): Task[] {
   if (!tasks || tasks.length === 0) return [];
@@ -152,9 +212,9 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
   }
   assignWBS(null, '');
 
-  // 2. Schedule Forward Pass for Leaf Tasks based on Predecessors
-  // Perform multiple passes (topological / relaxed) to resolve chain dependencies
-  const maxIterations = 20;
+  // 2. Schedule Forward Pass for Leaf Tasks based on Predecessors & Lags
+  // Forward pass runs topologically / iteratively up to 25 passes
+  const maxIterations = 25;
   for (let iter = 0; iter < maxIterations; iter++) {
     let changed = false;
 
@@ -169,23 +229,29 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
           const pred = taskMap.get(dep.taskId);
           if (!pred) return;
 
-          let targetDate = '';
+          let targetStart = '';
+
           if (dep.type === 'FS') {
-            const nextDay = getNextWorkingDay(pred.endDate, calendar);
-            targetDate = dep.lag !== 0 ? addWorkingDays(nextDay, Math.max(1, 1 + dep.lag), calendar) : nextDay;
+            // Finish-to-Start: Base start is the next working day after predecessor ends
+            const nextWorkingDay = getNextWorkingDay(pred.endDate, calendar);
+            // Apply lag: dep.lag is gap in days (e.g. +5d gap)
+            targetStart = addWorkingDaysOffset(nextWorkingDay, dep.lag, calendar);
           } else if (dep.type === 'SS') {
-            targetDate = dep.lag !== 0 ? addWorkingDays(pred.startDate, Math.max(1, 1 + dep.lag), calendar) : pred.startDate;
+            // Start-to-Start: Base start is the predecessor start date + lag
+            targetStart = addWorkingDaysOffset(pred.startDate, dep.lag, calendar);
           } else if (dep.type === 'FF') {
-            // Target end date, back-calculate start
-            const targetEnd = dep.lag !== 0 ? addWorkingDays(pred.endDate, Math.max(1, 1 + dep.lag), calendar) : pred.endDate;
-            if (targetEnd > task.endDate) {
-              const diffDays = countWorkingDays(task.startDate, targetEnd, calendar);
-              targetDate = addWorkingDays(task.startDate, Math.max(0, diffDays - task.duration), calendar);
-            }
+            // Finish-to-Finish: Task finishes when predecessor finishes + lag
+            const targetFinish = addWorkingDaysOffset(pred.endDate, dep.lag, calendar);
+            // Deduct duration to find required start date
+            targetStart = addWorkingDaysOffset(targetFinish, -Math.max(0, task.duration - 1), calendar);
+          } else if (dep.type === 'SF') {
+            // Start-to-Finish: Task finishes when predecessor starts + lag
+            const targetFinish = addWorkingDaysOffset(pred.startDate, dep.lag, calendar);
+            targetStart = addWorkingDaysOffset(targetFinish, -Math.max(0, task.duration - 1), calendar);
           }
 
-          if (targetDate && targetDate > minStart) {
-            minStart = targetDate;
+          if (targetStart && targetStart > minStart) {
+            minStart = targetStart;
           }
         });
       }
@@ -212,7 +278,6 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
   }
 
   // 3. Bottom-Up Summary Task Rollup (Start, End, Duration, Man-Hours, Progress)
-  // Process deepest nodes first by sorting descending by WBS depth
   const sortedByDepthDesc = [...cloned].sort((a, b) => {
     const depthA = a.wbsCode.split('.').length;
     const depthB = b.wbsCode.split('.').length;
@@ -221,7 +286,6 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
 
   sortedByDepthDesc.forEach(task => {
     if (!task.isSummary) {
-      // Calculate earned man-hours for leaf tasks
       task.earnedManHours = ((task.plannedManHours || 0) * (task.progress || 0)) / 100;
       task.remainingManHours = Math.max(0, (task.plannedManHours || 0) - (task.actualManHours || 0));
       return;
@@ -230,7 +294,6 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
     const children = childrenMap.get(task.id) || [];
     if (children.length === 0) return;
 
-    // Rollup Dates
     let earliestStart = children[0].startDate;
     let latestEnd = children[0].endDate;
 
@@ -290,7 +353,7 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
     task.progress = Math.min(100, Math.round(weightedProgressSum));
   });
 
-  // 5. Baseline Variances & Float
+  // 5. Baseline Variances & Formatted Predecessor Text
   cloned.forEach(t => {
     if (t.baselineEndDate) {
       t.baselineVarianceDays = countWorkingDays(t.baselineEndDate, t.endDate, calendar) - 1;
@@ -298,7 +361,7 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
         t.baselineVarianceDays = -countWorkingDays(t.endDate, t.baselineEndDate, calendar) + 1;
       }
     }
-    t.predecessorText = formatPredecessors(t.predecessors);
+    t.predecessorText = formatPredecessors(t.predecessors, cloned);
   });
 
   return cloned;
