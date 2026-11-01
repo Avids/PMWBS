@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { ProjectFile, Task, ProjectSettings } from '../types/project';
+export { parseMicrosoftProjectXML } from './mspXmlImporter';
 
 /**
  * Downloads a JavaScript object as a .wbs file (native JSON).

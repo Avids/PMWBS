@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Task, WeightMode } from '../types/project';
-import { ChevronDown, Flag, Plus, Trash2, ArrowRight, ArrowLeft, GitCommit } from 'lucide-react';
+import type { Task, WeightMode, FontSizeOption } from '../types/project';
+import { Flag, GitCommit, GripVertical } from 'lucide-react';
 import { parsePredecessors } from '../engine/scheduler';
 
 interface SpreadsheetGridProps {
   tasks: Task[];
+  allTasks: Task[];
   selectedTaskId: string | null;
   onSelectTask: (taskId: string) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
@@ -13,7 +14,9 @@ interface SpreadsheetGridProps {
   onIndentTask: (taskId: string) => void;
   onOutdentTask: (taskId: string) => void;
   onOpenPredecessorModal: (task: Task) => void;
+  onToggleCollapse: (taskId: string) => void;
   weightMode: WeightMode;
+  fontSize?: FontSizeOption;
 }
 
 type ColumnField = 
@@ -35,24 +38,25 @@ type ColumnField =
 
 const COLUMNS: { field: ColumnField; label: string; width: number; readonly?: boolean }[] = [
   { field: 'wbs', label: 'WBS', width: 65, readonly: true },
-  { field: 'name', label: 'Task Name', width: 230 },
-  { field: 'duration', label: 'Duration (d)', width: 90 },
+  { field: 'name', label: 'Task Name', width: 250 },
+  { field: 'duration', label: 'Duration (d)', width: 95 },
   { field: 'startDate', label: 'Start Date', width: 110 },
   { field: 'endDate', label: 'End Date', width: 110 },
-  { field: 'progress', label: '% Complete', width: 85 },
-  { field: 'weight', label: 'Weight %', width: 80, readonly: true },
+  { field: 'progress', label: '% Complete', width: 95 },
+  { field: 'weight', label: 'Weight %', width: 85, readonly: true },
   { field: 'predecessors', label: 'Predecessors', width: 140 },
-  { field: 'plannedManHours', label: 'Plan MH', width: 80 },
-  { field: 'actualManHours', label: 'Act MH', width: 80 },
-  { field: 'remainingManHours', label: 'Rem MH', width: 80, readonly: true },
-  { field: 'earnedManHours', label: 'Earn MH', width: 80, readonly: true },
-  { field: 'baselineStart', label: 'Base Start', width: 100, readonly: true },
-  { field: 'baselineEnd', label: 'Base End', width: 100, readonly: true },
-  { field: 'variance', label: 'Variance (d)', width: 90, readonly: true }
+  { field: 'plannedManHours', label: 'Plan MH', width: 85 },
+  { field: 'actualManHours', label: 'Act MH', width: 85 },
+  { field: 'remainingManHours', label: 'Rem MH', width: 85, readonly: true },
+  { field: 'earnedManHours', label: 'Earn MH', width: 85, readonly: true },
+  { field: 'baselineStart', label: 'Base Start', width: 105, readonly: true },
+  { field: 'baselineEnd', label: 'Base End', width: 105, readonly: true },
+  { field: 'variance', label: 'Variance (d)', width: 95, readonly: true }
 ];
 
 export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   tasks,
+  allTasks,
   selectedTaskId,
   onSelectTask,
   onUpdateTask,
@@ -61,12 +65,18 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   onIndentTask,
   onOutdentTask,
   onOpenPredecessorModal,
-  weightMode
+  onToggleCollapse,
+  fontSize = 'normal'
 }) => {
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
   const [editingCell, setEditingCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Height and font sizing based on fontSize prop
+  const rowHeight = fontSize === 'small' ? 30 : fontSize === 'large' ? 44 : 36;
+  const textSizeClass = fontSize === 'small' ? 'text-[11px]' : fontSize === 'large' ? 'text-[15px]' : 'text-[13px]';
+  const headerSizeClass = fontSize === 'small' ? 'text-[11px]' : fontSize === 'large' ? 'text-[14px]' : 'text-xs';
 
   useEffect(() => {
     if (editingCell && inputRef.current) {
@@ -90,8 +100,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     else if (col.field === 'progress') updates.progress = Math.min(100, Math.max(0, parseInt(editValue, 10) || 0));
     else if (col.field === 'predecessors') {
       updates.predecessorText = editValue;
-      // Resolve row numbers (e.g. 2FS+5d) against tasks
-      updates.predecessors = parsePredecessors(editValue, tasks);
+      // Resolve against allTasks for valid references
+      updates.predecessors = parsePredecessors(editValue, allTasks);
     } else if (col.field === 'plannedManHours') updates.plannedManHours = Math.max(0, parseFloat(editValue) || 0);
     else if (col.field === 'actualManHours') updates.actualManHours = Math.max(0, parseFloat(editValue) || 0);
 
@@ -163,19 +173,15 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       e.preventDefault();
       const prevCol = Math.max(0, activeCell.colIdx - 1);
       setActiveCell({ rowIdx: activeCell.rowIdx, colIdx: prevCol });
-    } else if (e.key === 'Enter' || e.key === 'F2') {
+    } else if (e.key === 'Enter') {
       e.preventDefault();
       startEdit(activeCell.rowIdx, activeCell.colIdx);
-    } else if (e.key === 'Tab') {
+    } else if (e.key === 'Delete') {
       e.preventDefault();
-      const nextCol = e.shiftKey ? Math.max(0, activeCell.colIdx - 1) : Math.min(COLUMNS.length - 1, activeCell.colIdx + 1);
-      setActiveCell({ rowIdx: activeCell.rowIdx, colIdx: nextCol });
+      if (selectedTaskId) onDeleteTask(selectedTaskId);
     } else if (e.key === 'Insert') {
       e.preventDefault();
-      onAddTask(tasks[activeCell.rowIdx].id);
-    } else if (e.key === 'Delete' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      onDeleteTask(tasks[activeCell.rowIdx].id);
+      onAddTask(tasks[activeCell.rowIdx]?.id);
     } else if (e.altKey && e.key === 'ArrowRight') {
       e.preventDefault();
       onIndentTask(tasks[activeCell.rowIdx].id);
@@ -191,74 +197,19 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       onKeyDown={handleKeyDown}
       className="flex flex-col h-full bg-white select-none overflow-hidden focus:outline-none"
     >
-      {/* Grid Sub-Header Actions */}
-      <div className="h-10 px-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={() => selectedTaskId && onIndentTask(selectedTaskId)}
-            title="Indent Task (Alt+Right)"
-            className="p-1.5 hover:bg-slate-200 text-slate-700 rounded-md transition-colors flex items-center space-x-1"
-          >
-            <ArrowRight className="w-3.5 h-3.5 text-indigo-600" />
-            <span className="hidden sm:inline">Indent</span>
-          </button>
-          <button
-            onClick={() => selectedTaskId && onOutdentTask(selectedTaskId)}
-            title="Outdent Task (Alt+Left)"
-            className="p-1.5 hover:bg-slate-200 text-slate-700 rounded-md transition-colors flex items-center space-x-1"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-indigo-600" />
-            <span className="hidden sm:inline">Outdent</span>
-          </button>
-          <div className="h-4 w-px bg-slate-300 mx-1"></div>
-          <button
-            onClick={() => onAddTask(selectedTaskId || undefined)}
-            title="Add Task Below (Insert)"
-            className="p-1.5 hover:bg-slate-200 text-slate-700 rounded-md transition-colors flex items-center space-x-1"
-          >
-            <Plus className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden sm:inline">Add Task</span>
-          </button>
-          <button
-            onClick={() => {
-              const currentTask = tasks.find(t => t.id === selectedTaskId);
-              if (currentTask && !currentTask.isSummary) {
-                onOpenPredecessorModal(currentTask);
-              }
-            }}
-            disabled={!selectedTaskId || tasks.find(t => t.id === selectedTaskId)?.isSummary}
-            title="Edit Task Relationships & Lag (FS, SS, FF, SF)"
-            className="p-1.5 hover:bg-slate-200 text-indigo-600 rounded-md transition-colors flex items-center space-x-1 disabled:opacity-40"
-          >
-            <GitCommit className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Relationships</span>
-          </button>
-          <button
-            onClick={() => selectedTaskId && onDeleteTask(selectedTaskId)}
-            title="Delete Selected Task (Ctrl+Delete)"
-            className="p-1.5 hover:bg-slate-200 text-red-600 rounded-md transition-colors flex items-center space-x-1"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Delete</span>
-          </button>
-        </div>
-
-        <div className="text-[11px] text-slate-500 italic">
-          Weight Basis: <span className="font-semibold text-slate-700 uppercase">{weightMode}</span>
-        </div>
-      </div>
-
       {/* Spreadsheet Table View */}
       <div className="flex-1 overflow-auto bg-white">
-        <table className="w-full border-collapse text-xs">
-          <thead className="sticky top-0 z-10 bg-slate-100 border-b border-slate-300 shadow-xs">
-            <tr>
-              <th className="w-8 px-1 py-2 text-center text-slate-400 font-normal border-r border-slate-200">#</th>
+        <table className={`w-full border-collapse ${textSizeClass}`}>
+          <thead className="sticky top-0 z-10 bg-slate-100 border-b-2 border-slate-300 shadow-2xs">
+            <tr className="h-10">
+              <th className="w-10 px-1 py-2 text-center text-slate-800 font-bold border-r border-slate-300 bg-slate-100 select-none">
+                #
+              </th>
               {COLUMNS.map((col) => (
                 <th
                   key={col.field}
                   style={{ width: `${col.width}px` }}
-                  className="px-2 py-2 text-left font-semibold text-slate-700 border-r border-slate-200 whitespace-nowrap"
+                  className={`px-2.5 py-2 text-left font-bold text-slate-900 border-r border-slate-300 bg-slate-100 whitespace-nowrap tracking-tight ${headerSizeClass}`}
                 >
                   {col.label}
                 </th>
@@ -273,17 +224,25 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
               return (
                 <tr
                   key={task.id}
+                  style={{ height: `${rowHeight}px` }}
                   onClick={() => {
                     onSelectTask(task.id);
                     setActiveCell({ rowIdx, colIdx: 1 });
                   }}
-                  className={`h-9 border-b border-slate-200 cursor-pointer transition-colors ${
-                    isSelected ? 'bg-indigo-50/70' : rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
+                  className={`border-b border-slate-200 cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'bg-sky-100/70 border-l-4 border-l-indigo-600'
+                      : rowIdx % 2 === 0
+                      ? 'bg-white hover:bg-slate-50'
+                      : 'bg-slate-50/70 hover:bg-slate-100/70'
                   }`}
                 >
-                  {/* Row Index */}
-                  <td className="px-1 text-center text-slate-400 font-mono text-[10px] border-r border-slate-200 select-none">
-                    {rowIdx + 1}
+                  {/* Row Index with OnlineGantt-style Grip Handle */}
+                  <td className="px-1 text-center border-r border-slate-200 select-none bg-slate-50/50">
+                    <div className="flex items-center justify-center space-x-0.5 text-slate-700">
+                      <GripVertical className="w-3 h-3 text-slate-400" />
+                      <span className="font-mono font-bold text-[11px]">{rowIdx + 1}</span>
+                    </div>
                   </td>
 
                   {/* Columns */}
@@ -291,25 +250,40 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                     const isCellActive = activeCell?.rowIdx === rowIdx && activeCell?.colIdx === colIdx;
                     const isCellEditing = editingCell?.rowIdx === rowIdx && editingCell?.colIdx === colIdx;
 
-                    let displayVal: React.ReactNode = '';
+                    let displayVal: React.ReactNode = null;
+
                     if (col.field === 'wbs') {
-                      displayVal = <span className="font-mono text-slate-500 font-medium">{task.wbsCode}</span>;
+                      displayVal = (
+                        <span className="font-mono font-bold text-slate-800">
+                          {task.wbsCode}
+                        </span>
+                      );
                     } else if (col.field === 'name') {
                       displayVal = (
                         <div
-                          style={{ paddingLeft: `${depth * 16}px` }}
+                          style={{ paddingLeft: `${depth * 18}px` }}
                           className="flex items-center space-x-1.5 overflow-hidden"
                         >
                           {task.isSummary ? (
-                            <ChevronDown className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleCollapse(task.id);
+                              }}
+                              className="w-4 h-4 flex items-center justify-center rounded hover:bg-slate-200 text-slate-900 font-black cursor-pointer select-none transition-colors"
+                              title={task.isCollapsed ? 'Expand Task' : 'Collapse Task'}
+                            >
+                              {task.isCollapsed ? '▶' : '▼'}
+                            </button>
                           ) : task.isMilestone || task.duration === 0 ? (
-                            <Flag className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                            <Flag className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                           ) : (
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0 ml-1"></div>
+                            <div className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0 ml-1"></div>
                           )}
                           <span
                             className={`truncate ${
-                              task.isSummary ? 'font-bold text-slate-900' : 'text-slate-800'
+                              task.isSummary ? 'font-bold text-slate-950 text-sm' : 'font-medium text-slate-900'
                             }`}
                           >
                             {task.name}
@@ -317,29 +291,33 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                         </div>
                       );
                     } else if (col.field === 'duration') {
-                      displayVal = task.duration === 0 ? '0 d (Milestone)' : `${task.duration} d`;
+                      displayVal = (
+                        <span className="font-bold text-slate-900">
+                          {task.duration === 0 ? '0 d (Milestone)' : `${task.duration} d`}
+                        </span>
+                      );
                     } else if (col.field === 'startDate') {
-                      displayVal = task.startDate;
+                      displayVal = <span className="font-mono font-semibold text-slate-900">{task.startDate}</span>;
                     } else if (col.field === 'endDate') {
-                      displayVal = task.endDate;
+                      displayVal = <span className="font-mono font-semibold text-slate-900">{task.endDate}</span>;
                     } else if (col.field === 'progress') {
                       displayVal = (
-                        <div className="flex items-center space-x-1">
-                          <span className="font-mono">{task.progress}%</span>
-                          <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-mono font-bold text-slate-900 w-9 text-right">{task.progress}%</span>
+                          <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden border border-slate-300">
                             <div
                               style={{ width: `${task.progress}%` }}
-                              className="h-full bg-indigo-600 rounded-full"
+                              className="h-full bg-indigo-600 rounded-full transition-all"
                             />
                           </div>
                         </div>
                       );
                     } else if (col.field === 'weight') {
-                      displayVal = <span className="font-mono text-slate-600">{task.weight}%</span>;
+                      displayVal = <span className="font-mono font-bold text-slate-800">{task.weight}%</span>;
                     } else if (col.field === 'predecessors') {
                       displayVal = (
                         <div className="flex items-center justify-between group/pred">
-                          <span className="font-mono text-slate-700 font-medium">
+                          <span className="font-mono font-bold text-indigo-950">
                             {task.predecessorText || '-'}
                           </span>
                           {!task.isSummary && (
@@ -349,8 +327,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                                 e.stopPropagation();
                                 onOpenPredecessorModal(task);
                               }}
-                              className="opacity-0 group-hover/pred:opacity-100 p-0.5 hover:bg-indigo-100 text-indigo-600 rounded transition-opacity"
-                              title="Open Relationship Dialog"
+                              className="opacity-0 group-hover/pred:opacity-100 p-0.5 hover:bg-indigo-100 text-indigo-700 rounded transition-opacity"
+                              title="Edit Relationships"
                             >
                               <GitCommit className="w-3.5 h-3.5" />
                             </button>
@@ -358,32 +336,32 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                         </div>
                       );
                     } else if (col.field === 'plannedManHours') {
-                      displayVal = <span className="font-mono">{task.plannedManHours || 0}</span>;
+                      displayVal = <span className="font-mono font-bold text-slate-900">{task.plannedManHours || 0}</span>;
                     } else if (col.field === 'actualManHours') {
-                      displayVal = <span className="font-mono">{task.actualManHours || 0}</span>;
+                      displayVal = <span className="font-mono font-bold text-slate-900">{task.actualManHours || 0}</span>;
                     } else if (col.field === 'remainingManHours') {
-                      displayVal = <span className="font-mono text-slate-500">{task.remainingManHours || 0}</span>;
+                      displayVal = <span className="font-mono font-bold text-slate-800">{task.remainingManHours || 0}</span>;
                     } else if (col.field === 'earnedManHours') {
-                      displayVal = <span className="font-mono text-emerald-700 font-semibold">{task.earnedManHours || 0}</span>;
+                      displayVal = <span className="font-mono font-bold text-emerald-800">{task.earnedManHours || 0}</span>;
                     } else if (col.field === 'baselineStart') {
-                      displayVal = <span className="text-slate-500">{task.baselineStartDate || '-'}</span>;
+                      displayVal = <span className="font-mono text-slate-700">{task.baselineStartDate || '-'}</span>;
                     } else if (col.field === 'baselineEnd') {
-                      displayVal = <span className="text-slate-500">{task.baselineEndDate || '-'}</span>;
+                      displayVal = <span className="font-mono text-slate-700">{task.baselineEndDate || '-'}</span>;
                     } else if (col.field === 'variance') {
                       if (task.baselineVarianceDays !== undefined) {
                         const isLate = task.baselineVarianceDays > 0;
                         const isEarly = task.baselineVarianceDays < 0;
                         displayVal = (
                           <span
-                            className={`font-semibold ${
-                              isLate ? 'text-red-600' : isEarly ? 'text-emerald-600' : 'text-slate-500'
+                            className={`font-bold font-mono ${
+                              isLate ? 'text-red-700' : isEarly ? 'text-emerald-700' : 'text-slate-800'
                             }`}
                           >
-                            {task.baselineVarianceDays > 0 ? `+${task.baselineVarianceDays} d` : `${task.baselineVarianceDays} d`}
+                            {isLate ? `+${task.baselineVarianceDays}d` : `${task.baselineVarianceDays}d`}
                           </span>
                         );
                       } else {
-                        displayVal = '-';
+                        displayVal = <span className="text-slate-400">-</span>;
                       }
                     }
 
@@ -391,20 +369,24 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       <td
                         key={col.field}
                         onDoubleClick={() => startEdit(rowIdx, colIdx)}
-                        onClick={() => setActiveCell({ rowIdx, colIdx })}
-                        className={`px-2 py-1 border-r border-slate-200 relative whitespace-nowrap overflow-hidden text-ellipsis ${
-                          isCellActive ? 'ring-2 ring-indigo-500 z-5' : ''
+                        className={`px-2.5 py-1 border-r border-slate-200 relative whitespace-nowrap overflow-hidden text-ellipsis ${
+                          isCellActive ? 'ring-2 ring-indigo-600 ring-inset z-10' : ''
                         }`}
                       >
                         {isCellEditing ? (
                           <input
                             ref={inputRef}
-                            type={col.field === 'startDate' || col.field === 'endDate' ? 'date' : 'text'}
+                            type={
+                              col.field === 'startDate' || col.field === 'endDate'
+                                ? 'date'
+                                : col.field === 'duration' || col.field === 'progress' || col.field === 'plannedManHours' || col.field === 'actualManHours'
+                                ? 'number'
+                                : 'text'
+                            }
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
                             onBlur={commitEdit}
-                            placeholder={col.field === 'predecessors' ? 'e.g. 2FS+5d' : ''}
-                            className="w-full h-full p-0 m-0 border-none outline-none bg-white text-xs text-slate-900"
+                            className="w-full h-full bg-white border border-indigo-600 px-1 py-0.5 text-xs text-slate-900 font-bold outline-none rounded shadow-xs"
                           />
                         ) : (
                           displayVal

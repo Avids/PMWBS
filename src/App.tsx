@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency } from './types/project';
+import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier } from './types/project';
 import { recalculateSchedule, formatDate, addWorkingDays } from './engine/scheduler';
-import { saveNativeWBSFile, loadNativeWBSFile, exportToExcel } from './engine/importers';
+import { saveNativeWBSFile, loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML } from './engine/importers';
 import { Toolbar } from './components/Toolbar';
+import { ActionBar } from './components/ActionBar';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
 import { GanttTimeline } from './components/GanttTimeline';
 import { BaselineModal } from './components/BaselineModal';
@@ -24,7 +25,8 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   calendar: DEFAULT_CALENDAR,
   currency: '$',
   showBaseline: true,
-  showCriticalPath: true
+  showCriticalPath: true,
+  fontSize: 'normal'
 };
 
 const INITIAL_TASKS: Task[] = [
@@ -65,7 +67,8 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-11-02',
     baselineEndDate: '2026-11-06',
     baselineDuration: 5,
-    weight: 33.3
+    weight: 33.3,
+    color: '#22c55e'
   },
   {
     id: 't-3',
@@ -86,7 +89,8 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-11-09',
     baselineEndDate: '2026-11-20',
     baselineDuration: 10,
-    weight: 66.7
+    weight: 66.7,
+    color: '#0284c7'
   },
   {
     id: 't-4',
@@ -117,13 +121,13 @@ const INITIAL_TASKS: Task[] = [
     isSummary: true,
     isMilestone: false,
     startDate: '2026-11-23',
-    endDate: '2026-12-11',
-    duration: 15,
+    endDate: '2026-12-08',
+    duration: 12,
     progress: 25,
-    predecessors: [],
+    predecessors: [{ taskId: 't-4', type: 'FS', lag: 0 }],
     plannedManHours: 180,
-    actualManHours: 40,
-    remainingManHours: 140,
+    actualManHours: 45,
+    remainingManHours: 135,
     earnedManHours: 45,
     weight: 25
   },
@@ -138,15 +142,16 @@ const INITIAL_TASKS: Task[] = [
     endDate: '2026-11-27',
     duration: 5,
     progress: 50,
-    predecessors: [{ taskId: 't-4', type: 'FS', lag: 0 }],
+    predecessors: [{ taskId: 't-4', type: 'FS', lag: 1 }],
     plannedManHours: 60,
-    actualManHours: 30,
-    remainingManHours: 30,
+    actualManHours: 35,
+    remainingManHours: 25,
     earnedManHours: 30,
     baselineStartDate: '2026-11-23',
     baselineEndDate: '2026-11-27',
     baselineDuration: 5,
-    weight: 33.3
+    weight: 33.3,
+    color: '#d946ef'
   },
   {
     id: 't-7',
@@ -167,7 +172,8 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-11-25',
     baselineEndDate: '2026-12-08',
     baselineDuration: 10,
-    weight: 66.7
+    weight: 66.7,
+    color: '#f59e0b'
   },
   {
     id: 't-8',
@@ -206,7 +212,8 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-12-15',
     baselineEndDate: '2026-12-28',
     baselineDuration: 10,
-    weight: 20
+    weight: 20,
+    color: '#8b5cf6'
   },
   {
     id: 't-10',
@@ -227,7 +234,8 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-12-29',
     baselineEndDate: '2027-01-25',
     baselineDuration: 20,
-    weight: 80
+    weight: 80,
+    color: '#06b6d4'
   },
   {
     id: 't-11',
@@ -255,33 +263,80 @@ const INITIAL_TASKS: Task[] = [
 export function App() {
   const [settings, setSettings] = useState<ProjectSettings>(() => {
     const saved = localStorage.getItem('wbs_settings');
-    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    if (saved) {
+      try {
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return DEFAULT_SETTINGS;
   });
 
   const [rawTasks, setRawTasks] = useState<Task[]>(() => {
     const saved = localStorage.getItem('wbs_tasks');
-    return saved ? JSON.parse(saved) : INITIAL_TASKS;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_TASKS;
   });
 
   const [baselines, setBaselines] = useState<BaselineData[]>(() => {
     const saved = localStorage.getItem('wbs_baselines');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [];
   });
 
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>('t-1');
-  const [splitterWidth, setSplitterWidth] = useState<number>(680);
-  const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(rawTasks[0]?.id || null);
+  const [splitterWidth, setSplitterWidth] = useState<number>(640);
+  const [isDraggingSplitter, setIsDraggingSplitter] = useState<boolean>(false);
 
+  // Zoom & DayWidth state
+  const [zoomTier, setZoomTier] = useState<ZoomTier>('day');
+  const [dayWidth, setDayWidth] = useState<number>(36);
+
+  // Modals state
   const [isBaselineModalOpen, setIsBaselineModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPredecessorModalOpen, setIsPredecessorModalOpen] = useState(false);
   const [predecessorModalTask, setPredecessorModalTask] = useState<Task | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // Auto recalculate whenever tasks, calendar, or weightMode change
+  // Auto recalculate schedule whenever tasks, calendar, or weightMode change
   const tasks = useMemo(() => {
     return recalculateSchedule(rawTasks, settings.calendar, settings.weightMode);
   }, [rawTasks, settings.calendar, settings.weightMode]);
+
+  // Hierarchical collapse filtering
+  const visibleTasks = useMemo(() => {
+    const collapsedSet = new Set<string>();
+    tasks.forEach(t => {
+      if (t.isCollapsed) collapsedSet.add(t.id);
+    });
+
+    if (collapsedSet.size === 0) return tasks;
+
+    const taskMap = new Map(tasks.map(t => [t.id, t]));
+    return tasks.filter(task => {
+      let curr = task.parentId;
+      while (curr) {
+        if (collapsedSet.has(curr)) return false;
+        const parent = taskMap.get(curr);
+        curr = parent ? parent.parentId : null;
+      }
+      return true;
+    });
+  }, [tasks]);
 
   // Persist to LocalStorage
   useEffect(() => {
@@ -305,7 +360,7 @@ export function App() {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDraggingSplitter) return;
-      const newWidth = Math.max(320, Math.min(window.innerWidth - 300, e.clientX));
+      const newWidth = Math.max(340, Math.min(window.innerWidth - 300, e.clientX));
       setSplitterWidth(newWidth);
     };
 
@@ -447,19 +502,63 @@ export function App() {
     });
   }, []);
 
-  const handleAddDependency = useCallback((fromTaskId: string, toTaskId: string) => {
+  const handleAddDependency = useCallback((fromTaskId: string, toTaskId: string, type: TaskDependency['type'] = 'FS') => {
     if (fromTaskId === toTaskId) return;
 
     setRawTasks(prev => prev.map(t => {
       if (t.id === toTaskId) {
         const existing = t.predecessors || [];
         if (existing.some(d => d.taskId === fromTaskId)) return t;
-        const newDeps = [...existing, { taskId: fromTaskId, type: 'FS' as const, lag: 0 }].slice(0, 10);
+        const newDeps = [...existing, { taskId: fromTaskId, type, lag: 0 }].slice(0, 10);
         return { ...t, predecessors: newDeps };
       }
       return t;
     }));
   }, []);
+
+  // Collapse / Expand All
+  const handleToggleCollapse = useCallback((taskId: string) => {
+    setRawTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCollapsed: !t.isCollapsed } : t));
+  }, []);
+
+  const handleExpandAll = useCallback(() => {
+    setRawTasks(prev => prev.map(t => t.isSummary ? { ...t, isCollapsed: false } : t));
+  }, []);
+
+  const handleCollapseAll = useCallback(() => {
+    setRawTasks(prev => prev.map(t => t.isSummary ? { ...t, isCollapsed: true } : t));
+  }, []);
+
+  // Zoom controls
+  const handleZoomIn = () => {
+    setDayWidth(prev => Math.min(100, Math.round(prev * 1.25)));
+  };
+
+  const handleZoomOut = () => {
+    setDayWidth(prev => Math.max(10, Math.round(prev * 0.8)));
+  };
+
+  const handleZoomFit = () => {
+    const containerW = window.innerWidth - splitterWidth - 50;
+    if (tasks.length > 0 && containerW > 200) {
+      const minD = new Date(tasks[0].startDate + 'T00:00:00').getTime();
+      let maxD = minD;
+      tasks.forEach(t => {
+        const et = new Date(t.endDate + 'T00:00:00').getTime();
+        if (et > maxD) maxD = et;
+      });
+      const totalDaysCount = Math.max(14, (maxD - minD) / (1000 * 3600 * 24) + 14);
+      const fitWidth = Math.max(10, Math.floor(containerW / totalDaysCount));
+      setDayWidth(fitWidth);
+    }
+  };
+
+  const handleZoomChange = (tier: ZoomTier) => {
+    setZoomTier(tier);
+    if (tier === 'day') setDayWidth(36);
+    else if (tier === 'week') setDayWidth(18);
+    else if (tier === 'month') setDayWidth(6);
+  };
 
   // Predecessor Modal Handlers
   const handleOpenPredecessorModal = useCallback((task: Task) => {
@@ -496,6 +595,25 @@ export function App() {
       if (projectFile.tasks.length > 0) setSelectedTaskId(projectFile.tasks[0].id);
     } catch (err: any) {
       alert(`Error loading .wbs file: ${err.message}`);
+    }
+  };
+
+  // Import MS Project (.xml or .mpp)
+  const handleImportMSP = async (file: File) => {
+    try {
+      const result = await parseMicrosoftProjectXML(file);
+      setSettings(prev => ({
+        ...prev,
+        name: result.projectTitle || prev.name,
+        startDate: result.startDate || prev.startDate
+      }));
+      setRawTasks(result.tasks);
+      if (result.tasks.length > 0) {
+        setSelectedTaskId(result.tasks[0].id);
+      }
+      alert(`Successfully imported "${result.projectTitle}" (${result.tasks.length} tasks) from Microsoft Project!`);
+    } catch (err: any) {
+      alert(err.message || 'Error importing MS Project file');
     }
   };
 
@@ -587,14 +705,15 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100">
-      {/* Top Application Ribbon */}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 font-sans">
+      {/* Top Ribbon Toolbar */}
       <Toolbar
         settings={settings}
         onUpdateSettings={(u) => setSettings(s => ({ ...s, ...u }))}
         onNewProject={handleNewProject}
         onSaveWBS={handleSaveWBS}
         onLoadWBS={handleLoadWBS}
+        onImportMSP={handleImportMSP}
         onExportExcel={handleExportExcel}
         onOpenExportModal={() => setIsExportModalOpen(true)}
         onOpenBaselineModal={() => setIsBaselineModalOpen(true)}
@@ -606,6 +725,30 @@ export function App() {
         finishDate={finishDate}
       />
 
+      {/* OnlineGantt-Style Unified Action & Navigation Bar */}
+      <ActionBar
+        onAddTask={() => handleAddTask(selectedTaskId || undefined)}
+        onExpandAll={handleExpandAll}
+        onCollapseAll={handleCollapseAll}
+        onIndentTask={() => selectedTaskId && handleIndentTask(selectedTaskId)}
+        onOutdentTask={() => selectedTaskId && handleOutdentTask(selectedTaskId)}
+        onOpenRelationships={() => {
+          const t = tasks.find(x => x.id === selectedTaskId);
+          if (t && !t.isSummary) handleOpenPredecessorModal(t);
+        }}
+        onDeleteTask={() => selectedTaskId && handleDeleteTask(selectedTaskId)}
+        selectedTaskId={selectedTaskId}
+        isSummarySelected={!!tasks.find(x => x.id === selectedTaskId)?.isSummary}
+        fontSize={settings.fontSize || 'normal'}
+        onChangeFontSize={(size) => setSettings(s => ({ ...s, fontSize: size }))}
+        zoom={zoomTier}
+        onChangeZoom={handleZoomChange}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onZoomFit={handleZoomFit}
+        showBaseline={settings.showBaseline}
+      />
+
       {/* Main Splitter Work Area */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Pane: Spreadsheet Grid (MSP / Excel table) */}
@@ -614,7 +757,8 @@ export function App() {
           className="h-full flex-shrink-0 flex flex-col overflow-hidden"
         >
           <SpreadsheetGrid
-            tasks={tasks}
+            tasks={visibleTasks}
+            allTasks={tasks}
             selectedTaskId={selectedTaskId}
             onSelectTask={setSelectedTaskId}
             onUpdateTask={handleUpdateTask}
@@ -623,22 +767,25 @@ export function App() {
             onIndentTask={handleIndentTask}
             onOutdentTask={handleOutdentTask}
             onOpenPredecessorModal={handleOpenPredecessorModal}
+            onToggleCollapse={handleToggleCollapse}
             weightMode={settings.weightMode}
+            fontSize={settings.fontSize || 'normal'}
           />
         </div>
 
         {/* Resizable Splitter Divider Bar */}
         <div
           onMouseDown={handleSplitterMouseDown}
-          className="w-1.5 bg-slate-300 hover:bg-indigo-500 active:bg-indigo-600 cursor-col-resize z-30 transition-colors flex items-center justify-center select-none"
+          className="w-2 bg-slate-300 hover:bg-indigo-600 active:bg-indigo-700 cursor-col-resize z-30 transition-colors flex items-center justify-center select-none shadow-xs"
         >
-          <div className="h-6 w-0.5 bg-slate-400 rounded-full"></div>
+          <div className="h-8 w-1 bg-slate-500 rounded-full"></div>
         </div>
 
         {/* Right Pane: Gantt Timeline */}
         <div className="flex-1 h-full flex flex-col overflow-hidden">
           <GanttTimeline
-            tasks={tasks}
+            tasks={visibleTasks}
+            allTasks={tasks}
             calendar={settings.calendar}
             showBaseline={settings.showBaseline}
             onUpdateTask={handleUpdateTask}
@@ -646,6 +793,9 @@ export function App() {
             onSelectTask={setSelectedTaskId}
             selectedTaskId={selectedTaskId}
             onOpenPredecessorModal={handleOpenPredecessorModal}
+            fontSize={settings.fontSize || 'normal'}
+            zoom={zoomTier}
+            dayWidth={dayWidth}
           />
         </div>
       </div>

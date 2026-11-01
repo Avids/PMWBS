@@ -1,19 +1,33 @@
 import React, { useRef, useState, useMemo } from 'react';
-import type { Task, ProjectCalendar } from '../types/project';
+import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType } from '../types/project';
 import { formatDate, addWorkingDays } from '../engine/scheduler';
 
 interface GanttTimelineProps {
   tasks: Task[];
+  allTasks?: Task[];
   calendar: ProjectCalendar;
   showBaseline: boolean;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
-  onAddDependency: (fromTaskId: string, toTaskId: string) => void;
+  onAddDependency: (fromTaskId: string, toTaskId: string, type: DependencyType) => void;
   onSelectTask: (taskId: string) => void;
   selectedTaskId: string | null;
   onOpenPredecessorModal?: (task: Task) => void;
+  fontSize?: FontSizeOption;
+  zoom: ZoomTier;
+  dayWidth: number;
 }
 
-export type ZoomTier = 'day' | 'week' | 'month';
+// Vibrant palette matching OnlineGantt
+const TASK_PALETTE = [
+  { bg: '#22c55e', border: '#16a34a', progress: '#15803d' }, // Vibrant Green
+  { bg: '#0284c7', border: '#0369a1', progress: '#075985' }, // Electric Blue
+  { bg: '#d946ef', border: '#c026d3', progress: '#a21caf' }, // Vibrant Magenta
+  { bg: '#f59e0b', border: '#d97706', progress: '#b45309' }, // Amber
+  { bg: '#8b5cf6', border: '#7c3aed', progress: '#6d28d9' }, // Violet
+  { bg: '#06b6d4', border: '#0891b2', progress: '#0e7490' }, // Cyan
+  { bg: '#ec4899', border: '#db2777', progress: '#be185d' }, // Pink
+  { bg: '#10b981', border: '#059669', progress: '#047857' }  // Emerald
+];
 
 export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   tasks,
@@ -23,10 +37,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   onAddDependency,
   onSelectTask,
   selectedTaskId,
-  onOpenPredecessorModal
+  onOpenPredecessorModal,
+  fontSize = 'normal',
+  zoom,
+  dayWidth
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState<ZoomTier>('day');
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragType, setDragType] = useState<'move' | 'resize' | null>(null);
   const [dragStartX, setDragStartX] = useState<number>(0);
@@ -35,48 +51,49 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   const [connectingFromId, setConnectingFromId] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
-  // Column width per day based on zoom tier
-  const dayWidth = zoom === 'day' ? 36 : zoom === 'week' ? 14 : 5;
-  const rowHeight = 36;
+  // Height sizing derived from selected font size
+  const rowHeight = fontSize === 'small' ? 30 : fontSize === 'large' ? 44 : 36;
+  const barHeight = fontSize === 'small' ? 18 : fontSize === 'large' ? 26 : 22;
   const headerHeight = 56;
 
-  // Calculate project timeline boundaries (min start date and max end date with padding)
+  // Calculate project timeline boundaries
   const { minDate, totalDays, datesList } = useMemo(() => {
     if (tasks.length === 0) {
       const now = new Date();
       const min = formatDate(now);
-      return { minDate: min, totalDays: 60, datesList: Array.from({ length: 60 }, (_, i) => {
-        const d = new Date(now);
-        d.setDate(d.getDate() + i);
-        return formatDate(d);
-      })};
+      return {
+        minDate: min,
+        totalDays: 60,
+        datesList: Array.from({ length: 60 }, (_, i) => {
+          const d = new Date(now);
+          d.setDate(d.getDate() + i);
+          return formatDate(d);
+        })
+      };
     }
 
     let min = tasks[0].startDate || formatDate(new Date());
     let max = tasks[0].endDate || formatDate(new Date());
 
-    tasks.forEach(t => {
+    tasks.forEach((t) => {
       if (t.startDate && t.startDate < min) min = t.startDate;
       if (t.endDate && t.endDate > max) max = t.endDate;
-      if (t.baselineStartDate && t.baselineStartDate < min) min = t.baselineStartDate;
-      if (t.baselineEndDate && t.baselineEndDate > max) max = t.baselineEndDate;
     });
 
-    // Add 7 days padding before and 28 days after
-    const startDateObj = new Date(min + 'T00:00:00');
-    startDateObj.setDate(startDateObj.getDate() - 7);
-    const paddedMin = formatDate(startDateObj);
-
-    const endDateObj = new Date(max + 'T00:00:00');
-    endDateObj.setDate(endDateObj.getDate() + 28);
-    
-    const diffTime = endDateObj.getTime() - startDateObj.getTime();
-    const daysCount = Math.max(30, Math.ceil(diffTime / (1000 * 3600 * 24)));
+    // Add padding before and after
+    const minD = new Date(min + 'T00:00:00');
+    minD.setDate(minD.getDate() - 7);
+    const maxD = new Date(max + 'T00:00:00');
+    maxD.setDate(maxD.getDate() + 21);
 
     const dates: string[] = [];
-    const curr = new Date(startDateObj);
-    for (let i = 0; i < daysCount; i++) {
+    const curr = new Date(minD);
+    const paddedMin = formatDate(minD);
+
+    let daysCount = 0;
+    while (curr <= maxD) {
       dates.push(formatDate(curr));
+      daysCount++;
       curr.setDate(curr.getDate() + 1);
     }
 
@@ -85,7 +102,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
   const minDateTime = useMemo(() => new Date(minDate + 'T00:00:00').getTime(), [minDate]);
 
-  // Continuous month / year header blocks spanning across all their days
+  // OnlineGantt Style Top Header Spans (Grouped by Weeks with Start Date e.g. 2026-10-25 or Months)
   const topHeaderSpans = useMemo(() => {
     const spans: Array<{ key: string; label: string; width: number }> = [];
     if (datesList.length === 0) return spans;
@@ -100,11 +117,15 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
       let label = '';
 
       if (zoom === 'month') {
-        key = String(dObj.getFullYear());
-        label = key;
-      } else {
         key = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}`;
         label = dObj.toLocaleString('default', { month: 'long', year: 'numeric' });
+      } else {
+        // Week grouping: group by Sunday/Monday of the week (7-day period) matching OnlineGantt
+        const dayOfWeek = dObj.getDay(); // 0 is Sunday
+        const weekStart = new Date(dObj);
+        weekStart.setDate(dObj.getDate() - dayOfWeek);
+        key = formatDate(weekStart);
+        label = key; // "2026-10-25", "2026-11-01"
       }
 
       if (key === currentKey) {
@@ -134,7 +155,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     return spans;
   }, [datesList, dayWidth, zoom]);
 
-  // Convert date to X coordinate
+  // Convert date string to X coordinate
   const dateToX = (dateStr: string): number => {
     if (!dateStr) return 0;
     const t = new Date(dateStr + 'T00:00:00').getTime();
@@ -160,24 +181,25 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
         x: e.clientX - rect.left + containerRef.current.scrollLeft,
         y: e.clientY - rect.top + containerRef.current.scrollTop
       });
+      return;
     }
 
     if (!draggingTaskId || !dragType) return;
-    const deltaX = e.clientX - dragStartX;
-    const deltaDays = Math.round(deltaX / dayWidth);
+    const diffPx = e.clientX - dragStartX;
+    const diffDays = Math.round(diffPx / dayWidth);
 
-    if (deltaDays === 0) return;
+    if (diffDays === 0) return;
 
     if (dragType === 'move') {
       const orig = new Date(originalStartDate + 'T00:00:00');
-      orig.setDate(orig.getDate() + deltaDays);
+      orig.setDate(orig.getDate() + diffDays);
       const newStart = formatDate(orig);
       const newEnd = addWorkingDays(newStart, originalDuration, calendar);
       onUpdateTask(draggingTaskId, { startDate: newStart, endDate: newEnd });
     } else if (dragType === 'resize') {
-      const newDur = Math.max(1, originalDuration + deltaDays);
-      const newEnd = addWorkingDays(originalStartDate, newDur, calendar);
-      onUpdateTask(draggingTaskId, { duration: newDur, endDate: newEnd });
+      const newDuration = Math.max(1, originalDuration + diffDays);
+      const newEnd = addWorkingDays(originalStartDate, newDuration, calendar);
+      onUpdateTask(draggingTaskId, { duration: newDuration, endDate: newEnd });
     }
   };
 
@@ -188,11 +210,29 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     setMousePos(null);
   };
 
-  // Dependency Line Paths and Labels calculation
-  const dependencyLines = useMemo(() => {
-    const taskIndexMap = new Map<string, number>();
-    tasks.forEach((t, index) => taskIndexMap.set(t.id, index));
+  const handleConnectStart = (e: React.MouseEvent, taskId: string) => {
+    e.stopPropagation();
+    setConnectingFromId(taskId);
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setMousePos({
+        x: e.clientX - rect.left + containerRef.current.scrollLeft,
+        y: e.clientY - rect.top + containerRef.current.scrollTop
+      });
+    }
+  };
 
+  const handleConnectEnd = (e: React.MouseEvent, targetTaskId: string) => {
+    e.stopPropagation();
+    if (connectingFromId && connectingFromId !== targetTaskId) {
+      onAddDependency(connectingFromId, targetTaskId, 'FS');
+    }
+    setConnectingFromId(null);
+    setMousePos(null);
+  };
+
+  // Compute dependency arrow lines (Clean OnlineGantt Orthogonal Routes)
+  const dependencyLines = useMemo(() => {
     const lines: Array<{
       id: string;
       fromTaskId: string;
@@ -205,27 +245,42 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
       isCritical: boolean;
     }> = [];
 
-    tasks.forEach((targetTask, targetIdx) => {
-      if (!targetTask.predecessors) return;
+    const taskIndexMap = new Map<string, number>();
+    tasks.forEach((t, i) => taskIndexMap.set(t.id, i));
+
+    tasks.forEach((targetTask) => {
+      const targetIdx = taskIndexMap.get(targetTask.id);
+      if (targetIdx === undefined) return;
 
       targetTask.predecessors.forEach((dep) => {
         const sourceIdx = taskIndexMap.get(dep.taskId);
         if (sourceIdx === undefined) return;
         const sourceTask = tasks[sourceIdx];
+        if (!sourceTask) return;
 
-        // Anchor source point according to relationship type (FS/FF vs SS/SF)
-        const sourceStarts = dep.type === 'SS' || dep.type === 'SF';
-        const sourceX = sourceStarts ? dateToX(sourceTask.startDate) : dateToX(sourceTask.endDate) + dayWidth;
+        let sourceX = 0;
+        let targetX = 0;
+
+        if (dep.type === 'FS') {
+          sourceX = dateToX(sourceTask.endDate) + dayWidth;
+          targetX = dateToX(targetTask.startDate);
+        } else if (dep.type === 'SS') {
+          sourceX = dateToX(sourceTask.startDate);
+          targetX = dateToX(targetTask.startDate);
+        } else if (dep.type === 'FF') {
+          sourceX = dateToX(sourceTask.endDate) + dayWidth;
+          targetX = dateToX(targetTask.endDate) + dayWidth;
+        } else if (dep.type === 'SF') {
+          sourceX = dateToX(sourceTask.startDate);
+          targetX = dateToX(targetTask.endDate) + dayWidth;
+        }
+
         const sourceY = headerHeight + sourceIdx * rowHeight + rowHeight / 2;
-
-        // Anchor target point according to relationship type (FS/SS vs FF/SF)
-        const targetEnds = dep.type === 'FF' || dep.type === 'SF';
-        const targetX = targetEnds ? dateToX(targetTask.endDate) + dayWidth : dateToX(targetTask.startDate);
         const targetY = headerHeight + targetIdx * rowHeight + rowHeight / 2;
 
-        const midX = sourceX + 16;
         let path = '';
-        if (targetX >= sourceX + 24) {
+        if (targetX >= sourceX + 12) {
+          const midX = sourceX + (targetX - sourceX) / 2;
           path = `M ${sourceX} ${sourceY} H ${midX} V ${targetY} H ${targetX}`;
         } else {
           const detourY = sourceY < targetY ? sourceY + rowHeight / 2 : sourceY - rowHeight / 2;
@@ -250,61 +305,13 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     });
 
     return lines;
-  }, [tasks, minDateTime, dayWidth]);
+  }, [tasks, minDateTime, dayWidth, rowHeight]);
 
   const todayStr = formatDate(new Date());
   const todayX = dateToX(todayStr);
 
   return (
-    <div className="flex flex-col h-full bg-white select-none overflow-hidden border-l border-slate-200">
-      {/* Zoom & View Control Bar */}
-      <div className="h-10 px-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
-        <div className="flex items-center space-x-2">
-          <span className="font-semibold text-slate-700">Timeline Zoom:</span>
-          <div className="inline-flex rounded-md shadow-sm border border-slate-300 overflow-hidden bg-white">
-            <button
-              onClick={() => setZoom('day')}
-              className={`px-2.5 py-1 ${zoom === 'day' ? 'bg-indigo-600 text-white font-medium' : 'text-slate-700 hover:bg-slate-100'}`}
-            >
-              Days
-            </button>
-            <button
-              onClick={() => setZoom('week')}
-              className={`px-2.5 py-1 border-l border-slate-300 ${zoom === 'week' ? 'bg-indigo-600 text-white font-medium' : 'text-slate-700 hover:bg-slate-100'}`}
-            >
-              Weeks
-            </button>
-            <button
-              onClick={() => setZoom('month')}
-              className={`px-2.5 py-1 border-l border-slate-300 ${zoom === 'month' ? 'bg-indigo-600 text-white font-medium' : 'text-slate-700 hover:bg-slate-100'}`}
-            >
-              Months
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-3 text-xs">
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-indigo-500 rounded-sm"></div>
-            <span>Task</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2.5 h-2.5 bg-emerald-600 rotate-45"></div>
-            <span>Milestone</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-1.5 bg-slate-900 rounded-xs"></div>
-            <span>Summary</span>
-          </div>
-          {showBaseline && (
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-2 bg-amber-400 border border-amber-600 rounded-xs"></div>
-              <span>Baseline</span>
-            </div>
-          )}
-        </div>
-      </div>
-
+    <div className="flex flex-col h-full bg-white select-none overflow-hidden border-l-2 border-slate-300">
       {/* Main Gantt Canvas Area */}
       <div
         ref={containerRef}
@@ -316,22 +323,22 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           style={{ width: `${totalDays * dayWidth}px`, height: `${headerHeight + tasks.length * rowHeight}px` }}
           className="relative"
         >
-          {/* Header Tier 1 (Months) & Tier 2 (Days) */}
-          <div className="sticky top-0 z-20 flex flex-col bg-slate-100 border-b border-slate-300 shadow-xs">
-            {/* Tier 1: Continuous Month & Year Blocks Spanning Across All Days */}
-            <div className="flex h-7 border-b border-slate-300 bg-slate-200/80">
+          {/* Header Tier 1 (Weeks/Months) & Tier 2 (Days) - Matching OnlineGantt */}
+          <div className="sticky top-0 z-20 flex flex-col bg-slate-100 border-b-2 border-slate-300 shadow-2xs">
+            {/* Tier 1: Weeks (2026-10-25, 2026-11-01...) or Months Spanning Across All Days */}
+            <div className="flex h-7 border-b border-slate-300 bg-slate-100">
               {topHeaderSpans.map((span) => (
                 <div
                   key={span.key}
                   style={{ width: `${span.width}px` }}
-                  className="flex-shrink-0 flex items-center justify-center border-r border-slate-300 text-xs font-bold text-slate-800 tracking-wide px-2 bg-slate-100/90"
+                  className="flex-shrink-0 flex items-center justify-center border-r-2 border-slate-300 text-xs font-bold text-slate-900 tracking-wide px-2 bg-slate-100"
                 >
                   <span className="truncate">{span.label}</span>
                 </div>
               ))}
             </div>
 
-            {/* Tier 2: Days Header */}
+            {/* Tier 2: Days Header with High Contrast */}
             <div className="flex h-7">
               {datesList.map((d) => {
                 const dateObj = new Date(d + 'T00:00:00');
@@ -341,12 +348,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                   <div
                     key={d}
                     style={{ width: `${dayWidth}px` }}
-                    className={`flex-shrink-0 flex items-center justify-center text-[11px] font-semibold border-r border-slate-200 ${
+                    className={`flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-r border-slate-200 ${
                       isToday
-                        ? 'bg-indigo-100 text-indigo-700 font-bold'
+                        ? 'bg-indigo-100 text-indigo-900 font-black'
                         : isWeekend
-                        ? 'bg-slate-200/60 text-slate-400'
-                        : 'text-slate-700'
+                        ? 'bg-slate-200/70 text-slate-500'
+                        : 'text-slate-900 bg-white'
                     }`}
                     title={`${d} (${dateObj.toLocaleDateString(undefined, { weekday: 'short' })})`}
                   >
@@ -366,7 +373,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                 <div
                   key={`bg-${d}`}
                   style={{ width: `${dayWidth}px` }}
-                  className={`flex-shrink-0 h-full border-r border-slate-200/70 ${isWeekend ? 'bg-slate-100/60' : ''}`}
+                  className={`flex-shrink-0 h-full border-r border-slate-200/80 ${isWeekend ? 'bg-slate-100/70' : 'bg-transparent'}`}
                 />
               );
             })}
@@ -376,24 +383,24 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           {todayX > 0 && todayX < totalDays * dayWidth && (
             <div
               style={{ left: `${todayX + dayWidth / 2}px` }}
-              className="absolute top-0 bottom-0 w-0.5 bg-indigo-500 z-10 pointer-events-none shadow-sm"
+              className="absolute top-[56px] bottom-0 w-0.5 bg-indigo-600 z-10 pointer-events-none"
             >
-              <div className="bg-indigo-600 text-white text-[9px] px-1 rounded-sm -ml-4 font-bold">Today</div>
+              <div className="bg-indigo-600 text-white text-[9px] px-1 rounded-sm -ml-4 font-bold shadow-xs">Today</div>
             </div>
           )}
 
-          {/* SVG Layer for Dependency Lines */}
+          {/* SVG Layer for Dependency Lines (High Contrast Electric Blue) */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
             <defs>
               <marker
-                id="arrowhead"
+                id="arrowhead-blue"
                 markerWidth="8"
                 markerHeight="6"
                 refX="7"
                 refY="3"
                 orient="auto"
               >
-                <polygon points="0 0, 8 3, 0 6" fill="#6366f1" />
+                <polygon points="0 0, 8 3, 0 6" fill="#0284c7" />
               </marker>
               <marker
                 id="arrowhead-critical"
@@ -411,10 +418,10 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                 <path
                   d={line.d}
                   fill="none"
-                  stroke={line.isCritical ? '#ef4444' : '#6366f1'}
-                  strokeWidth={line.isCritical ? 2.5 : 1.75}
-                  markerEnd={line.isCritical ? 'url(#arrowhead-critical)' : 'url(#arrowhead)'}
-                  className="opacity-90 group-hover:opacity-100 group-hover:stroke-indigo-800 transition-all"
+                  stroke={line.isCritical ? '#ef4444' : '#0284c7'}
+                  strokeWidth={line.isCritical ? 2.5 : 2}
+                  markerEnd={line.isCritical ? 'url(#arrowhead-critical)' : 'url(#arrowhead-blue)'}
+                  className="opacity-90 group-hover:opacity-100 transition-all"
                   onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
                 />
                 {/* Dependency Tag badge (e.g. FS+5d) */}
@@ -425,16 +432,16 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                   height="16"
                   rx="4"
                   fill="#ffffff"
-                  stroke="#6366f1"
-                  strokeWidth="1"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  stroke="#0284c7"
+                  strokeWidth="1.5"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
                   onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
                 />
                 <text
                   x={line.labelX}
                   y={line.labelY + 4}
                   textAnchor="middle"
-                  className="text-[9px] fill-indigo-700 font-mono font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  className="text-[9px] fill-sky-800 font-mono font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
                 >
                   {line.label}
                 </text>
@@ -442,18 +449,18 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
             ))}
             {connectingFromId && mousePos && (
               <line
-                x1={dateToX(tasks.find(t => t.id === connectingFromId)?.endDate || '') + dayWidth}
-                y1={headerHeight + (tasks.findIndex(t => t.id === connectingFromId) * rowHeight) + rowHeight / 2}
+                x1={dateToX(tasks.find((t) => t.id === connectingFromId)?.endDate || '') + dayWidth}
+                y1={headerHeight + tasks.findIndex((t) => t.id === connectingFromId) * rowHeight + rowHeight / 2}
                 x2={mousePos.x}
                 y2={mousePos.y}
-                stroke="#4f46e5"
-                strokeWidth="2"
+                stroke="#0284c7"
+                strokeWidth="2.5"
                 strokeDasharray="4 4"
               />
             )}
           </svg>
 
-          {/* Task Bars Layer */}
+          {/* Task Bars Layer (OnlineGantt Style) */}
           <div className="absolute top-[56px] left-0 right-0 z-10">
             {tasks.map((task, idx) => {
               const startX = dateToX(task.startDate);
@@ -467,13 +474,18 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
               const bEndX = hasBaseline ? dateToX(task.baselineEndDate!) + dayWidth : 0;
               const bWidth = Math.max(dayWidth, bEndX - bStartX);
 
+              // Vibrant color mapping
+              const paletteItem = TASK_PALETTE[idx % TASK_PALETTE.length];
+              const barBgColor = task.color || (task.isCritical ? '#ef4444' : paletteItem.bg);
+              const progressBgColor = task.isCritical ? '#b91c1c' : paletteItem.progress;
+
               return (
                 <div
                   key={task.id}
                   style={{ top: `${topY}px`, height: `${rowHeight}px` }}
                   onClick={() => onSelectTask(task.id)}
                   className={`absolute left-0 right-0 flex items-center transition-colors ${
-                    isSelected ? 'bg-indigo-50/40' : 'hover:bg-slate-100/50'
+                    isSelected ? 'bg-sky-100/50' : 'hover:bg-slate-100/50'
                   }`}
                 >
                   {/* Baseline Bar (Rendered underneath) */}
@@ -482,86 +494,83 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       style={{
                         left: `${bStartX}px`,
                         width: `${bWidth}px`,
-                        top: `${rowHeight - 10}px`
+                        top: `${rowHeight - 6}px`
                       }}
+                      className="absolute h-1.5 bg-amber-400 border border-amber-600 rounded-2xs opacity-80 pointer-events-none"
                       title={`Baseline: ${task.baselineStartDate} to ${task.baselineEndDate}`}
-                      className="absolute h-2 bg-amber-400 border border-amber-600/70 rounded-xs z-5 opacity-80"
                     />
                   )}
 
-                  {/* Summary Task Bar (Bracket style) */}
+                  {/* Summary Task Bar (Dark Charcoal bar with rounded corners like OnlineGantt) */}
                   {task.isSummary ? (
                     <div
-                      style={{ left: `${startX}px`, width: `${barWidth}px` }}
-                      className="absolute h-4 bg-slate-800 rounded-xs flex items-center shadow-xs cursor-pointer group"
-                    >
-                      <div className="absolute -left-1 top-2 w-2 h-2.5 border-l-2 border-b-2 border-slate-900 rotate-45"></div>
-                      <div className="absolute -right-1 top-2 w-2 h-2.5 border-r-2 border-b-2 border-slate-900 -rotate-45"></div>
-                      <div
-                        style={{ width: `${task.progress}%` }}
-                        className="h-full bg-slate-600/80 rounded-xs"
-                      />
-                      <span className="absolute left-full ml-2 text-[11px] font-semibold text-slate-800 whitespace-nowrap">
-                        {task.name} ({task.progress}%)
-                      </span>
-                    </div>
-                  ) : task.isMilestone || task.duration === 0 ? (
-                    /* Milestone Diamond */
-                    <div
-                      style={{ left: `${startX + dayWidth / 2 - 8}px` }}
-                      className="absolute w-4 h-4 bg-emerald-600 rotate-45 border-2 border-white shadow-md cursor-grab active:cursor-grabbing group hover:scale-110 transition-transform"
-                      onMouseDown={(e) => handleMouseDown(e, task, 'move')}
-                      title={`Milestone: ${task.name} (${task.startDate})`}
-                    >
-                      <span className="absolute left-full ml-3 -top-1 -rotate-45 text-[11px] font-medium text-emerald-800 whitespace-nowrap">
-                        {task.name}
-                      </span>
-                    </div>
-                  ) : (
-                    /* Normal Task Bar */
-                    <div
-                      style={{ left: `${startX}px`, width: `${barWidth}px` }}
-                      onMouseDown={(e) => handleMouseDown(e, task, 'move')}
-                      className={`absolute h-6 rounded-md shadow-sm border border-indigo-700/30 flex items-center overflow-visible cursor-grab active:cursor-grabbing group ${
-                        task.isCritical ? 'bg-red-500' : 'bg-indigo-500'
-                      }`}
+                      style={{ left: `${startX}px`, width: `${barWidth}px`, height: `${barHeight - 2}px` }}
+                      className="absolute bg-slate-700 border border-slate-800 rounded-[4px] flex items-center shadow-xs cursor-pointer group"
                     >
                       {/* Interior Progress fill */}
                       <div
                         style={{ width: `${task.progress}%` }}
-                        className="h-full bg-black/20 rounded-l-md pointer-events-none"
+                        className="h-full bg-slate-900 rounded-l-[4px]"
+                      />
+                      {/* Sub-brackets */}
+                      <div className="absolute -left-0.5 -bottom-1 w-2 h-2 border-l-2 border-b-2 border-slate-900"></div>
+                      <div className="absolute -right-0.5 -bottom-1 w-2 h-2 border-r-2 border-b-2 border-slate-900"></div>
+                      
+                      <span className="absolute left-full ml-2 text-xs font-bold text-slate-900 whitespace-nowrap">
+                        {task.name} ({task.progress}%)
+                      </span>
+                    </div>
+                  ) : task.isMilestone || task.duration === 0 ? (
+                    /* Milestone Diamond (Dark Diamond like OnlineGantt) */
+                    <div
+                      style={{ left: `${startX + dayWidth / 2 - 8}px` }}
+                      className="absolute w-4 h-4 bg-slate-800 rotate-45 border-2 border-white shadow-md cursor-grab active:cursor-grabbing group hover:scale-110 transition-transform"
+                      onMouseDown={(e) => handleMouseDown(e, task, 'move')}
+                      title={`Milestone: ${task.name} (${task.startDate})`}
+                    >
+                      <span className="absolute left-full ml-3 -top-1 -rotate-45 text-xs font-bold text-slate-900 whitespace-nowrap">
+                        {task.name}
+                      </span>
+                    </div>
+                  ) : (
+                    /* Normal Task Bar (OnlineGantt Vibrant Rounded Bar) */
+                    <div
+                      style={{
+                        left: `${startX}px`,
+                        width: `${barWidth}px`,
+                        height: `${barHeight}px`,
+                        backgroundColor: barBgColor
+                      }}
+                      onMouseDown={(e) => handleMouseDown(e, task, 'move')}
+                      className="absolute rounded-[4px] shadow-xs border border-black/10 flex items-center overflow-visible cursor-grab active:cursor-grabbing group"
+                    >
+                      {/* Interior Progress fill (darker shaded portion) */}
+                      <div
+                        style={{ width: `${task.progress}%`, backgroundColor: progressBgColor }}
+                        className="h-full rounded-l-[4px] pointer-events-none"
                       />
 
-                      {/* Text Label next to bar */}
-                      <span className="absolute left-full ml-2 text-[11px] font-medium text-slate-700 whitespace-nowrap pointer-events-none">
+                      {/* Text Label next to bar (High contrast dark) */}
+                      <span className="absolute left-full ml-2 text-xs font-semibold text-slate-900 whitespace-nowrap pointer-events-none">
                         {task.name} ({task.progress}%)
                         {task.baselineVarianceDays !== undefined && task.baselineVarianceDays > 0 && (
                           <span className="ml-1 text-red-600 font-bold">+{task.baselineVarianceDays}d</span>
                         )}
                       </span>
 
-                      {/* Resize Handle on Right Edge */}
+                      {/* Right Edge: Duration Resize Handle */}
                       <div
                         onMouseDown={(e) => handleMouseDown(e, task, 'resize')}
-                        className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-black/10 hover:bg-black/30 rounded-r-md"
+                        className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity"
                         title="Drag to resize duration"
                       />
 
-                      {/* Dependency Connector Dot */}
+                      {/* Connect Handle for Dependency Dragging */}
                       <div
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setConnectingFromId(task.id);
-                        }}
-                        onMouseUp={(e) => {
-                          e.stopPropagation();
-                          if (connectingFromId && connectingFromId !== task.id) {
-                            onAddDependency(connectingFromId, task.id);
-                          }
-                          setConnectingFromId(null);
-                        }}
-                        className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-indigo-600 rounded-full cursor-crosshair opacity-0 group-hover:opacity-100 hover:scale-125 transition-all shadow-xs"
-                        title="Drag to create dependency link"
+                        onMouseDown={(e) => handleConnectStart(e, task.id)}
+                        onMouseUp={(e) => handleConnectEnd(e, task.id)}
+                        className="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-indigo-600 shadow-sm opacity-0 group-hover:opacity-100 hover:scale-125 transition-all cursor-crosshair z-20"
+                        title="Drag to connect dependency"
                       />
                     </div>
                   )}

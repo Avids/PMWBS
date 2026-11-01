@@ -7,6 +7,8 @@ export interface TaskDependency {
 }
 
 export type WeightMode = 'equal' | 'duration' | 'manhour' | 'manual';
+export type FontSizeOption = 'small' | 'normal' | 'large'; // 8pt (small), 10pt (normal), 12pt (large)
+export type ZoomTier = 'day' | 'week' | 'month';
 
 export interface BaselineData {
   id: string;
@@ -92,6 +94,7 @@ export interface ProjectSettings {
   currency: string;
   showBaseline: boolean;
   showCriticalPath: boolean;
+  fontSize?: FontSizeOption;     // 'small' (8pt), 'normal' (10pt), 'large' (12pt)
 }
 
 export interface ProjectFile {
