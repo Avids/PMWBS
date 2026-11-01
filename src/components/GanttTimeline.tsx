@@ -85,6 +85,55 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
   const minDateTime = useMemo(() => new Date(minDate + 'T00:00:00').getTime(), [minDate]);
 
+  // Continuous month / year header blocks spanning across all their days
+  const topHeaderSpans = useMemo(() => {
+    const spans: Array<{ key: string; label: string; width: number }> = [];
+    if (datesList.length === 0) return spans;
+
+    let currentKey = '';
+    let currentLabel = '';
+    let count = 0;
+
+    datesList.forEach((d) => {
+      const dObj = new Date(d + 'T00:00:00');
+      let key = '';
+      let label = '';
+
+      if (zoom === 'month') {
+        key = String(dObj.getFullYear());
+        label = key;
+      } else {
+        key = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}`;
+        label = dObj.toLocaleString('default', { month: 'long', year: 'numeric' });
+      }
+
+      if (key === currentKey) {
+        count++;
+      } else {
+        if (currentKey) {
+          spans.push({
+            key: currentKey,
+            label: currentLabel,
+            width: count * dayWidth
+          });
+        }
+        currentKey = key;
+        currentLabel = label;
+        count = 1;
+      }
+    });
+
+    if (currentKey) {
+      spans.push({
+        key: currentKey,
+        label: currentLabel,
+        width: count * dayWidth
+      });
+    }
+
+    return spans;
+  }, [datesList, dayWidth, zoom]);
+
   // Convert date to X coordinate
   const dateToX = (dateStr: string): number => {
     if (!dateStr) return 0;
@@ -269,26 +318,20 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
         >
           {/* Header Tier 1 (Months) & Tier 2 (Days) */}
           <div className="sticky top-0 z-20 flex flex-col bg-slate-100 border-b border-slate-300 shadow-xs">
-            {/* Month Tier */}
-            <div className="flex h-7 border-b border-slate-200">
-              {datesList.map((d, i) => {
-                const dateObj = new Date(d + 'T00:00:00');
-                const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-                const isFirstOfMonth = dateObj.getDate() === 1 || i === 0;
-                return (
-                  <div
-                    key={d}
-                    style={{ width: `${dayWidth}px` }}
-                    className={`flex-shrink-0 flex items-center justify-center text-[10px] font-semibold border-r border-slate-200 ${
-                      isWeekend ? 'bg-slate-200/60 text-slate-400' : 'text-slate-600'
-                    }`}
-                  >
-                    {isFirstOfMonth ? dateObj.toLocaleString('default', { month: 'short', year: 'numeric' }) : ''}
-                  </div>
-                );
-              })}
+            {/* Tier 1: Continuous Month & Year Blocks Spanning Across All Days */}
+            <div className="flex h-7 border-b border-slate-300 bg-slate-200/80">
+              {topHeaderSpans.map((span) => (
+                <div
+                  key={span.key}
+                  style={{ width: `${span.width}px` }}
+                  className="flex-shrink-0 flex items-center justify-center border-r border-slate-300 text-xs font-bold text-slate-800 tracking-wide px-2 bg-slate-100/90"
+                >
+                  <span className="truncate">{span.label}</span>
+                </div>
+              ))}
             </div>
-            {/* Day Tier */}
+
+            {/* Tier 2: Days Header */}
             <div className="flex h-7">
               {datesList.map((d) => {
                 const dateObj = new Date(d + 'T00:00:00');
@@ -298,11 +341,16 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                   <div
                     key={d}
                     style={{ width: `${dayWidth}px` }}
-                    className={`flex-shrink-0 flex items-center justify-center text-[11px] font-medium border-r border-slate-200 ${
-                      isToday ? 'bg-indigo-100 text-indigo-700 font-bold' : isWeekend ? 'bg-slate-200/50 text-slate-400' : 'text-slate-700'
+                    className={`flex-shrink-0 flex items-center justify-center text-[11px] font-semibold border-r border-slate-200 ${
+                      isToday
+                        ? 'bg-indigo-100 text-indigo-700 font-bold'
+                        : isWeekend
+                        ? 'bg-slate-200/60 text-slate-400'
+                        : 'text-slate-700'
                     }`}
+                    title={`${d} (${dateObj.toLocaleDateString(undefined, { weekday: 'short' })})`}
                   >
-                    {dateObj.getDate()}
+                    <span>{dateObj.getDate()}</span>
                   </div>
                 );
               })}

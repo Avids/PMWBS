@@ -28,7 +28,7 @@ export const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
 /**
  * Generates an unconstrained, high-resolution printable report container
  * containing both the spreadsheet table and the full Gantt chart,
- * then converts it into a PDF or PNG download with perfectly legible typography.
+ * with continuous Month & Year header spans and crisp typography.
  */
 export async function exportProjectDocument(
   tasks: Task[],
@@ -61,7 +61,7 @@ export async function exportProjectDocument(
   const totalDays = Math.max(14, Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 3600 * 24)));
   const minDateTime = startDateObj.getTime();
 
-  // Day width & row height (comfortable vertical height for clean text baselines)
+  // Day width & row height
   const dayWidth = exportConfig.timeline === 'zoom_fit' ? Math.max(18, Math.min(36, 800 / totalDays)) : 30;
   const rowHeight = 36;
 
@@ -119,7 +119,7 @@ export async function exportProjectDocument(
     `;
   }
 
-  // 3. Table Columns (Generous width to avoid text wrapping or truncation)
+  // 3. Table Columns
   type ColDef = { key: keyof Task | 'wbs' | 'variance'; label: string; width: number; align?: string };
   let chosenCols: ColDef[] = [];
 
@@ -157,7 +157,7 @@ export async function exportProjectDocument(
   const tableWidth = chosenCols.reduce((sum, c) => sum + c.width, 0);
   const timelineWidth = totalDays * dayWidth;
 
-  // 4. Build Table Rows HTML with explicit line-height and vertical-align
+  // 4. Build Table Rows HTML
   let tableRowsHTML = '';
   tasks.forEach((t, i) => {
     const isEven = i % 2 === 0;
@@ -205,13 +205,48 @@ export async function exportProjectDocument(
     tableRowsHTML += `</tr>`;
   });
 
-  // 5. Build Gantt Timeline Days Header HTML
+  // 5. Build Gantt Timeline Header HTML (Top Tier: Continuous Month & Year Blocks)
+  const exportMonthSpans: Array<{ key: string; label: string; width: number }> = [];
+  let curMKey = '';
+  let curMLabel = '';
+  let curMCount = 0;
+
+  datesList.forEach((d) => {
+    const dObj = new Date(d + 'T00:00:00');
+    const key = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}`;
+    const label = dObj.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    if (key === curMKey) {
+      curMCount++;
+    } else {
+      if (curMKey) {
+        exportMonthSpans.push({ key: curMKey, label: curMLabel, width: curMCount * dayWidth });
+      }
+      curMKey = key;
+      curMLabel = label;
+      curMCount = 1;
+    }
+  });
+  if (curMKey) {
+    exportMonthSpans.push({ key: curMKey, label: curMLabel, width: curMCount * dayWidth });
+  }
+
+  let monthSpansHTML = '';
+  exportMonthSpans.forEach(m => {
+    monthSpansHTML += `
+      <div style="width: ${m.width}px; flex-shrink: 0; text-align: center; border-right: 2px solid #94a3b8; background-color: #e2e8f0; font-size: 11px; font-weight: 700; color: #0f172a; line-height: 24px; letter-spacing: 0.5px; overflow: hidden; white-space: nowrap;">
+        ${m.label}
+      </div>
+    `;
+  });
+
+  // Build Gantt Timeline Days Header HTML (Lower Tier)
   let timelineDaysHTML = '';
   datesList.forEach((d) => {
     const dObj = new Date(d + 'T00:00:00');
     const isWknd = dObj.getDay() === 0 || dObj.getDay() === 6;
     timelineDaysHTML += `
-      <div style="width: ${dayWidth}px; flex-shrink: 0; text-align: center; border-right: 1px solid #e2e8f0; background-color: ${isWknd ? '#f1f5f9' : '#ffffff'}; font-size: 10px; font-weight: 600; line-height: 28px; color: ${isWknd ? '#94a3b8' : '#475569'};">
+      <div style="width: ${dayWidth}px; flex-shrink: 0; text-align: center; border-right: 1px solid #e2e8f0; background-color: ${isWknd ? '#f1f5f9' : '#ffffff'}; font-size: 10px; font-weight: 600; line-height: 24px; color: ${isWknd ? '#94a3b8' : '#475569'};">
         ${dObj.getDate()}
       </div>
     `;
@@ -263,8 +298,8 @@ export async function exportProjectDocument(
       <div style="width: ${tableWidth}px; flex-shrink: 0; border-right: 2px solid #64748b;">
         <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
           <thead>
-            <tr style="height: 28px; background: #f1f5f9; border-bottom: 2px solid #94a3b8; font-size: 10px; text-transform: uppercase; color: #334155; font-weight: 700; letter-spacing: 0.5px;">
-              ${chosenCols.map(c => `<th style="padding: 0 8px; vertical-align: middle; text-align: ${c.align || 'left'}; border-right: 1px solid #cbd5e1; height: 28px;">${c.label}</th>`).join('')}
+            <tr style="height: 48px; background: #f1f5f9; border-bottom: 2px solid #94a3b8; font-size: 10px; text-transform: uppercase; color: #334155; font-weight: 700; letter-spacing: 0.5px;">
+              ${chosenCols.map(c => `<th style="padding: 0 8px; vertical-align: middle; text-align: ${c.align || 'left'}; border-right: 1px solid #cbd5e1; height: 48px;">${c.label}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -275,8 +310,12 @@ export async function exportProjectDocument(
 
       <!-- Gantt Timeline Side -->
       <div style="width: ${timelineWidth}px; flex-shrink: 0; position: relative;">
-        <!-- Timeline Days Header -->
-        <div style="display: flex; height: 28px; border-bottom: 2px solid #94a3b8; background: #f1f5f9;">
+        <!-- Top Tier: Month & Year Grouped Spans -->
+        <div style="display: flex; height: 24px; border-bottom: 1px solid #cbd5e1; background: #e2e8f0;">
+          ${monthSpansHTML}
+        </div>
+        <!-- Lower Tier: Days -->
+        <div style="display: flex; height: 24px; border-bottom: 2px solid #94a3b8; background: #f1f5f9;">
           ${timelineDaysHTML}
         </div>
 
