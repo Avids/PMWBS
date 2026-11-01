@@ -67,8 +67,7 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-11-02',
     baselineEndDate: '2026-11-06',
     baselineDuration: 5,
-    weight: 33.3,
-    color: '#22c55e'
+    weight: 33.3
   },
   {
     id: 't-3',
@@ -89,8 +88,7 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-11-09',
     baselineEndDate: '2026-11-20',
     baselineDuration: 10,
-    weight: 66.7,
-    color: '#0284c7'
+    weight: 66.7
   },
   {
     id: 't-4',
@@ -150,8 +148,7 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-11-23',
     baselineEndDate: '2026-11-27',
     baselineDuration: 5,
-    weight: 33.3,
-    color: '#d946ef'
+    weight: 33.3
   },
   {
     id: 't-7',
@@ -172,8 +169,7 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-11-25',
     baselineEndDate: '2026-12-08',
     baselineDuration: 10,
-    weight: 66.7,
-    color: '#f59e0b'
+    weight: 66.7
   },
   {
     id: 't-8',
@@ -212,8 +208,7 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-12-15',
     baselineEndDate: '2026-12-28',
     baselineDuration: 10,
-    weight: 20,
-    color: '#8b5cf6'
+    weight: 20
   },
   {
     id: 't-10',
@@ -234,8 +229,7 @@ const INITIAL_TASKS: Task[] = [
     baselineStartDate: '2026-12-29',
     baselineEndDate: '2027-01-25',
     baselineDuration: 20,
-    weight: 80,
-    color: '#06b6d4'
+    weight: 80
   },
   {
     id: 't-11',
@@ -277,7 +271,12 @@ export function App() {
     const saved = localStorage.getItem('wbs_tasks');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Strip legacy random colors so unified WBS-level colors apply
+        return parsed.map((t: Task) => {
+          const { color: _c, ...rest } = t;
+          return rest;
+        });
       } catch (e) {
         console.error(e);
       }

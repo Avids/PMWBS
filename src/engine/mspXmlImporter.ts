@@ -80,20 +80,6 @@ function parseMspLag(lagVal: string | null | undefined): number {
 }
 
 /**
- * Color palette to give imported tasks vibrant, distinct, familiar styling like OnlineGantt
- */
-const TASK_PALETTE = [
-  '#22c55e', // Vibrant Green
-  '#0284c7', // Vibrant Sky/Electric Blue
-  '#d946ef', // Vibrant Magenta
-  '#f59e0b', // Vibrant Amber
-  '#8b5cf6', // Violet
-  '#06b6d4', // Cyan
-  '#ec4899', // Pink
-  '#14b8a6'  // Teal
-];
-
-/**
  * Robust Microsoft Project XML (MSPDI) parser
  */
 export async function parseMicrosoftProjectXML(file: File): Promise<{
@@ -151,8 +137,6 @@ export async function parseMicrosoftProjectXML(file: File): Promise<{
 
   const tempTasks: TempMspTask[] = [];
   const uidMap = new Map<string, string>(); // MSP UID -> Our Task ID
-
-  let workTaskCounter = 0;
 
   taskElements.forEach((el) => {
     const uid = el.querySelector('UID')?.textContent?.trim() || '';
@@ -251,13 +235,6 @@ export async function parseMicrosoftProjectXML(file: File): Promise<{
       }
     });
 
-    // Assign rotating color for standard work tasks like OnlineGantt
-    let color = undefined;
-    if (!t.isSummary && !t.isMilestone) {
-      color = TASK_PALETTE[workTaskCounter % TASK_PALETTE.length];
-      workTaskCounter++;
-    }
-
     finalTasks.push({
       id: ourId,
       wbsCode: t.outlineNumber || String(finalTasks.length + 1),
@@ -275,8 +252,7 @@ export async function parseMicrosoftProjectXML(file: File): Promise<{
       actualManHours: t.actualWorkHours,
       remainingManHours: Math.max(0, t.workHours - t.actualWorkHours),
       earnedManHours: Math.round((t.workHours * t.percentComplete) / 100),
-      weight: 0,
-      color
+      weight: 0
     });
   });
 

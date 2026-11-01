@@ -17,17 +17,69 @@ interface GanttTimelineProps {
   dayWidth: number;
 }
 
-// Vibrant palette matching OnlineGantt
-const TASK_PALETTE = [
-  { bg: '#22c55e', border: '#16a34a', progress: '#15803d' }, // Vibrant Green
-  { bg: '#0284c7', border: '#0369a1', progress: '#075985' }, // Electric Blue
-  { bg: '#d946ef', border: '#c026d3', progress: '#a21caf' }, // Vibrant Magenta
-  { bg: '#f59e0b', border: '#d97706', progress: '#b45309' }, // Amber
-  { bg: '#8b5cf6', border: '#7c3aed', progress: '#6d28d9' }, // Violet
-  { bg: '#06b6d4', border: '#0891b2', progress: '#0e7490' }, // Cyan
-  { bg: '#ec4899', border: '#db2777', progress: '#be185d' }, // Pink
-  { bg: '#10b981', border: '#059669', progress: '#047857' }  // Emerald
-];
+/**
+ * Standard, professional WBS-level color palette (matching MSP & Primavera P6).
+ * Unified colors per hierarchy level:
+ * - Level 1 Summary: Solid Dark Slate (#1e293b)
+ * - Level 2+ Summary: Deep Navy Slate (#334155)
+ * - Level 2 Work Tasks: Professional Royal Blue (#2563eb)
+ * - Level 3 Work Tasks: Professional Steel Blue (#0284c7)
+ * - Level 4 Work Tasks: Professional Indigo (#4f46e5)
+ * - Critical Path Tasks: Standard Critical Red (#dc2626)
+ */
+export function getTaskLevelStyle(task: Task, isCritical: boolean = false) {
+  if (isCritical || task.isCritical) {
+    return {
+      bg: '#dc2626',
+      border: '#b91c1c',
+      progress: '#991b1b'
+    };
+  }
+
+  if (task.isSummary) {
+    const depth = (task.wbsCode.match(/\./g) || []).length;
+    if (depth === 0) {
+      return {
+        bg: '#1e293b',
+        border: '#0f172a',
+        progress: '#0f172a'
+      };
+    } else {
+      return {
+        bg: '#334155',
+        border: '#1e293b',
+        progress: '#1e293b'
+      };
+    }
+  }
+
+  const depth = (task.wbsCode.match(/\./g) || []).length;
+  if (depth <= 1) {
+    return {
+      bg: '#2563eb',
+      border: '#1d4ed8',
+      progress: '#1e40af'
+    };
+  } else if (depth === 2) {
+    return {
+      bg: '#0284c7',
+      border: '#0369a1',
+      progress: '#075985'
+    };
+  } else if (depth === 3) {
+    return {
+      bg: '#4f46e5',
+      border: '#4338ca',
+      progress: '#3730a3'
+    };
+  } else {
+    return {
+      bg: '#64748b',
+      border: '#475569',
+      progress: '#334155'
+    };
+  }
+}
 
 export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   tasks,
@@ -474,10 +526,8 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
               const bEndX = hasBaseline ? dateToX(task.baselineEndDate!) + dayWidth : 0;
               const bWidth = Math.max(dayWidth, bEndX - bStartX);
 
-              // Vibrant color mapping
-              const paletteItem = TASK_PALETTE[idx % TASK_PALETTE.length];
-              const barBgColor = task.color || (task.isCritical ? '#ef4444' : paletteItem.bg);
-              const progressBgColor = task.isCritical ? '#b91c1c' : paletteItem.progress;
+              // Standard WBS-Level style (unified color per hierarchy level)
+              const style = getTaskLevelStyle(task);
 
               return (
                 <div
@@ -501,16 +551,22 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     />
                   )}
 
-                  {/* Summary Task Bar (Dark Charcoal bar with rounded corners like OnlineGantt) */}
+                  {/* Summary Task Bar (Unified Dark Slate / Charcoal Bar) */}
                   {task.isSummary ? (
                     <div
-                      style={{ left: `${startX}px`, width: `${barWidth}px`, height: `${barHeight - 2}px` }}
-                      className="absolute bg-slate-700 border border-slate-800 rounded-[4px] flex items-center shadow-xs cursor-pointer group"
+                      style={{
+                        left: `${startX}px`,
+                        width: `${barWidth}px`,
+                        height: `${barHeight - 2}px`,
+                        backgroundColor: style.bg,
+                        borderColor: style.border
+                      }}
+                      className="absolute border rounded-[4px] flex items-center shadow-xs cursor-pointer group"
                     >
                       {/* Interior Progress fill */}
                       <div
-                        style={{ width: `${task.progress}%` }}
-                        className="h-full bg-slate-900 rounded-l-[4px]"
+                        style={{ width: `${task.progress}%`, backgroundColor: style.progress }}
+                        className="h-full rounded-l-[4px]"
                       />
                       
                       <span className="absolute left-full ml-2 text-xs font-bold text-slate-900 whitespace-nowrap">
@@ -518,10 +574,10 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       </span>
                     </div>
                   ) : task.isMilestone || task.duration === 0 ? (
-                    /* Milestone Diamond (Dark Diamond like OnlineGantt) */
+                    /* Milestone Diamond (Crisp Dark Diamond) */
                     <div
                       style={{ left: `${startX + dayWidth / 2 - 8}px` }}
-                      className="absolute w-4 h-4 bg-slate-800 rotate-45 border-2 border-white shadow-md cursor-grab active:cursor-grabbing group hover:scale-110 transition-transform"
+                      className="absolute w-4 h-4 bg-slate-900 rotate-45 border-2 border-white shadow-md cursor-grab active:cursor-grabbing group hover:scale-110 transition-transform"
                       onMouseDown={(e) => handleMouseDown(e, task, 'move')}
                       title={`Milestone: ${task.name} (${task.startDate})`}
                     >
@@ -530,20 +586,21 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       </span>
                     </div>
                   ) : (
-                    /* Normal Task Bar (OnlineGantt Vibrant Rounded Bar) */
+                    /* Normal Work Activity Bar (Standard Unified Color per WBS Level) */
                     <div
                       style={{
                         left: `${startX}px`,
                         width: `${barWidth}px`,
                         height: `${barHeight}px`,
-                        backgroundColor: barBgColor
+                        backgroundColor: style.bg,
+                        borderColor: style.border
                       }}
                       onMouseDown={(e) => handleMouseDown(e, task, 'move')}
-                      className="absolute rounded-[4px] shadow-xs border border-black/10 flex items-center overflow-visible cursor-grab active:cursor-grabbing group"
+                      className="absolute rounded-[4px] shadow-xs border flex items-center overflow-visible cursor-grab active:cursor-grabbing group"
                     >
-                      {/* Interior Progress fill (darker shaded portion) */}
+                      {/* Interior Progress fill */}
                       <div
-                        style={{ width: `${task.progress}%`, backgroundColor: progressBgColor }}
+                        style={{ width: `${task.progress}%`, backgroundColor: style.progress }}
                         className="h-full rounded-l-[4px] pointer-events-none"
                       />
 

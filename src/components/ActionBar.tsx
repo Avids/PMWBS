@@ -235,18 +235,22 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="hidden 2xl:flex items-center space-x-3 text-[11px] font-semibold text-slate-700 pl-2 border-l border-slate-300">
+        {/* Professional Standard Legend */}
+        <div className="hidden xl:flex items-center space-x-3 text-[11px] font-semibold text-slate-700 pl-2 border-l border-slate-300">
           <div className="flex items-center space-x-1">
-            <div className="w-2.5 h-2.5 bg-emerald-500 rounded-xs"></div>
-            <span>Task</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2.5 h-2.5 bg-slate-800 rounded-xs"></div>
+            <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs"></div>
             <span>Summary</span>
           </div>
           <div className="flex items-center space-x-1">
-            <div className="w-2.5 h-2.5 bg-slate-800 rotate-45"></div>
+            <div className="w-2.5 h-2.5 bg-blue-600 rounded-xs"></div>
+            <span>Lvl 2 Activity</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <div className="w-2.5 h-2.5 bg-sky-600 rounded-xs"></div>
+            <span>Lvl 3 Activity</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <div className="w-2.5 h-2.5 bg-slate-900 rotate-45"></div>
             <span>Milestone</span>
           </div>
           {showBaseline && (
