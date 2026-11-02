@@ -76,13 +76,14 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   onRedo
 }) => {
   return (
-    <div className="h-11 px-3 bg-white border-b-2 border-slate-300 flex items-center justify-between text-xs text-slate-900 shadow-xs select-none z-20">
-      {/* Left Action Buttons (OnlineGantt Style) */}
-      <div className="flex items-center space-x-1">
+    <div className="h-10 px-3 bg-white border-b border-slate-300 flex items-center justify-between text-xs text-slate-800 shadow-2xs select-none z-20 overflow-x-auto no-scrollbar gap-2">
+      {/* Left Action Buttons (Unified height and rhythm) */}
+      <div className="flex items-center space-x-1 shrink-0">
+        {/* Add Task */}
         <button
           onClick={onAddTask}
           title="Add New Task Below (Insert)"
-          className="px-2.5 py-1.5 hover:bg-slate-100 text-slate-900 font-semibold rounded transition-colors flex items-center space-x-1.5 border border-slate-300 bg-slate-50 hover:border-slate-400"
+          className="h-7 px-2.5 hover:bg-slate-100 text-slate-900 font-semibold rounded transition-colors flex items-center space-x-1 border border-slate-300 bg-slate-50"
         >
           <Plus className="w-3.5 h-3.5 text-indigo-700 font-bold" />
           <span>Add</span>
@@ -93,9 +94,9 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           onClick={onUndo}
           disabled={!canUndo}
           title="Undo Last Action (Ctrl+Z)"
-          className="p-1.5 hover:bg-slate-100 text-slate-800 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
         >
-          <Undo2 className="w-3.5 h-3.5 text-slate-700" />
+          <Undo2 className="w-3.5 h-3.5 text-slate-600" />
           <span className="hidden lg:inline font-medium">Undo</span>
         </button>
 
@@ -103,40 +104,41 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           onClick={onRedo}
           disabled={!canRedo}
           title="Redo Action (Ctrl+Y)"
-          className="p-1.5 hover:bg-slate-100 text-slate-800 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
         >
-          <Redo2 className="w-3.5 h-3.5 text-slate-700" />
+          <Redo2 className="w-3.5 h-3.5 text-slate-600" />
           <span className="hidden lg:inline font-medium">Redo</span>
         </button>
 
-        <div className="h-5 w-px bg-slate-300 mx-1"></div>
+        <div className="h-4 w-px bg-slate-300 mx-0.5"></div>
 
+        {/* Expand / Collapse All (Consistent sleek rhythm) */}
         <button
           onClick={onExpandAll}
           title="Expand All Summary Tasks"
-          className="px-2.5 py-1.5 hover:bg-slate-100 text-slate-800 font-semibold rounded transition-colors flex items-center space-x-1 border border-slate-300 bg-white"
+          className="h-7 px-2 hover:bg-slate-100 text-slate-700 font-medium rounded transition-colors flex items-center space-x-1"
         >
-          <Maximize2 className="w-3.5 h-3.5 text-slate-700" />
+          <Maximize2 className="w-3.5 h-3.5 text-slate-600" />
           <span className="hidden sm:inline">Expand all</span>
         </button>
 
         <button
           onClick={onCollapseAll}
           title="Collapse All Summary Tasks"
-          className="px-2.5 py-1.5 hover:bg-slate-100 text-slate-800 font-semibold rounded transition-colors flex items-center space-x-1 border border-slate-300 bg-white"
+          className="h-7 px-2 hover:bg-slate-100 text-slate-700 font-medium rounded transition-colors flex items-center space-x-1"
         >
-          <Minimize2 className="w-3.5 h-3.5 text-slate-700" />
+          <Minimize2 className="w-3.5 h-3.5 text-slate-600" />
           <span className="hidden sm:inline">Collapse all</span>
         </button>
 
-        <div className="h-5 w-px bg-slate-300 mx-1"></div>
+        <div className="h-4 w-px bg-slate-300 mx-0.5"></div>
 
-        {/* Indent / Outdent / Relationships / Delete */}
+        {/* Hierarchy Structure: Indent / Outdent */}
         <button
           onClick={onIndentTask}
           disabled={!selectedTaskId}
           title="Indent Task (Alt+Right)"
-          className="p-1.5 hover:bg-slate-100 text-slate-800 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
         >
           <ArrowRight className="w-3.5 h-3.5 text-indigo-600" />
           <span className="hidden md:inline font-medium">Indent</span>
@@ -146,17 +148,20 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           onClick={onOutdentTask}
           disabled={!selectedTaskId}
           title="Outdent Task (Alt+Left)"
-          className="p-1.5 hover:bg-slate-100 text-slate-800 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
         >
           <ArrowLeft className="w-3.5 h-3.5 text-indigo-600" />
           <span className="hidden md:inline font-medium">Outdent</span>
         </button>
 
+        <div className="h-4 w-px bg-slate-300 mx-0.5"></div>
+
+        {/* Task Properties: Relationships & Task Info */}
         <button
           onClick={onOpenRelationships}
           disabled={!selectedTaskId || isSummarySelected}
           title="Edit Task Predecessors & Lag (FS, SS, FF, SF)"
-          className="p-1.5 hover:bg-slate-100 text-slate-800 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
         >
           <GitCommit className="w-3.5 h-3.5 text-indigo-600" />
           <span className="hidden md:inline font-medium">Relationships</span>
@@ -166,72 +171,75 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           onClick={onOpenTaskInfo}
           disabled={!selectedTaskId}
           title="Task Information & Properties (Double-click WBS cell)"
-          className="p-1.5 hover:bg-slate-100 text-slate-800 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
         >
           <Info className="w-3.5 h-3.5 text-sky-600" />
           <span className="hidden md:inline font-medium">Task Info</span>
         </button>
 
+        <div className="h-4 w-px bg-slate-300 mx-0.5"></div>
+
+        {/* Destructive Action: Delete (Safely separated by dividers from Indent/Outdent) */}
         <button
           onClick={onDeleteTask}
           disabled={!selectedTaskId}
           title="Delete Selected Task (Delete)"
-          className="p-1.5 hover:bg-red-50 text-red-600 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          className="h-7 px-2 hover:bg-red-50 text-red-600 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
         >
           <Trash2 className="w-3.5 h-3.5 text-red-600" />
-          <span className="hidden md:inline font-medium">Delete</span>
+          <span className="hidden sm:inline font-medium">Delete</span>
         </button>
       </div>
 
       {/* Center & Right Controls */}
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2.5 shrink-0">
         {/* Font Size Selector: 8pt (small), 10pt (normal), 12pt (large) */}
-        <div className="flex items-center space-x-1 bg-slate-100 border border-slate-300 rounded-md p-0.5 shadow-2xs">
-          <div className="flex items-center px-1 text-slate-600">
-            <Type className="w-3.5 h-3.5 text-slate-500 mr-1" />
-            <span className="text-[11px] font-bold text-slate-800 select-none">Font:</span>
+        <div className="flex items-center space-x-0.5 bg-slate-100 border border-slate-300 rounded p-0.5">
+          <div className="hidden sm:flex items-center px-1 text-slate-600">
+            <Type className="w-3 h-3 text-slate-500 mr-1" />
+            <span className="text-[10px] font-bold text-slate-700 select-none">Font:</span>
           </div>
           <button
             onClick={() => onChangeFontSize('small')}
-            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
+            className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
               fontSize === 'small'
-                ? 'bg-indigo-600 text-white shadow-xs'
+                ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-700 hover:bg-white'
             }`}
-            title="Small Font (8pt / 11px)"
+            title="Small Font (8pt)"
           >
-            8 Small
+            8
           </button>
           <button
             onClick={() => onChangeFontSize('normal')}
-            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
+            className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
               fontSize === 'normal' || !fontSize
-                ? 'bg-indigo-600 text-white shadow-xs'
+                ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-700 hover:bg-white'
             }`}
-            title="Normal Font (10pt / 13px)"
+            title="Normal Font (10pt)"
           >
-            10 Normal
+            10
           </button>
           <button
             onClick={() => onChangeFontSize('large')}
-            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
+            className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
               fontSize === 'large'
-                ? 'bg-indigo-600 text-white shadow-xs'
+                ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-700 hover:bg-white'
             }`}
-            title="Large Font (12pt / 15px)"
+            title="Large Font (12pt)"
           >
-            12 Large
+            12
           </button>
         </div>
 
-        <div className="h-5 w-px bg-slate-300"></div>
+        <div className="h-4 w-px bg-slate-300"></div>
 
         {/* Chart Text Labels Toggle */}
         <button
           onClick={onToggleTaskLabels}
-          className={`px-2.5 py-1 text-[11px] font-semibold rounded flex items-center space-x-1.5 border transition-all ${
+          className={`h-7 px-2.5 text-[11px] font-semibold rounded flex items-center space-x-1.5 border transition-all ${
             showTaskLabels
               ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-2xs'
               : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'
@@ -242,42 +250,42 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           <span>Labels: <strong className={showTaskLabels ? 'text-indigo-800' : 'text-slate-600'}>{showTaskLabels ? 'ON' : 'OFF'}</strong></span>
         </button>
 
-        <div className="h-5 w-px bg-slate-300"></div>
+        <div className="h-4 w-px bg-slate-300"></div>
 
         {/* Zoom Controls: Zoom In, Zoom Out, Zoom to Fit */}
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-0.5">
           <button
             onClick={onZoomIn}
-            className="p-1.5 hover:bg-slate-100 text-slate-800 rounded font-semibold transition-colors flex items-center space-x-1"
+            className="h-7 px-1.5 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1"
             title="Zoom In Timeline"
           >
-            <ZoomIn className="w-3.5 h-3.5 text-slate-700" />
-            <span className="hidden xl:inline">Zoom in</span>
+            <ZoomIn className="w-3.5 h-3.5 text-slate-600" />
+            <span className="hidden xl:inline text-xs font-medium">In</span>
           </button>
 
           <button
             onClick={onZoomOut}
-            className="p-1.5 hover:bg-slate-100 text-slate-800 rounded font-semibold transition-colors flex items-center space-x-1"
+            className="h-7 px-1.5 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1"
             title="Zoom Out Timeline"
           >
-            <ZoomOut className="w-3.5 h-3.5 text-slate-700" />
-            <span className="hidden xl:inline">Zoom out</span>
+            <ZoomOut className="w-3.5 h-3.5 text-slate-600" />
+            <span className="hidden xl:inline text-xs font-medium">Out</span>
           </button>
 
           <button
             onClick={onZoomFit}
-            className="p-1.5 hover:bg-slate-100 text-slate-800 rounded font-semibold transition-colors flex items-center space-x-1"
+            className="h-7 px-1.5 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1"
             title="Zoom To Fit Entire Schedule"
           >
-            <Scan className="w-3.5 h-3.5 text-slate-700" />
-            <span className="hidden xl:inline">Zoom to fit</span>
+            <Scan className="w-3.5 h-3.5 text-slate-600" />
+            <span className="hidden xl:inline text-xs font-medium">Fit</span>
           </button>
 
           {/* Preset Zoom Tiers: Days, Weeks, Months */}
-          <div className="inline-flex rounded-md shadow-2xs border border-slate-300 overflow-hidden bg-white ml-1">
+          <div className="inline-flex rounded border border-slate-300 overflow-hidden bg-white ml-1">
             <button
               onClick={() => onChangeZoom('day')}
-              className={`px-2.5 py-1 text-[11px] ${
+              className={`px-2 py-1 text-[11px] ${
                 zoom === 'day' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-700 hover:bg-slate-100 font-medium'
               }`}
             >
@@ -285,7 +293,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
             </button>
             <button
               onClick={() => onChangeZoom('week')}
-              className={`px-2.5 py-1 text-[11px] border-l border-slate-300 ${
+              className={`px-2 py-1 text-[11px] border-l border-slate-300 ${
                 zoom === 'week' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-700 hover:bg-slate-100 font-medium'
               }`}
             >
@@ -293,7 +301,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
             </button>
             <button
               onClick={() => onChangeZoom('month')}
-              className={`px-2.5 py-1 text-[11px] border-l border-slate-300 ${
+              className={`px-2 py-1 text-[11px] border-l border-slate-300 ${
                 zoom === 'month' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-700 hover:bg-slate-100 font-medium'
               }`}
             >
