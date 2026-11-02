@@ -435,9 +435,9 @@ export async function exportProjectDocument(
           const indent = depth * 14;
           let prefixIcon = '';
           if (t.isSummary) {
-            prefixIcon = `<span style="display:inline-block;width:10px;height:9px;background:#1e293b;border-radius:2px;margin-right:6px;vertical-align:middle;"></span>`;
+            prefixIcon = `<svg width="10" height="10" viewBox="0 0 10 10" style="display:inline-block;margin-right:6px;vertical-align:-1px;fill:#0f172a;"><polygon points="1,2 9,2 5,8" /></svg>`;
           } else if (t.isMilestone || t.duration === 0) {
-            prefixIcon = `<span style="display:inline-block;width:7px;height:7px;background:#0f172a;transform:rotate(45deg);margin-right:6px;vertical-align:middle;"></span>`;
+            prefixIcon = `<svg width="9" height="9" viewBox="0 0 10 10" style="display:inline-block;margin-right:6px;vertical-align:-1px;fill:#0f172a;"><polygon points="5,0 10,5 5,10 0,5" /></svg>`;
           }
           content = `
             <div style="padding-left: ${indent}px; font-weight: ${t.isSummary ? '700' : '500'}; color: ${t.isSummary ? '#0f172a' : '#1e293b'}; font-size: 11px; line-height: 18px; white-space: nowrap;">
@@ -537,21 +537,37 @@ export async function exportProjectDocument(
           const sourceTask = tasks[sourceGlobalIdx];
           if (!sourceTask) return;
 
-          let sourceX = dateToX(sourceTask.endDate) + (calcBarWidth(sourceTask.startDate, sourceTask.endDate));
-          let targetX = dateToX(t.startDate);
+          const sourceStartX = dateToX(sourceTask.startDate);
+          const sourceBarWidth = calcBarWidth(sourceTask.startDate, sourceTask.endDate);
+          const isSourceMilestone = !!(sourceTask.isMilestone || sourceTask.duration === 0);
+          const sourceRightX = isSourceMilestone ? sourceStartX + 6 : sourceStartX + sourceBarWidth;
+          const sourceLeftX = isSourceMilestone ? sourceStartX - 6 : sourceStartX;
+
+          const targetStartX = dateToX(t.startDate);
+          const targetBarWidth = calcBarWidth(t.startDate, t.endDate);
+          const isTargetMilestone = !!(t.isMilestone || t.duration === 0);
+          const targetLeftX = isTargetMilestone ? targetStartX - 6 : targetStartX;
+          const targetRightX = isTargetMilestone ? targetStartX + 6 : targetStartX + targetBarWidth;
+
+          let sourceX = sourceRightX;
+          let targetX = targetLeftX;
 
           if (dep.type === 'SS') {
-            sourceX = dateToX(sourceTask.startDate);
-            targetX = dateToX(t.startDate);
+            sourceX = sourceLeftX;
+            targetX = targetLeftX;
           } else if (dep.type === 'FF') {
-            targetX = dateToX(t.endDate) + calcBarWidth(t.startDate, t.endDate);
+            sourceX = sourceRightX;
+            targetX = targetRightX;
+          } else if (dep.type === 'SF') {
+            sourceX = sourceLeftX;
+            targetX = targetRightX;
           }
 
           const sourceY = sourceLocalIdx * rowHeight + rowHeight / 2;
           const targetY = localIdx * rowHeight + rowHeight / 2;
 
           let path = '';
-          if (targetX >= sourceX + 8) {
+          if (targetX >= sourceX + 6) {
             const midX = sourceX + (targetX - sourceX) / 2;
             path = `M ${sourceX} ${sourceY} H ${midX} V ${targetY} H ${targetX}`;
           } else {

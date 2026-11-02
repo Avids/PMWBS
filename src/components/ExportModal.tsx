@@ -77,12 +77,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         {/* Options Form matching OnlineGantt */}
         <div className="p-5 space-y-3.5 text-xs">
           {/* Format Selector */}
-          <div className="flex items-center justify-between gap-4">
-            <label className="w-32 font-medium text-slate-700">Format</label>
+          <div className="flex items-center justify-between gap-3">
+            <label className="w-28 shrink-0 font-medium text-slate-700">Format</label>
             <select
               value={config.format}
               onChange={(e) => setConfig(c => ({ ...c, format: e.target.value as any }))}
-              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+              className="flex-1 min-w-0 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
             >
               <option value="pdf">PDF Document (.pdf)</option>
               <option value="png">PNG Image (.png)</option>
@@ -90,12 +90,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </div>
 
           {/* Header */}
-          <div className="flex items-center justify-between gap-4">
-            <label className="w-32 font-medium text-slate-700">Header</label>
+          <div className="flex items-center justify-between gap-3">
+            <label className="w-28 shrink-0 font-medium text-slate-700">Header</label>
             <select
               value={config.header}
               onChange={(e) => setConfig(c => ({ ...c, header: e.target.value as any }))}
-              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="flex-1 min-w-0 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
             >
               <option value="project_name_date">Project Name & Date</option>
               <option value="project_name">Project Name Only</option>
@@ -104,12 +104,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-4">
-            <label className="w-32 font-medium text-slate-700">Footer</label>
+          <div className="flex items-center justify-between gap-3">
+            <label className="w-28 shrink-0 font-medium text-slate-700">Footer</label>
             <select
               value={config.footer}
               onChange={(e) => setConfig(c => ({ ...c, footer: e.target.value as any }))}
-              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="flex-1 min-w-0 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
             >
               <option value="summary">Schedule Summary & Duration</option>
               <option value="none">Legend Only (No Summary Info)</option>
@@ -118,8 +118,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
           {/* Task Range (Scope) */}
           <div className="space-y-1.5 pt-1 border-t border-slate-100">
-            <div className="flex items-center justify-between gap-4">
-              <label className="w-32 font-medium text-slate-700">Task Scope</label>
+            <div className="flex items-center justify-between gap-3">
+              <label className="w-28 shrink-0 font-medium text-slate-700">Task Scope</label>
               <select
                 value={config.taskRangeMode || 'all'}
                 onChange={(e) => setConfig(c => ({
@@ -128,7 +128,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   taskFromId: c.taskFromId || 1,
                   taskToId: c.taskToId || tasks.length
                 }))}
-                className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+                className="flex-1 min-w-0 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
               >
                 <option value="all">All Activities (1 to {tasks.length})</option>
                 <option value="custom">Custom Task Range (From - To)</option>
@@ -136,7 +136,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
 
             {config.taskRangeMode === 'custom' && (
-              <div className="flex items-center justify-end space-x-2 pt-1 pl-36">
+              <div className="flex items-center justify-end space-x-2 pt-1 pl-32">
                 <span className="text-slate-500">From ID:</span>
                 <input
                   type="number"
@@ -169,26 +169,26 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </div>
 
           {/* Columns */}
-          <div className="flex items-center justify-between gap-4">
-            <label className="w-32 font-medium text-slate-700">Columns</label>
+          <div className="flex items-center justify-between gap-3">
+            <label className="w-28 shrink-0 font-medium text-slate-700">Columns</label>
             <select
               value={config.columns}
               onChange={(e) => setConfig(c => ({ ...c, columns: e.target.value as any }))}
-              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+              className="flex-1 min-w-0 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium truncate"
             >
-              <option value="all">All Columns (Full 18: WBS, Dates, Floats, All MH, Baselines, Notes)</option>
-              <option value="core">Core Columns (WBS, Name, Duration, Dates, %, Predecessors)</option>
-              <option value="name_only">WBS and Task Name Only</option>
+              <option value="core">Core Columns (WBS, Name, Duration, Dates, %)</option>
+              <option value="all">All Columns (Complete 18-col Grid)</option>
+              <option value="name_only">WBS & Task Name Only</option>
             </select>
           </div>
 
           {/* Gantt Timeline Scale / Option to turn off Gantt */}
-          <div className="flex items-center justify-between gap-4">
-            <label className="w-32 font-medium text-slate-700">Gantt Chart</label>
+          <div className="flex items-center justify-between gap-3">
+            <label className="w-28 shrink-0 font-medium text-slate-700">Gantt Chart</label>
             <select
               value={config.timelineScale}
               onChange={(e) => setConfig(c => ({ ...c, timelineScale: e.target.value as any }))}
-              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+              className="flex-1 min-w-0 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
             >
               <option value="weeks">Weeks (Recommended for Schedules)</option>
               <option value="months">Months (Summary / Long Duration)</option>
@@ -200,13 +200,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {/* Paper Size & Orientation (if PDF) */}
           {config.format === 'pdf' && (
             <>
-              <div className="flex items-center justify-between gap-4">
-                <label className="w-32 font-medium text-slate-700">Paper Size</label>
-                <div className="flex-1 grid grid-cols-2 gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <label className="w-28 shrink-0 font-medium text-slate-700">Paper Size</label>
+                <div className="flex-1 min-w-0 grid grid-cols-2 gap-2">
                   <select
                     value={config.paperSize}
                     onChange={(e) => setConfig(c => ({ ...c, paperSize: e.target.value as any }))}
-                    className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+                    className="min-w-0 px-2.5 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
                   >
                     <option value="letter">Letter (8.5" x 11")</option>
                     <option value="tabloid">11x17 / Tabloid (11" x 17")</option>
@@ -217,7 +217,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   <select
                     value={config.orientation}
                     onChange={(e) => setConfig(c => ({ ...c, orientation: e.target.value as any }))}
-                    className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="min-w-0 px-2.5 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
                     <option value="landscape">Landscape</option>
                     <option value="portrait">Portrait</option>
@@ -226,12 +226,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </div>
 
               {/* Page Fit / Multi-page Pagination */}
-              <div className="flex items-center justify-between gap-4">
-                <label className="w-32 font-medium text-slate-700">Pagination</label>
+              <div className="flex items-center justify-between gap-3">
+                <label className="w-28 shrink-0 font-medium text-slate-700">Pagination</label>
                 <select
                   value={config.pageFit}
                   onChange={(e) => setConfig(c => ({ ...c, pageFit: e.target.value as any }))}
-                  className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="flex-1 min-w-0 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
                   <option value="auto">Multi-Page (Auto-paginate rows)</option>
                   <option value="single">Fit all on 1 Page</option>
@@ -241,12 +241,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           )}
 
           {/* Image Resolution */}
-          <div className="flex items-center justify-between gap-4">
-            <label className="w-32 font-medium text-slate-700">Resolution</label>
+          <div className="flex items-center justify-between gap-3">
+            <label className="w-28 shrink-0 font-medium text-slate-700">Resolution</label>
             <select
               value={config.resolution}
               onChange={(e) => setConfig(c => ({ ...c, resolution: parseInt(e.target.value, 10) }))}
-              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="flex-1 min-w-0 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
             >
               <option value="1">1x (Standard)</option>
               <option value="2">2x (High-Res Print Quality)</option>
