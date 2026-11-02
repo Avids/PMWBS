@@ -74,6 +74,62 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   const [editingCell, setEditingCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+
+  // Keep activeCell synchronized with selectedTaskId
+  useEffect(() => {
+    if (selectedTaskId) {
+      const idx = tasks.findIndex((t) => t.id === selectedTaskId);
+      if (idx !== -1) {
+        setActiveCell((prev) => ({
+          rowIdx: idx,
+          colIdx: prev?.colIdx ?? 1
+        }));
+      }
+    }
+  }, [selectedTaskId, tasks]);
+
+  // Global ArrowUp / ArrowDown navigation (prevents window scrolling and navigates tasks)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if an input, textarea, or select is focused or cell is editing
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if (editingCell) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        let currentRowIdx = activeCell?.rowIdx ?? -1;
+        const currentColIdx = activeCell?.colIdx ?? 1;
+
+        if (currentRowIdx === -1 && selectedTaskId) {
+          currentRowIdx = tasks.findIndex((t) => t.id === selectedTaskId);
+        }
+        if (currentRowIdx === -1 && tasks.length > 0) {
+          currentRowIdx = 0;
+        }
+        if (currentRowIdx === -1) return;
+
+        if (e.key === 'ArrowDown') {
+          const nextRow = Math.min(tasks.length - 1, currentRowIdx + 1);
+          setActiveCell({ rowIdx: nextRow, colIdx: currentColIdx });
+          onSelectTask(tasks[nextRow].id);
+          document.getElementById(`grid-row-${tasks[nextRow].id}`)?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          const prevRow = Math.max(0, currentRowIdx - 1);
+          setActiveCell({ rowIdx: prevRow, colIdx: currentColIdx });
+          onSelectTask(tasks[prevRow].id);
+          document.getElementById(`grid-row-${tasks[prevRow].id}`)?.scrollIntoView({ block: 'nearest' });
+        }
+        gridContainerRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [activeCell, selectedTaskId, tasks, editingCell, onSelectTask]);
 
   // Height and font sizing based on fontSize prop
   const rowHeight = fontSize === 'small' ? 30 : fontSize === 'large' ? 44 : 36;
@@ -155,46 +211,59 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       return;
     }
 
-    if (!activeCell) return;
+    let currentRowIdx = activeCell?.rowIdx ?? -1;
+    let currentColIdx = activeCell?.colIdx ?? 1;
+
+    if (currentRowIdx === -1 && selectedTaskId) {
+      currentRowIdx = tasks.findIndex((t) => t.id === selectedTaskId);
+    }
+    if (currentRowIdx === -1 && tasks.length > 0) {
+      currentRowIdx = 0;
+    }
+
+    if (currentRowIdx === -1) return;
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      const nextRow = Math.min(tasks.length - 1, activeCell.rowIdx + 1);
-      setActiveCell({ rowIdx: nextRow, colIdx: activeCell.colIdx });
+      const nextRow = Math.min(tasks.length - 1, currentRowIdx + 1);
+      setActiveCell({ rowIdx: nextRow, colIdx: currentColIdx });
       onSelectTask(tasks[nextRow].id);
+      document.getElementById(`grid-row-${tasks[nextRow].id}`)?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      const prevRow = Math.max(0, activeCell.rowIdx - 1);
-      setActiveCell({ rowIdx: prevRow, colIdx: activeCell.colIdx });
+      const prevRow = Math.max(0, currentRowIdx - 1);
+      setActiveCell({ rowIdx: prevRow, colIdx: currentColIdx });
       onSelectTask(tasks[prevRow].id);
+      document.getElementById(`grid-row-${tasks[prevRow].id}`)?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
-      const nextCol = Math.min(COLUMNS.length - 1, activeCell.colIdx + 1);
-      setActiveCell({ rowIdx: activeCell.rowIdx, colIdx: nextCol });
+      const nextCol = Math.min(COLUMNS.length - 1, currentColIdx + 1);
+      setActiveCell({ rowIdx: currentRowIdx, colIdx: nextCol });
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      const prevCol = Math.max(0, activeCell.colIdx - 1);
-      setActiveCell({ rowIdx: activeCell.rowIdx, colIdx: prevCol });
+      const prevCol = Math.max(0, currentColIdx - 1);
+      setActiveCell({ rowIdx: currentRowIdx, colIdx: prevCol });
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      startEdit(activeCell.rowIdx, activeCell.colIdx);
+      startEdit(currentRowIdx, currentColIdx);
     } else if (e.key === 'Delete') {
       e.preventDefault();
       if (selectedTaskId) onDeleteTask(selectedTaskId);
     } else if (e.key === 'Insert') {
       e.preventDefault();
-      onAddTask(tasks[activeCell.rowIdx]?.id);
+      onAddTask(tasks[currentRowIdx]?.id);
     } else if (e.altKey && e.key === 'ArrowRight') {
       e.preventDefault();
-      onIndentTask(tasks[activeCell.rowIdx].id);
+      onIndentTask(tasks[currentRowIdx].id);
     } else if (e.altKey && e.key === 'ArrowLeft') {
       e.preventDefault();
-      onOutdentTask(tasks[activeCell.rowIdx].id);
+      onOutdentTask(tasks[currentRowIdx].id);
     }
   };
 
   return (
     <div
+      ref={gridContainerRef}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       className="flex flex-col h-full bg-white select-none overflow-hidden focus:outline-none"
@@ -226,6 +295,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
               return (
                 <tr
                   key={task.id}
+                  id={`grid-row-${task.id}`}
                   style={{ height: `${rowHeight}px` }}
                   onClick={() => {
                     onSelectTask(task.id);
