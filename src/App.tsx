@@ -351,6 +351,21 @@ export function App() {
     localStorage.setItem('wbs_baselines', JSON.stringify(baselines));
   }, [baselines]);
 
+  // Alert confirmation dialog before closing the window/tab
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Trigger native browser confirmation modal ("Leave site? Changes you made may not be saved.")
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   // Splitter Resizing
   const handleSplitterMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
