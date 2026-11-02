@@ -42,7 +42,7 @@ function createWindow() {
     height: 900,
     minWidth: 1050,
     minHeight: 700,
-    title: 'PMWBS - Project Scheduling & WBS Management Suite',
+    title: 'PathMaster - Project Scheduling & WBS Management Suite',
     backgroundColor: '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -142,7 +142,7 @@ if (!gotTheLock) {
         title: options?.title || 'Open Schedule File',
         properties: ['openFile'],
         filters: options?.filters || [
-          { name: 'PMWBS Project (*.wbs)', extensions: ['wbs'] },
+          { name: 'PathMaster Project (*.wbs)', extensions: ['wbs'] },
           { name: 'Microsoft Project XML (*.xml)', extensions: ['xml'] },
           { name: 'All Supported', extensions: ['wbs', 'xml', 'mpp'] }
         ]
@@ -166,7 +166,7 @@ if (!gotTheLock) {
         title: options?.title || 'Save Schedule As',
         defaultPath: options?.defaultPath || 'Project_Schedule.wbs',
         filters: options?.filters || [
-          { name: 'PMWBS Project (*.wbs)', extensions: ['wbs'] },
+          { name: 'PathMaster Project (*.wbs)', extensions: ['wbs'] },
           { name: 'All Files', extensions: ['*'] }
         ]
       });

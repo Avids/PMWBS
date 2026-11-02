@@ -40,7 +40,7 @@ export async function saveProjectWithDialog(
       title: 'Save Project Schedule (.wbs)',
       defaultPath: defaultFileName,
       filters: [
-        { name: 'PMWBS Project Schedule (*.wbs)', extensions: ['wbs'] },
+        { name: 'PathMaster Project Schedule (*.wbs)', extensions: ['wbs'] },
         { name: 'JSON Schedule (*.json)', extensions: ['json'] },
         { name: 'All Files', extensions: ['*'] }
       ]
@@ -80,7 +80,7 @@ export async function openProjectWithDialog(): Promise<{
       title: 'Open Schedule File',
       filters: [
         { name: 'Supported Files (*.wbs, *.xml)', extensions: ['wbs', 'xml'] },
-        { name: 'PMWBS Schedule (*.wbs)', extensions: ['wbs'] },
+        { name: 'PathMaster Schedule (*.wbs)', extensions: ['wbs'] },
         { name: 'Microsoft Project XML (*.xml)', extensions: ['xml'] },
         { name: 'All Files', extensions: ['*'] }
       ]

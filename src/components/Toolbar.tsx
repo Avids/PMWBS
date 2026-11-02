@@ -132,12 +132,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <div className="min-h-12 px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80">
         {/* Brand & Project Name Input */}
         <div className="flex items-center space-x-2.5 min-w-0">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md font-bold text-white text-sm sm:text-base shrink-0">
-            W
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md font-bold text-white text-sm sm:text-base shrink-0 tracking-tight">
+            P
           </div>
           <div className="min-w-0">
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-xs sm:text-sm tracking-wide text-white truncate">PMWBS Master</span>
+              <span className="font-bold text-xs sm:text-sm tracking-wide text-white truncate">PathMaster</span>
             </div>
             <input
               type="text"

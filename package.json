@@ -2,7 +2,7 @@
   "name": "pmwbs",
   "private": true,
   "version": "1.0.0",
-  "description": "PMWBS - Professional Project Scheduling & WBS Management Suite",
+  "description": "PathMaster - Professional Project Scheduling & WBS Management Suite",
   "author": "Lead Project Scheduler",
   "main": "dist-electron/main.js",
   "type": "module",

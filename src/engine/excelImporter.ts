@@ -53,7 +53,7 @@ function parseDateValue(val: any, fallbackDate: string): string {
 }
 
 /**
- * Parses an Excel (.xlsx, .xls, or .csv) file into PMWBS project tasks.
+ * Parses an Excel (.xlsx, .xls, or .csv) file into PathMaster project tasks.
  * Automatically recognizes PM headers, WBS hierarchy, dates, durations,
  * predecessors, and man-hours.
  */

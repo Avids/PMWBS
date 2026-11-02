@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📊 PMWBS — Project Scheduling & WBS Management Suite
+# 📊 PathMaster — Project Scheduling & WBS Management Suite
 
 ### A powerful, lightweight project scheduling engine combining the analytical depth of **Primavera P6** and **Microsoft Project** with the speed of modern web apps.
 
@@ -18,9 +18,9 @@
 
 ## 🌟 Overview
 
-**PMWBS** is designed for project managers, planners, and schedulers who want the rigorous scheduling capabilities of **Primavera P6** and **Microsoft Project** without the steep learning curve or heavy desktop installations.
+**PathMaster** is designed for project managers, planners, and schedulers who want the rigorous scheduling capabilities of **Primavera P6** and **Microsoft Project** without the steep learning curve or heavy desktop installations.
 
-Built with **React 19, TypeScript, and Tailwind CSS**, PMWBS features a split-pane layout:
+Built with **React 19, TypeScript, and Tailwind CSS**, PathMaster features a split-pane layout:
 1. **Spreadsheet Grid** on the left: Fast, keyboard-driven data entry with in-cell editing, WBS tree indentation, and automatic parent rollups.
 2. **Interactive SVG Gantt Chart** on the right: Visual drag-and-drop bar movement, duration resizing, dependency linking, and dual-bar baseline comparison.
 
@@ -115,7 +115,7 @@ You can enter relationships directly into the **Predecessors** column using intu
 
 ## 💾 Native `.wbs` File Format
 
-PMWBS saves schedules as human-readable JSON files with a `.wbs` extension:
+PathMaster saves schedules as human-readable JSON files with a `.wbs` extension:
 
 ```json
 {
@@ -163,8 +163,8 @@ PMWBS saves schedules as human-readable JSON files with a `.wbs` extension:
 
 ```bash
 # Clone the repository
-git clone https://github.com/Avids/PMWBS.git
-cd PMWBS
+git clone https://github.com/Avids/PathMaster.git
+cd PathMaster
 
 # Install dependencies
 pnpm install
@@ -190,7 +190,7 @@ pnpm preview
 ## 🏗️ Project Architecture
 
 ```
-PMWBS/
+PathMaster/
 ├── src/
 │   ├── types/
 │   │   └── project.ts               # Core data models, Task, Calendar, Baselines

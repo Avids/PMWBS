@@ -1,7 +1,7 @@
 {
-  "appId": "com.pmwbs.app",
-  "productName": "PMWBS Master",
-  "copyright": "Copyright © 2026 PMWBS",
+  "appId": "com.pathmaster.app",
+  "productName": "PathMaster",
+  "copyright": "Copyright © 2026 PathMaster",
   "directories": {
     "output": "release",
     "buildResources": "build"
@@ -25,8 +25,8 @@
     "fileAssociations": [
       {
         "ext": "wbs",
-        "name": "PMWBS Project Schedule",
-        "description": "PMWBS Project Schedule File",
+        "name": "PathMaster Project Schedule",
+        "description": "PathMaster Project Schedule File",
         "role": "Editor"
       }
     ]
@@ -36,7 +36,7 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": "always",
     "createStartMenuShortcut": true,
-    "shortcutName": "PMWBS Master",
-    "uninstallDisplayName": "PMWBS Master"
+    "shortcutName": "PathMaster",
+    "uninstallDisplayName": "PathMaster"
   }
 }
