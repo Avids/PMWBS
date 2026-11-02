@@ -1199,6 +1199,7 @@ export function App() {
 
         {/* OnlineGantt-Style Unified Action & Navigation Bar */}
         <ActionBar
+          colorTheme={settings.colorTheme}
           onAddTask={() => handleAddTask(selectedTaskId || undefined)}
           onExpandAll={handleExpandAll}
           onCollapseAll={handleCollapseAll}

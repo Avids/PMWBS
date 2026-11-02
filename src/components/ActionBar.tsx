@@ -1,5 +1,6 @@
 import React from 'react';
-import type { FontSizeOption, ZoomTier } from '../types/project';
+import type { FontSizeOption, ZoomTier, ColorTheme } from '../types/project';
+import { getTheme } from '../theme/themeConfig';
 import {
   Plus,
   Maximize2,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 
 interface ActionBarProps {
+  colorTheme?: ColorTheme;
   onAddTask: () => void;
   onExpandAll: () => void;
   onCollapseAll: () => void;
@@ -51,6 +53,7 @@ interface ActionBarProps {
 }
 
 export const ActionBar: React.FC<ActionBarProps> = ({
+  colorTheme,
   onAddTask,
   onExpandAll,
   onCollapseAll,
@@ -75,17 +78,32 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   onUndo,
   onRedo
 }) => {
+  const theme = getTheme(colorTheme);
+  const hoverBtnClass = theme.isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100';
+
   return (
-    <div className="h-10 px-3 bg-white border-b border-slate-300 flex items-center justify-between text-xs text-slate-800 shadow-2xs select-none z-20 overflow-x-auto no-scrollbar gap-2">
+    <div
+      style={{
+        backgroundColor: theme.isDark ? theme.surfaceBg : '#FFFFFF',
+        borderBottomColor: theme.border,
+        color: theme.textPrimary
+      }}
+      className="h-10 px-3 border-b flex items-center justify-between text-xs shadow-2xs select-none z-20 overflow-x-auto no-scrollbar gap-2"
+    >
       {/* Left Action Buttons (Unified height and rhythm) */}
       <div className="flex items-center space-x-1 shrink-0">
         {/* Add Task */}
         <button
           onClick={onAddTask}
           title="Add New Task Below (Insert)"
-          className="h-7 px-2.5 hover:bg-slate-100 text-slate-900 font-semibold rounded transition-colors flex items-center space-x-1 border border-slate-300 bg-slate-50"
+          style={{
+            borderColor: theme.border,
+            backgroundColor: theme.isDark ? '#1E293B' : '#F8FAFC',
+            color: theme.textPrimary
+          }}
+          className={`h-7 px-2.5 ${hoverBtnClass} font-semibold rounded transition-colors flex items-center space-x-1 border`}
         >
-          <Plus className="w-3.5 h-3.5 text-indigo-700 font-bold" />
+          <Plus className="w-3.5 h-3.5 font-bold" style={{ color: theme.isDark ? '#818CF8' : '#4338CA' }} />
           <span>Add</span>
         </button>
 
@@ -94,9 +112,10 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           onClick={onUndo}
           disabled={!canUndo}
           title="Undo Last Action (Ctrl+Z)"
-          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          style={{ color: theme.textSecondary }}
+          className={`h-7 px-2 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none`}
         >
-          <Undo2 className="w-3.5 h-3.5 text-slate-600" />
+          <Undo2 className="w-3.5 h-3.5" style={{ color: theme.textSecondary }} />
           <span className="hidden lg:inline font-medium">Undo</span>
         </button>
 
@@ -104,43 +123,47 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           onClick={onRedo}
           disabled={!canRedo}
           title="Redo Action (Ctrl+Y)"
-          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          style={{ color: theme.textSecondary }}
+          className={`h-7 px-2 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none`}
         >
-          <Redo2 className="w-3.5 h-3.5 text-slate-600" />
+          <Redo2 className="w-3.5 h-3.5" style={{ color: theme.textSecondary }} />
           <span className="hidden lg:inline font-medium">Redo</span>
         </button>
 
-        <div className="h-4 w-px bg-slate-300 mx-0.5"></div>
+        <div className="h-4 w-px mx-0.5" style={{ backgroundColor: theme.border }}></div>
 
         {/* Expand / Collapse All (Consistent sleek rhythm) */}
         <button
           onClick={onExpandAll}
           title="Expand All Summary Tasks"
-          className="h-7 px-2 hover:bg-slate-100 text-slate-700 font-medium rounded transition-colors flex items-center space-x-1"
+          style={{ color: theme.textPrimary }}
+          className={`h-7 px-2 ${hoverBtnClass} font-medium rounded transition-colors flex items-center space-x-1`}
         >
-          <Maximize2 className="w-3.5 h-3.5 text-slate-600" />
+          <Maximize2 className="w-3.5 h-3.5" style={{ color: theme.textSecondary }} />
           <span className="hidden sm:inline">Expand all</span>
         </button>
 
         <button
           onClick={onCollapseAll}
           title="Collapse All Summary Tasks"
-          className="h-7 px-2 hover:bg-slate-100 text-slate-700 font-medium rounded transition-colors flex items-center space-x-1"
+          style={{ color: theme.textPrimary }}
+          className={`h-7 px-2 ${hoverBtnClass} font-medium rounded transition-colors flex items-center space-x-1`}
         >
-          <Minimize2 className="w-3.5 h-3.5 text-slate-600" />
+          <Minimize2 className="w-3.5 h-3.5" style={{ color: theme.textSecondary }} />
           <span className="hidden sm:inline">Collapse all</span>
         </button>
 
-        <div className="h-4 w-px bg-slate-300 mx-0.5"></div>
+        <div className="h-4 w-px mx-0.5" style={{ backgroundColor: theme.border }}></div>
 
         {/* Hierarchy Structure: Indent / Outdent */}
         <button
           onClick={onIndentTask}
           disabled={!selectedTaskId}
           title="Indent Task (Alt+Right)"
-          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          style={{ color: theme.textPrimary }}
+          className={`h-7 px-2 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none`}
         >
-          <ArrowRight className="w-3.5 h-3.5 text-indigo-600" />
+          <ArrowRight className="w-3.5 h-3.5" style={{ color: theme.isDark ? '#818CF8' : '#4F46E5' }} />
           <span className="hidden md:inline font-medium">Indent</span>
         </button>
 
@@ -148,22 +171,24 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           onClick={onOutdentTask}
           disabled={!selectedTaskId}
           title="Outdent Task (Alt+Left)"
-          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          style={{ color: theme.textPrimary }}
+          className={`h-7 px-2 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none`}
         >
-          <ArrowLeft className="w-3.5 h-3.5 text-indigo-600" />
+          <ArrowLeft className="w-3.5 h-3.5" style={{ color: theme.isDark ? '#818CF8' : '#4F46E5' }} />
           <span className="hidden md:inline font-medium">Outdent</span>
         </button>
 
-        <div className="h-4 w-px bg-slate-300 mx-0.5"></div>
+        <div className="h-4 w-px mx-0.5" style={{ backgroundColor: theme.border }}></div>
 
         {/* Task Properties: Relationships & Task Info */}
         <button
           onClick={onOpenRelationships}
           disabled={!selectedTaskId || isSummarySelected}
           title="Edit Task Predecessors & Lag (FS, SS, FF, SF)"
-          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          style={{ color: theme.textPrimary }}
+          className={`h-7 px-2 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none`}
         >
-          <GitCommit className="w-3.5 h-3.5 text-indigo-600" />
+          <GitCommit className="w-3.5 h-3.5" style={{ color: theme.isDark ? '#818CF8' : '#4F46E5' }} />
           <span className="hidden md:inline font-medium">Relationships</span>
         </button>
 
@@ -171,22 +196,24 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           onClick={onOpenTaskInfo}
           disabled={!selectedTaskId}
           title="Task Information & Properties (Double-click WBS cell)"
-          className="h-7 px-2 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          style={{ color: theme.textPrimary }}
+          className={`h-7 px-2 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none`}
         >
-          <Info className="w-3.5 h-3.5 text-sky-600" />
+          <Info className="w-3.5 h-3.5 text-sky-500" />
           <span className="hidden md:inline font-medium">Task Info</span>
         </button>
 
-        <div className="h-4 w-px bg-slate-300 mx-0.5"></div>
+        <div className="h-4 w-px mx-0.5" style={{ backgroundColor: theme.border }}></div>
 
         {/* Destructive Action: Delete (Safely separated by dividers from Indent/Outdent) */}
         <button
           onClick={onDeleteTask}
           disabled={!selectedTaskId}
           title="Delete Selected Task (Delete)"
-          className="h-7 px-2 hover:bg-red-50 text-red-600 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+          style={{ color: theme.critical }}
+          className={`h-7 px-2 hover:bg-red-500/10 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none`}
         >
-          <Trash2 className="w-3.5 h-3.5 text-red-600" />
+          <Trash2 className="w-3.5 h-3.5" style={{ color: theme.critical }} />
           <span className="hidden sm:inline font-medium">Delete</span>
         </button>
       </div>
@@ -194,17 +221,24 @@ export const ActionBar: React.FC<ActionBarProps> = ({
       {/* Center & Right Controls */}
       <div className="flex items-center space-x-2.5 shrink-0">
         {/* Font Size Selector: 8pt (small), 10pt (normal), 12pt (large) */}
-        <div className="flex items-center space-x-0.5 bg-slate-100 border border-slate-300 rounded p-0.5">
-          <div className="hidden sm:flex items-center px-1 text-slate-600">
-            <Type className="w-3 h-3 text-slate-500 mr-1" />
-            <span className="text-[10px] font-bold text-slate-700 select-none">Font:</span>
+        <div
+          style={{
+            backgroundColor: theme.isDark ? '#1E293B' : '#F1F5F9',
+            borderColor: theme.border
+          }}
+          className="flex items-center space-x-0.5 border rounded p-0.5"
+        >
+          <div className="hidden sm:flex items-center px-1" style={{ color: theme.textSecondary }}>
+            <Type className="w-3 h-3 mr-1 opacity-70" />
+            <span className="text-[10px] font-bold select-none">Font:</span>
           </div>
           <button
             onClick={() => onChangeFontSize('small')}
+            style={fontSize === 'small' ? { backgroundColor: theme.signal, color: '#FFFFFF' } : { color: theme.textPrimary }}
             className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
               fontSize === 'small'
-                ? 'bg-indigo-600 text-white shadow-2xs'
-                : 'text-slate-700 hover:bg-white'
+                ? 'shadow-2xs'
+                : hoverBtnClass
             }`}
             title="Small Font (8pt)"
           >
@@ -212,10 +246,11 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           </button>
           <button
             onClick={() => onChangeFontSize('normal')}
+            style={(fontSize === 'normal' || !fontSize) ? { backgroundColor: theme.signal, color: '#FFFFFF' } : { color: theme.textPrimary }}
             className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
-              fontSize === 'normal' || !fontSize
-                ? 'bg-indigo-600 text-white shadow-2xs'
-                : 'text-slate-700 hover:bg-white'
+              (fontSize === 'normal' || !fontSize)
+                ? 'shadow-2xs'
+                : hoverBtnClass
             }`}
             title="Normal Font (10pt)"
           >
@@ -223,10 +258,11 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           </button>
           <button
             onClick={() => onChangeFontSize('large')}
+            style={fontSize === 'large' ? { backgroundColor: theme.signal, color: '#FFFFFF' } : { color: theme.textPrimary }}
             className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
               fontSize === 'large'
-                ? 'bg-indigo-600 text-white shadow-2xs'
-                : 'text-slate-700 hover:bg-white'
+                ? 'shadow-2xs'
+                : hoverBtnClass
             }`}
             title="Large Font (12pt)"
           >
@@ -234,75 +270,98 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           </button>
         </div>
 
-        <div className="h-4 w-px bg-slate-300"></div>
+        <div className="h-4 w-px" style={{ backgroundColor: theme.border }}></div>
 
         {/* Chart Text Labels Toggle */}
         <button
           onClick={onToggleTaskLabels}
-          className={`h-7 px-2.5 text-[11px] font-semibold rounded flex items-center space-x-1.5 border transition-all ${
-            showTaskLabels
-              ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-2xs'
-              : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'
-          }`}
+          style={{
+            borderColor: showTaskLabels ? (theme.isDark ? '#6366F1' : '#A5B4FC') : theme.border,
+            backgroundColor: showTaskLabels
+              ? (theme.isDark ? 'rgba(99, 102, 241, 0.2)' : '#EEF2FF')
+              : (theme.isDark ? '#1E293B' : '#FFFFFF'),
+            color: showTaskLabels
+              ? (theme.isDark ? '#A5B4FC' : '#4338CA')
+              : theme.textSecondary
+          }}
+          className="h-7 px-2.5 text-[11px] font-semibold rounded flex items-center space-x-1.5 border transition-all"
           title="Toggle Activity Text Labels On/Off on Gantt Chart"
         >
           <Tag className="w-3.5 h-3.5" />
-          <span>Labels: <strong className={showTaskLabels ? 'text-indigo-800' : 'text-slate-600'}>{showTaskLabels ? 'ON' : 'OFF'}</strong></span>
+          <span>Labels: <strong style={{ color: showTaskLabels ? (theme.isDark ? '#818CF8' : '#3730A3') : theme.textSecondary }}>{showTaskLabels ? 'ON' : 'OFF'}</strong></span>
         </button>
 
-        <div className="h-4 w-px bg-slate-300"></div>
+        <div className="h-4 w-px" style={{ backgroundColor: theme.border }}></div>
 
         {/* Zoom Controls: Zoom In, Zoom Out, Zoom to Fit */}
         <div className="flex items-center space-x-0.5">
           <button
             onClick={onZoomIn}
-            className="h-7 px-1.5 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1"
+            style={{ color: theme.textPrimary }}
+            className={`h-7 px-1.5 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1`}
             title="Zoom In Timeline"
           >
-            <ZoomIn className="w-3.5 h-3.5 text-slate-600" />
+            <ZoomIn className="w-3.5 h-3.5" style={{ color: theme.textSecondary }} />
             <span className="hidden xl:inline text-xs font-medium">In</span>
           </button>
 
           <button
             onClick={onZoomOut}
-            className="h-7 px-1.5 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1"
+            style={{ color: theme.textPrimary }}
+            className={`h-7 px-1.5 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1`}
             title="Zoom Out Timeline"
           >
-            <ZoomOut className="w-3.5 h-3.5 text-slate-600" />
+            <ZoomOut className="w-3.5 h-3.5" style={{ color: theme.textSecondary }} />
             <span className="hidden xl:inline text-xs font-medium">Out</span>
           </button>
 
           <button
             onClick={onZoomFit}
-            className="h-7 px-1.5 hover:bg-slate-100 text-slate-700 rounded transition-colors flex items-center space-x-1"
+            style={{ color: theme.textPrimary }}
+            className={`h-7 px-1.5 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1`}
             title="Zoom To Fit Entire Schedule"
           >
-            <Scan className="w-3.5 h-3.5 text-slate-600" />
+            <Scan className="w-3.5 h-3.5" style={{ color: theme.textSecondary }} />
             <span className="hidden xl:inline text-xs font-medium">Fit</span>
           </button>
 
           {/* Preset Zoom Tiers: Days, Weeks, Months */}
-          <div className="inline-flex rounded border border-slate-300 overflow-hidden bg-white ml-1">
+          <div
+            style={{
+              borderColor: theme.border,
+              backgroundColor: theme.isDark ? '#1E293B' : '#FFFFFF'
+            }}
+            className="inline-flex rounded border overflow-hidden ml-1"
+          >
             <button
               onClick={() => onChangeZoom('day')}
+              style={zoom === 'day' ? { backgroundColor: theme.signal, color: '#FFFFFF' } : { color: theme.textPrimary }}
               className={`px-2 py-1 text-[11px] ${
-                zoom === 'day' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-700 hover:bg-slate-100 font-medium'
+                zoom === 'day' ? 'font-bold' : `${hoverBtnClass} font-medium`
               }`}
             >
               Days
             </button>
             <button
               onClick={() => onChangeZoom('week')}
-              className={`px-2 py-1 text-[11px] border-l border-slate-300 ${
-                zoom === 'week' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-700 hover:bg-slate-100 font-medium'
+              style={{
+                borderLeftColor: theme.border,
+                ...(zoom === 'week' ? { backgroundColor: theme.signal, color: '#FFFFFF' } : { color: theme.textPrimary })
+              }}
+              className={`px-2 py-1 text-[11px] border-l ${
+                zoom === 'week' ? 'font-bold' : `${hoverBtnClass} font-medium`
               }`}
             >
               Weeks
             </button>
             <button
               onClick={() => onChangeZoom('month')}
-              className={`px-2 py-1 text-[11px] border-l border-slate-300 ${
-                zoom === 'month' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-700 hover:bg-slate-100 font-medium'
+              style={{
+                borderLeftColor: theme.border,
+                ...(zoom === 'month' ? { backgroundColor: theme.signal, color: '#FFFFFF' } : { color: theme.textPrimary })
+              }}
+              className={`px-2 py-1 text-[11px] border-l ${
+                zoom === 'month' ? 'font-bold' : `${hoverBtnClass} font-medium`
               }`}
             >
               Months

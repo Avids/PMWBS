@@ -398,8 +398,15 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                 >
                   {/* Row Index with OnlineGantt-style Grip Handle */}
                   <td
-                    style={{ height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, boxSizing: 'border-box' }}
-                    className="px-1 text-center border-r border-slate-200 select-none bg-slate-50/50 cursor-pointer"
+                    style={{
+                      height: `${rowHeight}px`,
+                      maxHeight: `${rowHeight}px`,
+                      boxSizing: 'border-box',
+                      borderRightColor: theme.border,
+                      backgroundColor: rowIdx % 2 === 0 ? theme.surfaceBg : theme.rowAltBg,
+                      color: theme.textSecondary
+                    }}
+                    className="px-1 text-center border-r select-none cursor-pointer"
                     title="Double-click to view Task Information"
                     onDoubleClick={(e) => {
                       e.stopPropagation();
@@ -407,8 +414,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       onOpenTaskInfo?.(task);
                     }}
                   >
-                    <div className="flex items-center justify-center space-x-0.5 text-slate-700">
-                      <GripVertical className="w-3 h-3 text-slate-400" />
+                    <div className="flex items-center justify-center space-x-0.5" style={{ color: theme.textSecondary }}>
+                      <GripVertical className="w-3 h-3 opacity-60" />
                       <span className="font-mono font-bold text-[11px]">{rowIdx + 1}</span>
                     </div>
                   </td>
@@ -422,7 +429,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
 
                     if (col.field === 'wbs') {
                       displayVal = (
-                        <span className="font-mono font-bold text-slate-800">
+                        <span className="font-mono font-bold" style={{ color: theme.textSecondary }}>
                           {task.wbsCode}
                         </span>
                       );
@@ -439,7 +446,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                                 e.stopPropagation();
                                 onToggleCollapse(task.id);
                               }}
-                              className="w-4 h-4 flex items-center justify-center rounded hover:bg-slate-200 text-slate-900 font-black cursor-pointer select-none transition-colors"
+                              style={{ color: theme.textPrimary }}
+                              className="w-4 h-4 flex items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 font-black cursor-pointer select-none transition-colors"
                               title={task.isCollapsed ? 'Expand Task' : 'Collapse Task'}
                             >
                               {task.isCollapsed ? '▶' : '▼'}
@@ -448,54 +456,61 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                             <Flag className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                           ) : null}
                           <span
+                            style={{ color: theme.textPrimary }}
                             className={`truncate ${
-                              task.isSummary ? 'font-bold text-slate-950 text-sm' : 'font-medium text-slate-900'
+                              task.isSummary ? 'font-bold text-sm' : 'font-medium'
                             }`}
                           >
                             {task.name}
                           </span>
                           {task.notes && task.notes.trim() && (
                             <span
-                              className="inline-flex items-center shrink-0 cursor-help ml-1 p-0.5 rounded hover:bg-amber-100/60 transition-colors"
+                              className="inline-flex items-center shrink-0 cursor-help ml-1 p-0.5 rounded hover:bg-amber-100/30 transition-colors"
                               title={`Note:\n${task.notes}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onOpenTaskInfo?.(task);
                               }}
                             >
-                              <FileText className="w-3.5 h-3.5 text-amber-500 hover:text-amber-600" />
+                              <FileText className="w-3.5 h-3.5 text-amber-500 hover:text-amber-400" />
                             </span>
                           )}
                         </div>
                       );
                     } else if (col.field === 'duration') {
                       displayVal = (
-                        <span className="font-bold text-slate-900">
+                        <span className="font-bold tabular-nums" style={{ color: theme.textPrimary }}>
                           {`${task.duration} d`}
                         </span>
                       );
                     } else if (col.field === 'startDate') {
-                      displayVal = <span className="font-mono font-semibold text-slate-900">{task.startDate}</span>;
+                      displayVal = <span className="font-mono font-semibold tabular-nums" style={{ color: theme.textPrimary }}>{task.startDate}</span>;
                     } else if (col.field === 'endDate') {
-                      displayVal = <span className="font-mono font-semibold text-slate-900">{task.endDate}</span>;
+                      displayVal = <span className="font-mono font-semibold tabular-nums" style={{ color: theme.textPrimary }}>{task.endDate}</span>;
                     } else if (col.field === 'progress') {
                       displayVal = (
                         <div className="flex items-center space-x-1.5">
-                          <span className="font-mono font-bold text-slate-900 w-9 text-right">{task.progress}%</span>
-                          <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden border border-slate-300">
+                          <span className="font-mono font-bold w-9 text-right tabular-nums" style={{ color: theme.textPrimary }}>{task.progress}%</span>
+                          <div
+                            style={{ borderColor: theme.border, backgroundColor: theme.isDark ? '#374151' : '#E2E8F0' }}
+                            className="flex-1 h-2 rounded-full overflow-hidden border"
+                          >
                             <div
-                              style={{ width: `${task.progress}%` }}
-                              className="h-full bg-indigo-600 rounded-full transition-all"
+                              style={{ width: `${task.progress}%`, backgroundColor: theme.taskProgressFill || theme.signal }}
+                              className="h-full rounded-full transition-all"
                             />
                           </div>
                         </div>
                       );
                     } else if (col.field === 'weight') {
-                      displayVal = <span className="font-mono font-bold text-slate-800">{task.weight}%</span>;
+                      displayVal = <span className="font-mono font-bold tabular-nums" style={{ color: theme.textSecondary }}>{task.weight}%</span>;
                     } else if (col.field === 'predecessors') {
                       displayVal = (
                         <div className="flex items-center justify-between group/pred">
-                          <span className="font-mono font-bold text-indigo-950">
+                          <span
+                            className="font-mono font-bold"
+                            style={{ color: theme.isDark ? '#93C5FD' : '#1E3A8A' }}
+                          >
                             {task.predecessorText || '-'}
                           </span>
                           {!task.isSummary && (
@@ -505,7 +520,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                                 e.stopPropagation();
                                 onOpenPredecessorModal(task);
                               }}
-                              className="opacity-0 group-hover/pred:opacity-100 p-0.5 hover:bg-indigo-100 text-indigo-700 rounded transition-opacity"
+                              className="opacity-0 group-hover/pred:opacity-100 p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-opacity"
+                              style={{ color: theme.signal }}
                               title="Edit Relationships"
                             >
                               <GitCommit className="w-3.5 h-3.5" />
@@ -517,57 +533,63 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       const tf = task.totalFloat ?? 0;
                       displayVal = (
                         <span
-                          className={`font-mono font-bold ${
-                            task.isCritical
-                              ? 'text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded text-[11px]'
-                              : 'text-slate-700'
-                          }`}
+                          style={{
+                            color: task.isCritical ? theme.critical : theme.textSecondary,
+                            backgroundColor: task.isCritical ? `${theme.critical}20` : undefined,
+                            borderColor: task.isCritical ? `${theme.critical}60` : undefined
+                          }}
+                          className={`font-mono font-bold tabular-nums ${task.isCritical ? 'border px-1.5 py-0.5 rounded text-[11px]' : ''}`}
                         >
                           {tf}d
                         </span>
                       );
                     } else if (col.field === 'plannedManHours') {
-                      displayVal = <span className="font-mono font-bold text-slate-900">{task.plannedManHours || 0}</span>;
+                      displayVal = <span className="font-mono font-bold tabular-nums" style={{ color: theme.textPrimary }}>{task.plannedManHours || 0}</span>;
                     } else if (col.field === 'actualManHours') {
-                      displayVal = <span className="font-mono font-bold text-slate-900">{task.actualManHours || 0}</span>;
+                      displayVal = <span className="font-mono font-bold tabular-nums" style={{ color: theme.textPrimary }}>{task.actualManHours || 0}</span>;
                     } else if (col.field === 'remainingManHours') {
-                      displayVal = <span className="font-mono font-bold text-slate-800">{task.remainingManHours || 0}</span>;
+                      displayVal = <span className="font-mono font-bold tabular-nums" style={{ color: theme.textSecondary }}>{task.remainingManHours || 0}</span>;
                     } else if (col.field === 'earnedManHours') {
-                      displayVal = <span className="font-mono font-bold text-emerald-800">{task.earnedManHours || 0}</span>;
+                      displayVal = <span className="font-mono font-bold tabular-nums" style={{ color: '#10B981' }}>{task.earnedManHours || 0}</span>;
                     } else if (col.field === 'baselineStart') {
-                      displayVal = <span className="font-mono text-slate-700">{task.baselineStartDate || '-'}</span>;
+                      displayVal = <span className="font-mono tabular-nums" style={{ color: theme.textSecondary }}>{task.baselineStartDate || '-'}</span>;
                     } else if (col.field === 'baselineEnd') {
-                      displayVal = <span className="font-mono text-slate-700">{task.baselineEndDate || '-'}</span>;
+                      displayVal = <span className="font-mono tabular-nums" style={{ color: theme.textSecondary }}>{task.baselineEndDate || '-'}</span>;
                     } else if (col.field === 'variance') {
                       if (task.baselineVarianceDays !== undefined) {
                         const isLate = task.baselineVarianceDays > 0;
                         const isEarly = task.baselineVarianceDays < 0;
                         displayVal = (
                           <span
-                            className={`font-bold font-mono ${
-                              isLate ? 'text-red-700' : isEarly ? 'text-emerald-700' : 'text-slate-800'
-                            }`}
+                            style={{ color: isLate ? theme.critical : isEarly ? '#10B981' : theme.textSecondary }}
+                            className="font-bold font-mono tabular-nums"
                           >
                             {isLate ? `+${task.baselineVarianceDays}d` : `${task.baselineVarianceDays}d`}
                           </span>
                         );
                       } else {
-                        displayVal = <span className="text-slate-400">-</span>;
+                        displayVal = <span style={{ color: theme.textSecondary }}>-</span>;
                       }
                     } else if (col.field === 'notes') {
                       displayVal = task.notes ? (
-                        <span className="text-slate-700 truncate block text-[11px]" title={task.notes}>
+                        <span className="truncate block text-[11px]" style={{ color: theme.textSecondary }} title={task.notes}>
                           {task.notes}
                         </span>
                       ) : (
-                        <span className="text-slate-300 italic text-[11px]">Click to add note</span>
+                        <span className="italic text-[11px] opacity-40">Click to add note</span>
                       );
                     }
 
                     return (
                       <td
                         key={col.field}
-                        style={{ height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, boxSizing: 'border-box' }}
+                        style={{
+                          height: `${rowHeight}px`,
+                          maxHeight: `${rowHeight}px`,
+                          boxSizing: 'border-box',
+                          borderRightColor: theme.border,
+                          color: theme.textPrimary
+                        }}
                         onClick={(e) => {
                           e.stopPropagation();
                           onSelectTask(task.id);
@@ -585,7 +607,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                             startEdit(rowIdx, colIdx);
                           }
                         }}
-                        className={`px-2.5 py-1 border-r border-slate-200 relative whitespace-nowrap overflow-hidden text-ellipsis ${
+                        className={`px-2.5 py-1 border-r relative whitespace-nowrap overflow-hidden text-ellipsis ${
                           isCellActive ? 'ring-2 ring-indigo-600 ring-inset z-10' : ''
                         }`}
                       >
@@ -632,7 +654,12 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                                 gridContainerRef.current?.focus();
                               }
                             }}
-                            className="w-full h-full bg-white border border-indigo-600 px-1 py-0.5 text-xs text-slate-900 font-bold outline-none rounded shadow-xs"
+                            style={{
+                              backgroundColor: theme.surfaceBg,
+                              color: theme.textPrimary,
+                              borderColor: theme.signal
+                            }}
+                            className="w-full h-full border px-1 py-0.5 text-xs font-bold outline-none rounded shadow-xs"
                           />
                         ) : (
                           displayVal
