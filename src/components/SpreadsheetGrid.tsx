@@ -15,6 +15,7 @@ interface SpreadsheetGridProps {
   onOutdentTask: (taskId: string) => void;
   onOpenPredecessorModal: (task: Task) => void;
   onOpenTaskInfo?: (task: Task) => void;
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
   onToggleCollapse: (taskId: string) => void;
   weightMode: WeightMode;
   fontSize?: FontSizeOption;
@@ -73,6 +74,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   onOutdentTask,
   onOpenPredecessorModal,
   onOpenTaskInfo,
+  onContextMenu,
   onToggleCollapse,
   fontSize = 'normal',
   scrollContainerRef,
@@ -364,6 +366,11 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                     onSelectTask(task.id);
                     setActiveCell((prev) => ({ rowIdx, colIdx: prev?.colIdx ?? 1 }));
                     gridContainerRef.current?.focus();
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    onSelectTask(task.id);
+                    onContextMenu?.(e, task);
                   }}
                   className={`border-b border-slate-200 cursor-pointer transition-colors ${
                     isSelected

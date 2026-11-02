@@ -13,6 +13,7 @@ import { ProjectSettingsModal } from './components/ProjectSettingsModal';
 import { PredecessorModal } from './components/PredecessorModal';
 import { ExportModal } from './components/ExportModal';
 import { TaskInformationModal } from './components/TaskInformationModal';
+import { TaskContextMenu } from './components/TaskContextMenu';
 
 const DEFAULT_CALENDAR: ProjectCalendar = {
   workingDays: [1, 2, 3, 4, 5], // Mon - Fri
@@ -348,6 +349,34 @@ export function App() {
     setIsTaskInfoModalOpen(true);
   }, []);
 
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    task: Task | null;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    task: null
+  });
+
+  const handleOpenContextMenu = useCallback((e: React.MouseEvent, task: Task) => {
+    e.preventDefault();
+    setSelectedTaskId(task.id);
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      task
+    });
+  }, []);
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(prev => ({ ...prev, isOpen: false, task: null }));
+  }, []);
+
   // Auto recalculate schedule whenever tasks, calendar, or weightMode change
   const tasks = useMemo(() => {
     return recalculateSchedule(rawTasks, settings.calendar, settings.weightMode);
@@ -461,7 +490,7 @@ export function App() {
     setRawTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
   }, []);
 
-  const handleAddTask = useCallback((afterTaskId?: string) => {
+  const handleAddTask = useCallback((afterTaskId?: string, asChild?: boolean) => {
     const newId = `t-${Date.now().toString(36)}`;
     const today = formatDate(new Date());
 
@@ -472,16 +501,21 @@ export function App() {
       const idx = rawTasks.findIndex(t => t.id === afterTaskId);
       if (idx !== -1) {
         const selectedTask = rawTasks[idx];
-        const isSummary = !!(selectedTask.isSummary || rawTasks.some(t => t.parentId === selectedTask.id));
-
-        if (isSummary) {
-          // When adding under a summary task, it MUST be added as a child of that summary task
+        if (asChild === true) {
           parentId = selectedTask.id;
           insertIndex = idx + 1;
-        } else {
-          // When adding under a regular leaf task, add as a sibling under the same parent
+        } else if (asChild === false) {
           parentId = selectedTask.parentId;
           insertIndex = idx + 1;
+        } else {
+          const isSummary = !!(selectedTask.isSummary || rawTasks.some(t => t.parentId === selectedTask.id));
+          if (isSummary) {
+            parentId = selectedTask.id;
+            insertIndex = idx + 1;
+          } else {
+            parentId = selectedTask.parentId;
+            insertIndex = idx + 1;
+          }
         }
       }
     }
@@ -498,9 +532,9 @@ export function App() {
       duration: 5,
       progress: 0,
       predecessors: [],
-      plannedManHours: 40,
+      plannedManHours: 0,
       actualManHours: 0,
-      remainingManHours: 40,
+      remainingManHours: 0,
       earnedManHours: 0,
       weight: 0
     };
@@ -519,6 +553,59 @@ export function App() {
 
     setSelectedTaskId(newId);
   }, [rawTasks, settings.calendar]);
+
+  const handleAddSubtask = useCallback((parentTaskId: string) => {
+    handleAddTask(parentTaskId, true);
+  }, [handleAddTask]);
+
+  const handleDuplicateTask = useCallback((taskId: string) => {
+    const idx = rawTasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return;
+    const original = rawTasks[idx];
+    const newId = `t-${Date.now().toString(36)}`;
+    const duplicatedTask: Task = {
+      ...original,
+      id: newId,
+      wbsCode: '',
+      name: `${original.name} (Copy)`,
+      progress: 0,
+      actualManHours: 0,
+      remainingManHours: original.plannedManHours || 0,
+      earnedManHours: 0,
+      predecessors: (original.predecessors || []).map(p => ({ ...p }))
+    };
+
+    setRawTasks(prev => {
+      const copy = [...prev];
+      copy.splice(idx + 1, 0, duplicatedTask);
+      return copy;
+    });
+
+    setSelectedTaskId(newId);
+  }, [rawTasks]);
+
+  const handleClearDependencies = useCallback((taskId: string) => {
+    setRawTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        return { ...t, predecessors: [] };
+      }
+      return {
+        ...t,
+        predecessors: (t.predecessors || []).filter(p => p.taskId !== taskId)
+      };
+    }));
+  }, []);
+
+  const handleToggleMilestone = useCallback((taskId: string) => {
+    const task = rawTasks.find(t => t.id === taskId);
+    if (!task) return;
+    const isNowMilestone = !task.isMilestone && task.duration > 0;
+    handleUpdateTask(taskId, {
+      isMilestone: isNowMilestone,
+      duration: isNowMilestone ? 0 : 5,
+      endDate: isNowMilestone ? task.startDate : addWorkingDays(task.startDate, 5, settings.calendar)
+    });
+  }, [rawTasks, handleUpdateTask, settings.calendar]);
 
   const handleDeleteTask = useCallback((taskId: string) => {
     const taskToDelete = rawTasks.find(t => t.id === taskId);
@@ -1006,6 +1093,7 @@ export function App() {
               onOutdentTask={handleOutdentTask}
               onOpenPredecessorModal={handleOpenPredecessorModal}
               onOpenTaskInfo={handleOpenTaskInfo}
+              onContextMenu={handleOpenContextMenu}
               onToggleCollapse={handleToggleCollapse}
               weightMode={settings.weightMode}
               fontSize={settings.fontSize || 'normal'}
@@ -1037,6 +1125,7 @@ export function App() {
               selectedTaskId={selectedTaskId}
               onOpenPredecessorModal={handleOpenPredecessorModal}
               onOpenTaskInfo={handleOpenTaskInfo}
+              onContextMenu={handleOpenContextMenu}
               fontSize={settings.fontSize || 'normal'}
               zoom={zoomTier}
               dayWidth={dayWidth}
@@ -1092,6 +1181,28 @@ export function App() {
         onClose={() => setIsExportModalOpen(false)}
         tasks={tasks}
         settings={settings}
+      />
+
+      <TaskContextMenu
+        isOpen={contextMenu.isOpen}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        task={contextMenu.task}
+        onClose={handleCloseContextMenu}
+        onOpenTaskInfo={(task) => {
+          setTaskInfoModalTask(task);
+          setIsTaskInfoModalOpen(true);
+        }}
+        onDeleteTask={handleDeleteTask}
+        onAddTaskBelow={(afterId) => handleAddTask(afterId, false)}
+        onAddSubtask={handleAddSubtask}
+        onDuplicateTask={handleDuplicateTask}
+        onClearDependencies={handleClearDependencies}
+        onOpenPredecessors={(task) => {
+          setPredecessorModalTask(task);
+          setIsPredecessorModalOpen(true);
+        }}
+        onToggleMilestone={handleToggleMilestone}
       />
 
       {/* Floating Save/Status Toast Notification */}

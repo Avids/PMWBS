@@ -15,6 +15,7 @@ interface GanttTimelineProps {
   selectedTaskId: string | null;
   onOpenPredecessorModal?: (task: Task) => void;
   onOpenTaskInfo?: (task: Task) => void;
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
   fontSize?: FontSizeOption;
   zoom: ZoomTier;
   dayWidth: number;
@@ -106,6 +107,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   selectedTaskId,
   onOpenPredecessorModal,
   onOpenTaskInfo,
+  onContextMenu,
   fontSize = 'normal',
   zoom,
   dayWidth,
@@ -647,6 +649,11 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                   onClick={() => {
                     if (panStateRef.current?.hasMoved) return;
                     onSelectTask(task.id);
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    onSelectTask(task.id);
+                    onContextMenu?.(e, task);
                   }}
                   onDoubleClick={() => onOpenTaskInfo?.(task)}
                   className={`absolute left-0 right-0 flex items-center border-b border-slate-200 transition-colors ${
