@@ -699,6 +699,126 @@ export function App() {
     setSelectedTaskId(newId);
   }, [rawTasks, updateRawTasks]);
 
+  // Direct Clipboard Paste Handler (Excel / Google Sheets / CSV)
+  const handlePasteRows = useCallback((startRowIdx: number, startColIdx: number, matrix: string[][]) => {
+    if (!matrix || matrix.length === 0) return;
+
+    const columnFields = [
+      'wbs',
+      'name',
+      'duration',
+      'startDate',
+      'endDate',
+      'progress',
+      'weight',
+      'predecessors',
+      'totalFloat',
+      'plannedManHours',
+      'actualManHours',
+      'remainingManHours',
+      'earnedManHours',
+      'baselineStart',
+      'baselineEnd',
+      'variance',
+      'notes'
+    ];
+
+    const today = formatDate(new Date());
+
+    updateRawTasks(prev => {
+      const copy = [...prev];
+      let parentId: string | null = null;
+      if (startRowIdx >= 0 && startRowIdx < copy.length) {
+        parentId = copy[startRowIdx].parentId;
+      }
+
+      matrix.forEach((rowValues, rIdx) => {
+        const targetRowIdx = startRowIdx + rIdx;
+        const updates: Partial<Task> = {};
+
+        rowValues.forEach((cellRaw, cOffset) => {
+          const colField = columnFields[startColIdx + cOffset];
+          if (!colField) return;
+          const trimmed = cellRaw.trim();
+          if (!trimmed && colField !== 'notes') return;
+
+          if (colField === 'name') {
+            if (trimmed) updates.name = trimmed;
+          } else if (colField === 'duration') {
+            const num = parseFloat(trimmed.replace(/[^\d.]/g, ''));
+            if (!isNaN(num) && num >= 0) updates.duration = num;
+          } else if (colField === 'startDate') {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+              updates.startDate = trimmed;
+            } else {
+              const mdy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+              if (mdy) {
+                updates.startDate = `${mdy[3]}-${mdy[1].padStart(2, '0')}-${mdy[2].padStart(2, '0')}`;
+              }
+            }
+          } else if (colField === 'endDate') {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+              updates.endDate = trimmed;
+            } else {
+              const mdy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+              if (mdy) {
+                updates.endDate = `${mdy[3]}-${mdy[1].padStart(2, '0')}-${mdy[2].padStart(2, '0')}`;
+              }
+            }
+          } else if (colField === 'progress') {
+            let p = parseFloat(trimmed.replace('%', ''));
+            if (!isNaN(p)) {
+              if (p <= 1 && p > 0 && !trimmed.includes('%')) p = Math.round(p * 100);
+              updates.progress = Math.min(100, Math.max(0, p));
+            }
+          } else if (colField === 'predecessors') {
+            updates.predecessorText = trimmed;
+          } else if (colField === 'plannedManHours') {
+            const mh = parseFloat(trimmed.replace(/[^\d.]/g, ''));
+            if (!isNaN(mh) && mh >= 0) updates.plannedManHours = mh;
+          } else if (colField === 'actualManHours') {
+            const mh = parseFloat(trimmed.replace(/[^\d.]/g, ''));
+            if (!isNaN(mh) && mh >= 0) updates.actualManHours = mh;
+          } else if (colField === 'notes') {
+            updates.notes = trimmed;
+          }
+        });
+
+        if (targetRowIdx < copy.length) {
+          copy[targetRowIdx] = { ...copy[targetRowIdx], ...updates };
+        } else {
+          const newId = `t-${Date.now().toString(36)}-${rIdx}`;
+          const duration = updates.duration ?? 5;
+          const startDate = updates.startDate ?? today;
+          copy.push({
+            id: newId,
+            wbsCode: '',
+            name: updates.name || `Activity ${copy.length + 1}`,
+            parentId,
+            isSummary: false,
+            isMilestone: duration === 0,
+            startDate,
+            endDate: updates.endDate ?? addWorkingDays(startDate, duration, settings.calendar),
+            duration,
+            progress: updates.progress ?? 0,
+            predecessors: [],
+            predecessorText: updates.predecessorText,
+            plannedManHours: updates.plannedManHours ?? 0,
+            actualManHours: updates.actualManHours ?? 0,
+            remainingManHours: 0,
+            earnedManHours: 0,
+            weight: 0,
+            notes: updates.notes
+          });
+        }
+      });
+
+      return copy;
+    }, true);
+
+    showToast(`Successfully pasted ${matrix.length} row(s) from Excel`, 'success', 'Excel Paste');
+  }, [settings.calendar, showToast, updateRawTasks]);
+
   const handleClearDependencies = useCallback((taskId: string) => {
     updateRawTasks(prev => prev.map(t => {
       if (t.id === taskId) {
@@ -1266,6 +1386,7 @@ export function App() {
               onVerticalScroll={handleGridScroll}
               colorTheme={settings.colorTheme}
               fontFamilyChoice={settings.fontFamilyChoice}
+              onPasteRows={handlePasteRows}
             />
           </div>
 

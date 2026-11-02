@@ -24,6 +24,7 @@ interface SpreadsheetGridProps {
   onVerticalScroll?: (scrollTop: number) => void;
   colorTheme?: ColorTheme;
   fontFamilyChoice?: FontFamilyChoice;
+  onPasteRows?: (startRowIdx: number, startColIdx: number, matrix: string[][]) => void;
 }
 
 type ColumnField = 
@@ -83,7 +84,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   scrollContainerRef,
   onVerticalScroll,
   colorTheme = 'classic',
-  fontFamilyChoice
+  fontFamilyChoice,
+  onPasteRows
 }) => {
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
   const [editingCell, setEditingCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
@@ -325,11 +327,39 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     }
   };
 
+  // Clipboard Paste Handler (Supports copying columns/rows from Excel/Google Sheets)
+  const handlePaste = (e: React.ClipboardEvent) => {
+    // If user is currently editing inside an active input, let native text input paste work
+    if (editingCell) return;
+
+    const clipText = e.clipboardData.getData('text/plain');
+    if (!clipText || !clipText.trim()) return;
+
+    e.preventDefault();
+
+    // Split text into rows (handles CRLF and LF)
+    const rawLines = clipText
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .split('\n');
+
+    // Filter out trailing empty line often appended by Excel
+    const lines = rawLines.filter((l, idx) => idx < rawLines.length - 1 || l.trim().length > 0);
+    if (lines.length === 0) return;
+
+    const matrix = lines.map((line) => line.split('\t'));
+    const startRow = activeCell?.rowIdx ?? (selectedTaskId ? Math.max(0, tasks.findIndex((t) => t.id === selectedTaskId)) : 0);
+    const startCol = activeCell?.colIdx ?? 1; // Default to Column 1 (Task Name)
+
+    onPasteRows?.(startRow, startCol, matrix);
+  };
+
   return (
     <div
       ref={gridContainerRef}
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
       style={{ backgroundColor: theme.surfaceBg, fontFamily: theme.fontFamily }}
       className="flex flex-col h-full select-none overflow-hidden focus:outline-none"
     >
