@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier } from './types/project';
-import { recalculateSchedule, formatDate, addWorkingDays } from './engine/scheduler';
+import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier, ProjectCalendar } from './types/project';
+import { recalculateSchedule, formatDate, addWorkingDays, sanitizeCalendar } from './engine/scheduler';
 import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML, parseExcelProject } from './engine/importers';
 import { saveProjectWithDialog } from './services/platform';
+import { CheckCircle2 } from 'lucide-react';
 import { Toolbar } from './components/Toolbar';
 import { ActionBar } from './components/ActionBar';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
@@ -12,7 +13,7 @@ import { ProjectSettingsModal } from './components/ProjectSettingsModal';
 import { PredecessorModal } from './components/PredecessorModal';
 import { ExportModal } from './components/ExportModal';
 
-const DEFAULT_CALENDAR = {
+const DEFAULT_CALENDAR: ProjectCalendar = {
   workingDays: [1, 2, 3, 4, 5], // Mon - Fri
   holidays: [],
   hoursPerDay: 8
@@ -257,17 +258,43 @@ const INITIAL_TASKS: Task[] = [
 ];
 
 export function App() {
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(prev => prev === msg ? null : prev);
+    }, 4500);
+  }, []);
+
   const [settings, setSettings] = useState<ProjectSettings>(() => {
     const saved = localStorage.getItem('wbs_settings');
     if (saved) {
       try {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          calendar: sanitizeCalendar(parsed.calendar)
+        };
       } catch (e) {
         console.error(e);
       }
     }
     return DEFAULT_SETTINGS;
   });
+
+  const handleUpdateSettings = useCallback((updates: Partial<ProjectSettings>) => {
+    setSettings(prev => {
+      const prevCal = prev.calendar || DEFAULT_CALENDAR;
+      const nextCal = updates.calendar ? { ...prevCal, ...updates.calendar } : prevCal;
+      return {
+        ...prev,
+        ...updates,
+        calendar: nextCal
+      };
+    });
+  }, []);
 
   const [rawTasks, setRawTasks] = useState<Task[]>(() => {
     const saved = localStorage.getItem('wbs_tasks');
@@ -629,16 +656,77 @@ export function App() {
     }));
   }, []);
 
+  // Helper to safely restore a loaded project with complete calendar settings
+  const applyLoadedProject = useCallback((projectFile: any, sourceName: string = 'project') => {
+    if (!projectFile || typeof projectFile !== 'object') return;
+
+    const rawMeta = projectFile.meta || {};
+    const rawCalendar = projectFile.calendar || rawMeta.calendar;
+    const sanitizedCal = sanitizeCalendar(rawCalendar);
+
+    const mergedSettings: ProjectSettings = {
+      ...DEFAULT_SETTINGS,
+      ...rawMeta,
+      calendar: sanitizedCal,
+      weightMode: rawMeta.weightMode || 'duration',
+      currency: rawMeta.currency || '$',
+      showBaseline: rawMeta.showBaseline ?? true,
+      showCriticalPath: rawMeta.showCriticalPath ?? true,
+      showTaskLabels: rawMeta.showTaskLabels ?? true,
+      fontSize: rawMeta.fontSize || 'normal'
+    };
+
+    setSettings(mergedSettings);
+
+    if (Array.isArray(projectFile.tasks)) {
+      setRawTasks(projectFile.tasks);
+      if (projectFile.tasks.length > 0) {
+        setSelectedTaskId(projectFile.tasks[0].id);
+      }
+    }
+
+    if (Array.isArray(projectFile.baselines)) {
+      setBaselines(projectFile.baselines);
+    }
+
+    showToast(`Loaded ${sourceName} "${mergedSettings.name}" with calendar settings (${sanitizedCal.workingDays.length} work days/wk, ${sanitizedCal.hoursPerDay}h/day, ${sanitizedCal.holidays.length} holiday${sanitizedCal.holidays.length === 1 ? '' : 's'}).`);
+  }, [showToast]);
+
   // Native WBS File Save & Load (Supports Electron Native Save Dialog & Web Fallback)
-  const handleSaveWBS = async () => {
+  const handleSaveWBS = useCallback(async () => {
+    const calendarSnapshot: ProjectCalendar = sanitizeCalendar(settings.calendar);
+
     const fileData: ProjectFile = {
       version: '1.0',
-      meta: settings,
+      meta: {
+        ...settings,
+        calendar: calendarSnapshot
+      },
+      calendar: calendarSnapshot,
       baselines,
       tasks
     };
-    await saveProjectWithDialog(fileData, `${settings.name.replace(/\s+/g, '_')}.wbs`);
-  };
+
+    const fileName = `${settings.name.replace(/\s+/g, '_')}.wbs`;
+    const res = await saveProjectWithDialog(fileData, fileName);
+    if (res.success) {
+      showToast(
+        `Project saved successfully with calendar settings! (${calendarSnapshot.workingDays.length} work days/wk, ${calendarSnapshot.hoursPerDay}h/day, ${calendarSnapshot.holidays.length} holiday${calendarSnapshot.holidays.length === 1 ? '' : 's'})`
+      );
+    }
+  }, [settings, baselines, tasks, showToast]);
+
+  // Keyboard shortcut Ctrl+S / Cmd+S to save project
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSaveWBS();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSaveWBS]);
 
   // Listen for initial file or file-open events in Electron desktop mode (.wbs double-click)
   useEffect(() => {
@@ -647,12 +735,7 @@ export function App() {
         if (initialFile?.content) {
           try {
             const projectFile: ProjectFile = JSON.parse(initialFile.content);
-            if (projectFile.meta && projectFile.tasks) {
-              setSettings(projectFile.meta);
-              setRawTasks(projectFile.tasks);
-              if (projectFile.baselines) setBaselines(projectFile.baselines);
-              if (projectFile.tasks.length > 0) setSelectedTaskId(projectFile.tasks[0].id);
-            }
+            applyLoadedProject(projectFile, initialFile.name || 'file');
           } catch (e) {
             console.error('Failed to load initial file:', e);
           }
@@ -665,12 +748,7 @@ export function App() {
         if (data?.content) {
           try {
             const projectFile: ProjectFile = JSON.parse(data.content);
-            if (projectFile.meta && projectFile.tasks) {
-              setSettings(projectFile.meta);
-              setRawTasks(projectFile.tasks);
-              if (projectFile.baselines) setBaselines(projectFile.baselines);
-              if (projectFile.tasks.length > 0) setSelectedTaskId(projectFile.tasks[0].id);
-            }
+            applyLoadedProject(projectFile, data.name || 'opened file');
           } catch (e) {
             console.error('Failed to load opened file:', e);
           }
@@ -678,15 +756,12 @@ export function App() {
       });
       return unsub;
     }
-  }, []);
+  }, [applyLoadedProject]);
 
   const handleLoadWBS = async (file: File) => {
     try {
       const projectFile = await loadNativeWBSFile(file);
-      setSettings(projectFile.meta);
-      setRawTasks(projectFile.tasks);
-      if (projectFile.baselines) setBaselines(projectFile.baselines);
-      if (projectFile.tasks.length > 0) setSelectedTaskId(projectFile.tasks[0].id);
+      applyLoadedProject(projectFile, file.name);
     } catch (err: any) {
       alert(`Error loading .wbs file: ${err.message}`);
     }
@@ -705,7 +780,7 @@ export function App() {
       if (result.tasks.length > 0) {
         setSelectedTaskId(result.tasks[0].id);
       }
-      alert(`Successfully imported "${result.projectTitle}" (${result.tasks.length} tasks) from Microsoft Project!`);
+      showToast(`Successfully imported "${result.projectTitle}" (${result.tasks.length} tasks) from Microsoft Project!`);
     } catch (err: any) {
       alert(err.message || 'Error importing MS Project file');
     }
@@ -718,13 +793,19 @@ export function App() {
       setSettings(prev => ({
         ...prev,
         name: result.projectTitle || prev.name,
-        startDate: result.startDate || prev.startDate
+        startDate: result.startDate || prev.startDate,
+        ...(result.calendar ? { calendar: result.calendar } : {}),
+        ...(result.currency ? { currency: result.currency } : {}),
+        ...(result.weightMode ? { weightMode: result.weightMode } : {})
       }));
       setRawTasks(result.tasks);
       if (result.tasks.length > 0) {
         setSelectedTaskId(result.tasks[0].id);
       }
-      alert(`Successfully imported "${result.projectTitle}" (${result.tasks.length} activities) from Excel!`);
+      const calInfo = result.calendar
+        ? ` with calendar (${result.calendar.workingDays.length} work days/wk, ${result.calendar.hoursPerDay}h/day, ${result.calendar.holidays.length} holiday${result.calendar.holidays.length === 1 ? '' : 's'})`
+        : '';
+      showToast(`Successfully imported "${result.projectTitle}" (${result.tasks.length} activities)${calInfo}!`);
     } catch (err: any) {
       alert(err.message || 'Error importing Excel file');
     }
@@ -851,7 +932,7 @@ export function App() {
         {/* Top Ribbon Toolbar */}
         <Toolbar
           settings={settings}
-          onUpdateSettings={(u) => setSettings(s => ({ ...s, ...u }))}
+          onUpdateSettings={handleUpdateSettings}
           onNewProject={handleNewProject}
           onSaveWBS={handleSaveWBS}
           onLoadWBS={handleLoadWBS}
@@ -966,7 +1047,7 @@ export function App() {
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         settings={settings}
-        onUpdateSettings={(u) => setSettings(s => ({ ...s, ...u }))}
+        onUpdateSettings={handleUpdateSettings}
       />
 
       <PredecessorModal
@@ -986,6 +1067,14 @@ export function App() {
         tasks={tasks}
         settings={settings}
       />
+
+      {/* Floating Save/Status Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-indigo-500/40 flex items-center space-x-2.5 text-xs font-medium backdrop-blur-md animate-fade-in max-w-md">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span className="leading-tight">{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }

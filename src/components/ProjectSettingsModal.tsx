@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { ProjectSettings } from '../types/project';
-import { Settings, X, Plus } from 'lucide-react';
+import { Settings, X, Plus, Check } from 'lucide-react';
 
 interface ProjectSettingsModalProps {
   isOpen: boolean;
@@ -19,23 +19,32 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
   if (!isOpen) return null;
 
+  const calendar = settings.calendar || {
+    workingDays: [1, 2, 3, 4, 5],
+    holidays: [],
+    hoursPerDay: 8
+  };
+
   const toggleDay = (dayIndex: number) => {
-    const current = settings.calendar.workingDays;
+    const current = calendar.workingDays || [1, 2, 3, 4, 5];
     const next = current.includes(dayIndex)
       ? current.filter(d => d !== dayIndex)
-      : [...current, dayIndex].sort();
+      : [...current, dayIndex].sort((a, b) => a - b);
     
+    // Prevent unchecking all days
+    if (next.length === 0) return;
+
     onUpdateSettings({
-      calendar: { ...settings.calendar, workingDays: next }
+      calendar: { ...calendar, workingDays: next }
     });
   };
 
   const addHoliday = () => {
-    if (!newHoliday || settings.calendar.holidays.includes(newHoliday)) return;
+    if (!newHoliday || calendar.holidays.includes(newHoliday)) return;
     onUpdateSettings({
       calendar: {
-        ...settings.calendar,
-        holidays: [...settings.calendar.holidays, newHoliday].sort()
+        ...calendar,
+        holidays: [...calendar.holidays, newHoliday].sort()
       }
     });
     setNewHoliday('');
@@ -44,8 +53,8 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   const removeHoliday = (dateStr: string) => {
     onUpdateSettings({
       calendar: {
-        ...settings.calendar,
-        holidays: settings.calendar.holidays.filter(h => h !== dateStr)
+        ...calendar,
+        holidays: calendar.holidays.filter(h => h !== dateStr)
       }
     });
   };
@@ -81,10 +90,15 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
         <div className="p-5 space-y-5 max-h-[75vh] overflow-y-auto">
           {/* Working Days */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-800">Working Days (Work Week)</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-800">Working Days (Work Week)</label>
+              <span className="text-[11px] text-slate-500 font-medium">
+                {calendar.workingDays.length} working days selected
+              </span>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {dayNames.map(d => {
-                const isSelected = settings.calendar.workingDays.includes(d.idx);
+                const isSelected = calendar.workingDays.includes(d.idx);
                 return (
                   <label
                     key={d.idx}
@@ -113,10 +127,13 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                 type="number"
                 min="1"
                 max="24"
-                value={settings.calendar.hoursPerDay}
-                onChange={(e) => onUpdateSettings({
-                  calendar: { ...settings.calendar, hoursPerDay: parseInt(e.target.value, 10) || 8 }
-                })}
+                value={calendar.hoursPerDay || 8}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  onUpdateSettings({
+                    calendar: { ...calendar, hoursPerDay: isNaN(val) ? 8 : Math.min(24, Math.max(1, val)) }
+                  });
+                }}
                 className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -124,7 +141,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
               <label className="text-xs font-semibold text-slate-800">Currency Symbol</label>
               <input
                 type="text"
-                value={settings.currency}
+                value={settings.currency || '$'}
                 onChange={(e) => onUpdateSettings({ currency: e.target.value })}
                 className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -201,9 +218,9 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
               </button>
             </div>
 
-            {settings.calendar.holidays.length > 0 && (
+            {calendar.holidays.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-2">
-                {settings.calendar.holidays.map(h => (
+                {calendar.holidays.map(h => (
                   <span key={h} className="inline-flex items-center space-x-1 px-2 py-1 bg-slate-100 text-slate-700 text-xs rounded-md border border-slate-200">
                     <span>{h}</span>
                     <button onClick={() => removeHoliday(h)} className="hover:text-red-600">
@@ -217,12 +234,16 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+        <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+          <span className="text-[11px] text-slate-500 italic">
+            Calendar settings are saved with project (.wbs & Excel)
+          </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors shadow-xs"
+            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors shadow-xs flex items-center space-x-1.5"
           >
-            Done
+            <Check className="w-3.5 h-3.5" />
+            <span>Done</span>
           </button>
         </div>
       </div>

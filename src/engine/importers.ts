@@ -79,7 +79,29 @@ export function exportToExcel(tasks: Task[], settings: ProjectSettings, filename
   ];
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, settings.name.slice(0, 31) || 'Schedule');
+  XLSX.utils.book_append_sheet(workbook, worksheet, (settings.name || 'Schedule').slice(0, 31));
+
+  // 2. Project Calendar & Settings Sheet (Preserves full calendar settings on export)
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const workingDayLabels = (settings.calendar?.workingDays || [1, 2, 3, 4, 5])
+    .map(d => dayNames[d] || `Day ${d}`)
+    .join(', ');
+
+  const calData = [
+    { 'Setting': 'Project Name', 'Value': settings.name },
+    { 'Setting': 'Project Author', 'Value': settings.author || '' },
+    { 'Setting': 'Start Date', 'Value': settings.startDate },
+    { 'Setting': 'Currency Symbol', 'Value': settings.currency || '$' },
+    { 'Setting': 'Weight Computation Mode', 'Value': settings.weightMode || 'duration' },
+    { 'Setting': 'Work Hours Per Day', 'Value': settings.calendar?.hoursPerDay || 8 },
+    { 'Setting': 'Working Days (Indices)', 'Value': (settings.calendar?.workingDays || [1, 2, 3, 4, 5]).join(',') },
+    { 'Setting': 'Working Days (Names)', 'Value': workingDayLabels },
+    { 'Setting': 'Project Holidays & Shutdowns', 'Value': (settings.calendar?.holidays || []).join(', ') }
+  ];
+
+  const calWorksheet = XLSX.utils.json_to_sheet(calData);
+  calWorksheet['!cols'] = [{ wch: 30 }, { wch: 50 }];
+  XLSX.utils.book_append_sheet(workbook, calWorksheet, 'Project Calendar');
 
   XLSX.writeFile(workbook, filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`);
 }

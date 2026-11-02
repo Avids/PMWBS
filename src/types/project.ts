@@ -101,6 +101,7 @@ export interface ProjectSettings {
 export interface ProjectFile {
   version: string;
   meta: ProjectSettings;
+  calendar?: ProjectCalendar;
   baselines: BaselineData[];
   tasks: Task[];
 }

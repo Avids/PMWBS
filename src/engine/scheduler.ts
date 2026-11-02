@@ -1,13 +1,60 @@
 import type { Task, ProjectCalendar, TaskDependency, DependencyType, WeightMode } from '../types/project';
 
 /**
+ * Validates, repairs, and sanitizes a ProjectCalendar object.
+ * Ensures workingDays contains valid days (0-6), holidays is an array of strings,
+ * and hoursPerDay is a positive number.
+ */
+export function sanitizeCalendar(cal?: Partial<ProjectCalendar> | null): ProjectCalendar {
+  const defaultWorkingDays = [1, 2, 3, 4, 5]; // Mon - Fri
+  if (!cal || typeof cal !== 'object') {
+    return {
+      workingDays: defaultWorkingDays,
+      holidays: [],
+      hoursPerDay: 8
+    };
+  }
+
+  const rawDays = Array.isArray(cal.workingDays) ? cal.workingDays : defaultWorkingDays;
+  const validDays = rawDays
+    .map(Number)
+    .filter(d => !isNaN(d) && d >= 0 && d <= 6);
+
+  const cleanWorkingDays = validDays.length > 0
+    ? Array.from(new Set(validDays)).sort((a, b) => a - b)
+    : defaultWorkingDays;
+
+  const cleanHolidays = Array.isArray(cal.holidays)
+    ? cal.holidays
+        .map(h => String(h || '').trim())
+        .filter(h => /^\d{4}-\d{2}-\d{2}$/.test(h))
+        .sort()
+    : [];
+
+  const cleanHours = typeof cal.hoursPerDay === 'number' && cal.hoursPerDay > 0 && cal.hoursPerDay <= 24
+    ? cal.hoursPerDay
+    : 8;
+
+  return {
+    workingDays: cleanWorkingDays,
+    holidays: cleanHolidays,
+    hoursPerDay: cleanHours
+  };
+}
+
+/**
  * Checks if a given date string (YYYY-MM-DD) is a working day.
  */
 export function isWorkingDay(dateStr: string, calendar: ProjectCalendar): boolean {
-  if (calendar.holidays.includes(dateStr)) return false;
+  if (!dateStr) return false;
+  const holidays = calendar?.holidays || [];
+  if (holidays.includes(dateStr)) return false;
   const d = new Date(dateStr + 'T00:00:00');
   const day = d.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-  return calendar.workingDays.includes(day);
+  const workingDays = calendar?.workingDays && calendar.workingDays.length > 0
+    ? calendar.workingDays
+    : [1, 2, 3, 4, 5];
+  return workingDays.includes(day);
 }
 
 /**
@@ -50,8 +97,9 @@ export function addWorkingDaysOffset(dateStr: string, offset: number, calendar: 
   if (!dateStr) return formatDate(new Date());
   const curr = new Date(dateStr + 'T00:00:00');
 
-  // Align to working day first
-  while (!isWorkingDay(formatDate(curr), calendar)) {
+  // Align to working day first with infinite loop guard
+  let guard = 3650;
+  while (!isWorkingDay(formatDate(curr), calendar) && guard-- > 0) {
     curr.setDate(curr.getDate() + (offset >= 0 ? 1 : -1));
   }
 
@@ -59,8 +107,9 @@ export function addWorkingDaysOffset(dateStr: string, offset: number, calendar: 
 
   const step = offset > 0 ? 1 : -1;
   let remaining = Math.abs(offset);
+  guard = 36500;
 
-  while (remaining > 0) {
+  while (remaining > 0 && guard-- > 0) {
     curr.setDate(curr.getDate() + step);
     if (isWorkingDay(formatDate(curr), calendar)) {
       remaining--;
@@ -83,7 +132,8 @@ export function addWorkingDays(startDateStr: string, days: number, calendar: Pro
   const curr = new Date(startDateStr + 'T00:00:00');
 
   // If start is non-working, move forward to first working day
-  while (!isWorkingDay(formatDate(curr), calendar)) {
+  let guard = 3650;
+  while (!isWorkingDay(formatDate(curr), calendar) && guard-- > 0) {
     curr.setDate(curr.getDate() + 1);
   }
 
@@ -98,7 +148,8 @@ export function addWorkingDays(startDateStr: string, days: number, calendar: Pro
 export function getNextWorkingDay(dateStr: string, calendar: ProjectCalendar): string {
   const curr = new Date(dateStr + 'T00:00:00');
   curr.setDate(curr.getDate() + 1);
-  while (!isWorkingDay(formatDate(curr), calendar)) {
+  let guard = 3650;
+  while (!isWorkingDay(formatDate(curr), calendar) && guard-- > 0) {
     curr.setDate(curr.getDate() + 1);
   }
   return formatDate(curr);
@@ -110,7 +161,8 @@ export function getNextWorkingDay(dateStr: string, calendar: ProjectCalendar): s
 export function getPrevWorkingDay(dateStr: string, calendar: ProjectCalendar): string {
   const curr = new Date(dateStr + 'T00:00:00');
   curr.setDate(curr.getDate() - 1);
-  while (!isWorkingDay(formatDate(curr), calendar)) {
+  let guard = 3650;
+  while (!isWorkingDay(formatDate(curr), calendar) && guard-- > 0) {
     curr.setDate(curr.getDate() - 1);
   }
   return formatDate(curr);
@@ -124,7 +176,8 @@ export function subtractWorkingDays(endDateStr: string, days: number, calendar: 
   if (days <= 0) return endDateStr;
 
   const curr = new Date(endDateStr + 'T00:00:00');
-  while (!isWorkingDay(formatDate(curr), calendar)) {
+  let guard = 3650;
+  while (!isWorkingDay(formatDate(curr), calendar) && guard-- > 0) {
     curr.setDate(curr.getDate() - 1);
   }
   if (days === 1) return formatDate(curr);

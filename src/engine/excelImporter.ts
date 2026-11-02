@@ -1,11 +1,14 @@
 import * as XLSX from 'xlsx';
-import type { Task, ProjectCalendar } from '../types/project';
-import { formatDate, addWorkingDays, parsePredecessors, recalculateSchedule } from './scheduler';
+import type { Task, ProjectCalendar, WeightMode } from '../types/project';
+import { formatDate, addWorkingDays, parsePredecessors, recalculateSchedule, sanitizeCalendar } from './scheduler';
 
 export interface ExcelImportResult {
   projectTitle: string;
   startDate?: string;
   tasks: Task[];
+  calendar?: ProjectCalendar;
+  currency?: string;
+  weightMode?: WeightMode;
 }
 
 /**
@@ -317,6 +320,68 @@ export async function parseExcelProject(file: File, calendar: ProjectCalendar): 
     }
   });
 
+  // Check if workbook contains a dedicated Project Calendar / Settings sheet
+  let importedCalendar: ProjectCalendar = sanitizeCalendar(calendar);
+  let importedCurrency: string | undefined;
+  let importedWeightMode: WeightMode | undefined;
+
+  const calSheetName = workbook.SheetNames.find(s => 
+    /calendar|setting|config/i.test(s)
+  );
+
+  if (calSheetName) {
+    const calSheet = workbook.Sheets[calSheetName];
+    const calRows: any[][] = XLSX.utils.sheet_to_json(calSheet, { header: 1, defval: '' });
+    
+    let workingDaysParsed: number[] | null = null;
+    let hoursPerDayParsed: number | null = null;
+    let holidaysParsed: string[] = [];
+
+    calRows.forEach(row => {
+      if (!Array.isArray(row) || row.length < 2) return;
+      const key = String(row[0] || '').toLowerCase().trim();
+      const val = String(row[1] || '').trim();
+
+      if (key.includes('work hours') || key.includes('hours per day') || key.includes('hours/day')) {
+        const h = parseFloat(val);
+        if (!isNaN(h) && h > 0 && h <= 24) hoursPerDayParsed = h;
+      } else if (key.includes('working days (indices)') || (key.includes('working days') && !key.includes('names'))) {
+        const days = val.split(/[,\s]+/).map(Number).filter(d => !isNaN(d) && d >= 0 && d <= 6);
+        if (days.length > 0) workingDaysParsed = Array.from(new Set(days)).sort((a, b) => a - b);
+      } else if (key.includes('working days (names)')) {
+        const nameMap: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+        const foundDays: number[] = [];
+        val.toLowerCase().split(/[,\s]+/).forEach(token => {
+          const prefix = token.slice(0, 3);
+          if (nameMap[prefix] !== undefined) foundDays.push(nameMap[prefix]);
+        });
+        if (foundDays.length > 0 && !workingDaysParsed) {
+          workingDaysParsed = Array.from(new Set(foundDays)).sort((a, b) => a - b);
+        }
+      } else if (key.includes('holiday') || key.includes('shutdown')) {
+        const items = val.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+        items.forEach(item => {
+          const parsedH = parseDateValue(item, '');
+          if (parsedH && /^\d{4}-\d{2}-\d{2}$/.test(parsedH)) holidaysParsed.push(parsedH);
+        });
+      } else if (key.includes('currency')) {
+        if (val) importedCurrency = val;
+      } else if (key.includes('weight')) {
+        if (/man/i.test(val)) importedWeightMode = 'manhour';
+        else if (/equal/i.test(val)) importedWeightMode = 'equal';
+        else if (/duration|time/i.test(val)) importedWeightMode = 'duration';
+      }
+    });
+
+    if (workingDaysParsed || hoursPerDayParsed || holidaysParsed.length > 0) {
+      importedCalendar = sanitizeCalendar({
+        workingDays: workingDaysParsed || importedCalendar.workingDays,
+        hoursPerDay: hoursPerDayParsed || importedCalendar.hoursPerDay,
+        holidays: holidaysParsed.length > 0 ? Array.from(new Set(holidaysParsed)).sort() : importedCalendar.holidays
+      });
+    }
+  }
+
   // Clean project title from filename
   const cleanTitle = file.name
     .replace(/\.[^/.]+$/, '')
@@ -332,11 +397,14 @@ export async function parseExcelProject(file: File, calendar: ProjectCalendar): 
   });
 
   // Run full schedule recalculation to assign authoritative WBS codes, CPM dates, and rollups
-  const scheduledTasks = recalculateSchedule(tempTasks, calendar, 'duration');
+  const scheduledTasks = recalculateSchedule(tempTasks, importedCalendar, importedWeightMode || 'duration');
 
   return {
     projectTitle: cleanTitle || sheetName || 'Imported Schedule',
     startDate: projectStartDate,
-    tasks: scheduledTasks
+    tasks: scheduledTasks,
+    calendar: importedCalendar,
+    currency: importedCurrency,
+    weightMode: importedWeightMode
   };
 }
