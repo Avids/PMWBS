@@ -58,27 +58,50 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
   const fileMenuRef = useRef<HTMLDivElement>(null);
+  const fileButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   const isSiteDrawing = settings.colorTheme === 'site-drawing';
 
-  // Close dropdown on click outside or Escape
+  const toggleFileMenu = () => {
+    if (!isFileMenuOpen && fileButtonRef.current) {
+      const rect = fileButtonRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setIsFileMenuOpen((prev) => !prev);
+  };
+
+  // Close dropdown on click outside, Escape, resize or scroll
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        fileMenuRef.current &&
+        !fileMenuRef.current.contains(target) &&
+        fileButtonRef.current &&
+        !fileButtonRef.current.contains(target)
+      ) {
         setIsFileMenuOpen(false);
       }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsFileMenuOpen(false);
     };
+    const handleRepositionOrClose = () => {
+      setIsFileMenuOpen(false);
+    };
 
     if (isFileMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('resize', handleRepositionOrClose);
+      window.addEventListener('scroll', handleRepositionOrClose, true);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleRepositionOrClose);
+      window.removeEventListener('scroll', handleRepositionOrClose, true);
     };
   }, [isFileMenuOpen]);
 
@@ -215,9 +238,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       }`}>
         <div className="flex items-center space-x-1.5 shrink-0">
           {/* Unified File & Project Dropdown */}
-          <div className="relative" ref={fileMenuRef}>
+          <div className="relative">
             <button
-              onClick={() => setIsFileMenuOpen((prev) => !prev)}
+              ref={fileButtonRef}
+              onClick={toggleFileMenu}
               className={`px-2.5 py-1 rounded text-slate-200 hover:bg-slate-700/80 font-medium flex items-center space-x-1 transition-colors ${
                 isFileMenuOpen ? 'bg-slate-700 text-white' : ''
               }`}
@@ -229,7 +253,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             </button>
 
             {isFileMenuOpen && (
-              <div className="absolute left-0 top-full mt-1 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1.5 z-50 text-slate-200 text-xs">
+              <div
+                ref={fileMenuRef}
+                style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }}
+                className={`fixed w-60 border rounded-lg shadow-2xl py-1.5 z-50 text-xs ${
+                  isSiteDrawing
+                    ? 'bg-[#2B353D] border-[#4A5864] text-slate-100'
+                    : 'bg-slate-800 border-slate-700 text-slate-200'
+                }`}
+              >
                 {/* Project File Actions */}
                 <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                   Project
