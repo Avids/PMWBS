@@ -1,11 +1,17 @@
 {
-  "name": "wbs",
+  "name": "pmwbs",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "PMWBS - Professional Project Scheduling & WBS Management Suite",
+  "author": "Lead Project Scheduler",
+  "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:electron": "tsc -p electron",
+    "dev:electron": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development tsc -p electron && electron .\"",
+    "package:win": "pnpm run build && pnpm run build:electron && electron-builder --win",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -24,8 +30,13 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
     "oxlint": "^1.89.0",
     "typescript": "~7.0.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "wait-on": "^9.5.1"
   }
 }

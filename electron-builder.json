@@ -1,0 +1,42 @@
+{
+  "appId": "com.pmwbs.app",
+  "productName": "PMWBS Master",
+  "copyright": "Copyright © 2026 PMWBS",
+  "directories": {
+    "output": "release",
+    "buildResources": "build"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "wbs",
+        "name": "PMWBS Project Schedule",
+        "description": "PMWBS Project Schedule File",
+        "role": "Editor"
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": "always",
+    "createStartMenuShortcut": true,
+    "shortcutName": "PMWBS Master",
+    "uninstallDisplayName": "PMWBS Master"
+  }
+}

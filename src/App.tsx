@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier } from './types/project';
 import { recalculateSchedule, formatDate, addWorkingDays } from './engine/scheduler';
-import { saveNativeWBSFile, loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML } from './engine/importers';
+import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML } from './engine/importers';
+import { saveProjectWithDialog } from './services/platform';
 import { Toolbar } from './components/Toolbar';
 import { ActionBar } from './components/ActionBar';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
@@ -628,16 +629,56 @@ export function App() {
     }));
   }, []);
 
-  // Native WBS File Save & Load
-  const handleSaveWBS = () => {
+  // Native WBS File Save & Load (Supports Electron Native Save Dialog & Web Fallback)
+  const handleSaveWBS = async () => {
     const fileData: ProjectFile = {
       version: '1.0',
       meta: settings,
       baselines,
       tasks
     };
-    saveNativeWBSFile(fileData, `${settings.name.replace(/\s+/g, '_')}.wbs`);
+    await saveProjectWithDialog(fileData, `${settings.name.replace(/\s+/g, '_')}.wbs`);
   };
+
+  // Listen for initial file or file-open events in Electron desktop mode (.wbs double-click)
+  useEffect(() => {
+    if (window.electronAPI?.getInitialFile) {
+      window.electronAPI.getInitialFile().then(initialFile => {
+        if (initialFile?.content) {
+          try {
+            const projectFile: ProjectFile = JSON.parse(initialFile.content);
+            if (projectFile.meta && projectFile.tasks) {
+              setSettings(projectFile.meta);
+              setRawTasks(projectFile.tasks);
+              if (projectFile.baselines) setBaselines(projectFile.baselines);
+              if (projectFile.tasks.length > 0) setSelectedTaskId(projectFile.tasks[0].id);
+            }
+          } catch (e) {
+            console.error('Failed to load initial file:', e);
+          }
+        }
+      });
+    }
+
+    if (window.electronAPI?.onFileOpened) {
+      const unsub = window.electronAPI.onFileOpened(data => {
+        if (data?.content) {
+          try {
+            const projectFile: ProjectFile = JSON.parse(data.content);
+            if (projectFile.meta && projectFile.tasks) {
+              setSettings(projectFile.meta);
+              setRawTasks(projectFile.tasks);
+              if (projectFile.baselines) setBaselines(projectFile.baselines);
+              if (projectFile.tasks.length > 0) setSelectedTaskId(projectFile.tasks[0].id);
+            }
+          } catch (e) {
+            console.error('Failed to load opened file:', e);
+          }
+        }
+      });
+      return unsub;
+    }
+  }, []);
 
   const handleLoadWBS = async (file: File) => {
     try {
