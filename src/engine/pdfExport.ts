@@ -119,17 +119,19 @@ export async function exportProjectDocument(
     `;
   }
 
-  // 3. Table Columns
-  type ColDef = { key: keyof Task | 'wbs' | 'variance'; label: string; width: number; align?: string };
+  // 3. Table Columns (Always include ID so Predecessor references 2FS, 6SS, etc. match row IDs)
+  type ColDef = { key: keyof Task | 'id' | 'wbs' | 'variance'; label: string; width: number; align?: string };
   let chosenCols: ColDef[] = [];
 
   if (exportConfig.columns === 'name_only') {
     chosenCols = [
+      { key: 'id', label: 'ID', width: 45, align: 'center' },
       { key: 'wbsCode' as any, label: 'WBS', width: 65, align: 'center' },
       { key: 'name', label: 'TASK NAME', width: 320 }
     ];
   } else if (exportConfig.columns === 'core') {
     chosenCols = [
+      { key: 'id', label: 'ID', width: 45, align: 'center' },
       { key: 'wbsCode' as any, label: 'WBS', width: 65, align: 'center' },
       { key: 'name', label: 'TASK NAME', width: 280 },
       { key: 'duration', label: 'DUR (D)', width: 70, align: 'center' },
@@ -141,6 +143,7 @@ export async function exportProjectDocument(
   } else {
     // All Columns
     chosenCols = [
+      { key: 'id', label: 'ID', width: 40, align: 'center' },
       { key: 'wbsCode' as any, label: 'WBS', width: 60, align: 'center' },
       { key: 'name', label: 'TASK NAME', width: 240 },
       { key: 'duration', label: 'DUR', width: 55, align: 'center' },
@@ -167,15 +170,17 @@ export async function exportProjectDocument(
     `;
     chosenCols.forEach(col => {
       let content = '';
-      if (col.key === 'name') {
+      if (col.key === 'id') {
+        content = `<strong style="font-family: monospace; font-size: 11px; color: #0f172a;">${i + 1}</strong>`;
+      } else if (col.key === 'name') {
         const indent = depth * 14;
         let prefixIcon = '';
         if (t.isSummary) {
-          prefixIcon = `<span style="display:inline-block;width:12px;height:10px;background:#f59e0b;border-radius:2px;margin-right:6px;vertical-align:middle;"></span>`;
+          prefixIcon = `<span style="display:inline-block;width:12px;height:10px;background:#1e293b;border-radius:2px;margin-right:6px;vertical-align:middle;"></span>`;
         } else if (t.isMilestone || t.duration === 0) {
-          prefixIcon = `<span style="display:inline-block;width:8px;height:8px;background:#059669;transform:rotate(45deg);margin-right:7px;vertical-align:middle;"></span>`;
+          prefixIcon = `<span style="display:inline-block;width:8px;height:8px;background:#0f172a;transform:rotate(45deg);margin-right:7px;vertical-align:middle;"></span>`;
         } else {
-          prefixIcon = `<span style="display:inline-block;width:4px;height:4px;background:#94a3b8;border-radius:50%;margin-right:8px;vertical-align:middle;"></span>`;
+          prefixIcon = `<span style="display:inline-block;width:5px;height:5px;background:#2563eb;border-radius:50%;margin-right:8px;vertical-align:middle;"></span>`;
         }
 
         content = `
@@ -184,13 +189,13 @@ export async function exportProjectDocument(
           </div>
         `;
       } else if (col.key === 'wbsCode') {
-        content = `<span style="font-family: monospace; font-size: 12px; font-weight: 600; color: #475569;">${t.wbsCode}</span>`;
+        content = `<span style="font-family: monospace; font-size: 12px; font-weight: 700; color: #334155;">${t.wbsCode}</span>`;
       } else if (col.key === 'progress') {
-        content = `<span style="font-weight: 700; color: #4338ca; font-size: 12px;">${t.progress}%</span>`;
+        content = `<span style="font-weight: 700; color: #2563eb; font-size: 12px;">${t.progress}%</span>`;
       } else if (col.key === 'duration') {
-        content = `<span style="font-size: 12px; color: #334155;">${t.duration}d</span>`;
+        content = `<span style="font-size: 12px; font-weight: 600; color: #0f172a;">${t.duration}d</span>`;
       } else if (col.key === 'predecessorText') {
-        content = `<span style="font-family: monospace; font-size: 11px; font-weight: 600; color: #475569;">${t.predecessorText || '-'}</span>`;
+        content = `<span style="font-family: monospace; font-size: 11px; font-weight: 700; color: #1e1b4b;">${t.predecessorText || '-'}</span>`;
       } else {
         const rawVal = (t as any)[col.key] ?? '';
         content = `<span style="font-size: 12px; color: #334155;">${rawVal}</span>`;
@@ -283,6 +288,80 @@ export async function exportProjectDocument(
     }
   });
 
+  // 6. Build SVG Dependency Lines for Timeline Side in PDF / Image Export
+  const taskIndexMap = new Map<string, number>();
+  tasks.forEach((t, i) => taskIndexMap.set(t.id, i));
+
+  let dependencyPathsHTML = '';
+  tasks.forEach((targetTask) => {
+    const targetIdx = taskIndexMap.get(targetTask.id);
+    if (targetIdx === undefined) return;
+
+    (targetTask.predecessors || []).forEach((dep) => {
+      const sourceIdx = taskIndexMap.get(dep.taskId);
+      if (sourceIdx === undefined) return;
+      const sourceTask = tasks[sourceIdx];
+      if (!sourceTask) return;
+
+      let sourceX = 0;
+      let targetX = 0;
+
+      if (dep.type === 'FS') {
+        sourceX = dateToX(sourceTask.endDate) + dayWidth;
+        targetX = dateToX(targetTask.startDate);
+      } else if (dep.type === 'SS') {
+        sourceX = dateToX(sourceTask.startDate);
+        targetX = dateToX(targetTask.startDate);
+      } else if (dep.type === 'FF') {
+        sourceX = dateToX(sourceTask.endDate) + dayWidth;
+        targetX = dateToX(targetTask.endDate) + dayWidth;
+      } else if (dep.type === 'SF') {
+        sourceX = dateToX(sourceTask.startDate);
+        targetX = dateToX(targetTask.endDate) + dayWidth;
+      }
+
+      const sourceY = sourceIdx * rowHeight + rowHeight / 2;
+      const targetY = targetIdx * rowHeight + rowHeight / 2;
+
+      let path = '';
+      if (targetX >= sourceX + 10) {
+        const midX = sourceX + (targetX - sourceX) / 2;
+        path = `M ${sourceX} ${sourceY} H ${midX} V ${targetY} H ${targetX}`;
+      } else {
+        const detourY = sourceY < targetY ? sourceY + rowHeight / 2 : sourceY - rowHeight / 2;
+        path = `M ${sourceX} ${sourceY} H ${sourceX + 8} V ${detourY} H ${targetX - 10} V ${targetY} H ${targetX}`;
+      }
+
+      const isCritical = !!(sourceTask.isCritical && targetTask.isCritical);
+      const stroke = isCritical ? '#dc2626' : '#0284c7';
+      const marker = isCritical ? 'url(#export-arrowhead-crit)' : 'url(#export-arrowhead)';
+
+      dependencyPathsHTML += `
+        <path
+          d="${path}"
+          fill="none"
+          stroke="${stroke}"
+          stroke-width="1.75"
+          marker-end="${marker}"
+        />
+      `;
+    });
+  });
+
+  const svgDependencyLayerHTML = `
+    <svg style="position: absolute; inset: 0; width: ${timelineWidth}px; height: ${tasks.length * rowHeight}px; pointer-events: none; z-index: 5;">
+      <defs>
+        <marker id="export-arrowhead" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0, 6 2.5, 0 5" fill="#0284c7" />
+        </marker>
+        <marker id="export-arrowhead-crit" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0, 6 2.5, 0 5" fill="#dc2626" />
+        </marker>
+      </defs>
+      ${dependencyPathsHTML}
+    </svg>
+  `;
+
   // Footer HTML
   let footerHTML = '';
   if (exportConfig.footer === 'summary') {
@@ -333,8 +412,11 @@ export async function exportProjectDocument(
             }).join('')}
           </div>
 
+          <!-- SVG Dependency Relationship Lines -->
+          ${svgDependencyLayerHTML}
+
           <!-- Task Bars -->
-          <div style="position: absolute; inset: 0;">
+          <div style="position: absolute; inset: 0; z-index: 10;">
             ${taskBarsHTML}
           </div>
         </div>
