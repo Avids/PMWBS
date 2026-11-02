@@ -73,6 +73,11 @@ export const TaskInformationModal: React.FC<TaskInformationModalProps> = ({
     }
   }, [task]);
 
+  const cycleCheck = useMemo(() => {
+    if (!task) return { hasCycle: false, cycleTaskIds: [], cyclePathFormatted: [], message: '' };
+    return detectDependencyCycle(allTasks, { taskId: task.id, newPredecessors: dependencies });
+  }, [allTasks, task, dependencies]);
+
   if (!isOpen || !task) return null;
 
   // Find task index (1-based row ID)
@@ -126,11 +131,6 @@ export const TaskInformationModal: React.FC<TaskInformationModalProps> = ({
   const handleRemoveDependency = (index: number) => {
     setDependencies(prev => prev.filter((_, i) => i !== index));
   };
-
-  const cycleCheck = useMemo(() => {
-    if (!task) return { hasCycle: false, cycleTaskIds: [], cyclePathFormatted: [], message: '' };
-    return detectDependencyCycle(allTasks, { taskId: task.id, newPredecessors: dependencies });
-  }, [allTasks, task, dependencies]);
 
   const handleSave = () => {
     if (cycleCheck.hasCycle) {

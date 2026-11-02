@@ -1380,28 +1380,32 @@ export function App() {
         onUpdateSettings={handleUpdateSettings}
       />
 
-      <PredecessorModal
-        isOpen={isPredecessorModalOpen}
-        onClose={() => {
-          setIsPredecessorModalOpen(false);
-          setPredecessorModalTask(null);
-        }}
-        task={predecessorModalTask}
-        allTasks={tasks}
-        onSaveDependencies={handleSaveDependencies}
-      />
+      {isPredecessorModalOpen && predecessorModalTask && (
+        <PredecessorModal
+          isOpen={isPredecessorModalOpen}
+          onClose={() => {
+            setIsPredecessorModalOpen(false);
+            setPredecessorModalTask(null);
+          }}
+          task={predecessorModalTask}
+          allTasks={tasks}
+          onSaveDependencies={handleSaveDependencies}
+        />
+      )}
 
-      <TaskInformationModal
-        isOpen={isTaskInfoModalOpen}
-        onClose={() => {
-          setIsTaskInfoModalOpen(false);
-          setTaskInfoModalTask(null);
-        }}
-        task={taskInfoModalTask}
-        allTasks={tasks}
-        calendar={settings.calendar}
-        onSaveTask={handleUpdateTask}
-      />
+      {isTaskInfoModalOpen && taskInfoModalTask && (
+        <TaskInformationModal
+          isOpen={isTaskInfoModalOpen}
+          onClose={() => {
+            setIsTaskInfoModalOpen(false);
+            setTaskInfoModalTask(null);
+          }}
+          task={taskInfoModalTask}
+          allTasks={tasks}
+          calendar={settings.calendar}
+          onSaveTask={handleUpdateTask}
+        />
+      )}
 
       <ExportModal
         isOpen={isExportModalOpen}

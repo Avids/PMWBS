@@ -26,6 +26,11 @@ export const PredecessorModal: React.FC<PredecessorModalProps> = ({
     }
   }, [task]);
 
+  const cycleCheck = useMemo(() => {
+    if (!task) return { hasCycle: false, cycleTaskIds: [], cyclePathFormatted: [], message: '' };
+    return detectDependencyCycle(allTasks, { taskId: task.id, newPredecessors: dependencies });
+  }, [allTasks, task, dependencies]);
+
   if (!isOpen || !task) return null;
 
   // Available candidate predecessors (excluding self and summary tasks that enclose it)
@@ -51,10 +56,6 @@ export const PredecessorModal: React.FC<PredecessorModalProps> = ({
   const handleRemove = (index: number) => {
     setDependencies(prev => prev.filter((_, i) => i !== index));
   };
-
-  const cycleCheck = useMemo(() => {
-    return detectDependencyCycle(allTasks, { taskId: task.id, newPredecessors: dependencies });
-  }, [allTasks, task.id, dependencies]);
 
   const handleSave = () => {
     if (cycleCheck.hasCycle) {
