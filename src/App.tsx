@@ -4,7 +4,7 @@ import { getTheme } from './theme/themeConfig';
 import { recalculateSchedule, formatDate, addWorkingDays, sanitizeCalendar, detectDependencyCycle } from './engine/scheduler';
 import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML, parseExcelProject } from './engine/importers';
 import { saveProjectWithDialog } from './services/platform';
-import { CheckCircle2, AlertTriangle, CircleAlert, Info, X } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, CircleAlert, Info, X, Flag, FileText } from 'lucide-react';
 import { Toolbar } from './components/Toolbar';
 import { ActionBar } from './components/ActionBar';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
@@ -1332,11 +1332,18 @@ export function App() {
               <span>Task</span>
             </div>
             <div className="flex items-center space-x-1.5">
-              <div
-                className="w-2.5 h-2.5 rotate-45 border"
-                style={{ backgroundColor: theme.milestone, borderColor: theme.milestoneBorder || '#FFFFFF' }}
-              />
+              <div className="flex items-center space-x-1">
+                <Flag className="w-3 h-3 text-emerald-600 shrink-0" />
+                <div
+                  className="w-2.5 h-2.5 rotate-45 border"
+                  style={{ backgroundColor: theme.milestone, borderColor: theme.milestoneBorder || '#FFFFFF' }}
+                />
+              </div>
               <span>Milestone</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <FileText className="w-3 h-3 text-amber-500 shrink-0" />
+              <span>Note</span>
             </div>
             {settings.showCriticalPath && (
               <div className="flex items-center space-x-1.5">

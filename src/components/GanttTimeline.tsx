@@ -2,6 +2,7 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType, ColorTheme } from '../types/project';
 import { formatDate, addWorkingDays, isWorkingDay } from '../engine/scheduler';
 import { getTheme } from '../theme/themeConfig';
+import { FileText } from 'lucide-react';
 
 interface GanttTimelineProps {
   tasks: Task[];
@@ -781,9 +782,14 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                             borderColor: isTaskCrit ? theme.critical : theme.labelHaloBorder,
                             color: isTaskCrit ? (theme.criticalText || theme.critical) : theme.labelHaloText
                           }}
-                          className="absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded border shadow-2xs tabular-nums"
+                          className="absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded border shadow-2xs tabular-nums flex items-center space-x-1"
                         >
-                          {task.name} ({task.progress}%)
+                          <span>{task.name} ({task.progress}%)</span>
+                          {task.notes && task.notes.trim() && (
+                            <span title={`Note:\n${task.notes}`} className="inline-flex items-center">
+                              <FileText className="w-3 h-3 text-amber-500 shrink-0" />
+                            </span>
+                          )}
                         </span>
                       )}
                     </div>
@@ -839,15 +845,20 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                             borderColor: isTaskCrit ? theme.critical : theme.labelHaloBorder,
                             color: isTaskCrit ? (theme.criticalText || theme.critical) : theme.labelHaloText
                           }}
-                          className="absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded border shadow-2xs tabular-nums"
+                          className="absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded border shadow-2xs tabular-nums flex items-center space-x-1"
                         >
-                          {task.name}
+                          <span>{task.name}</span>
                           {task.baselineVarianceDays !== undefined && task.baselineVarianceDays !== 0 && (
                             <span
                               style={{ color: task.baselineVarianceDays > 0 ? theme.critical : '#059669' }}
                               className="ml-1 text-[11px] font-bold"
                             >
                               {task.baselineVarianceDays > 0 ? `+${task.baselineVarianceDays}d` : `${task.baselineVarianceDays}d`}
+                            </span>
+                          )}
+                          {task.notes && task.notes.trim() && (
+                            <span title={`Note:\n${task.notes}`} className="inline-flex items-center ml-1">
+                              <FileText className="w-3 h-3 text-amber-500 shrink-0" />
                             </span>
                           )}
                         </span>
@@ -899,14 +910,19 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                             borderColor: isTaskCrit ? theme.critical : theme.labelHaloBorder,
                             color: isTaskCrit ? (theme.criticalText || theme.critical) : theme.labelHaloText
                           }}
-                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded border shadow-2xs tabular-nums ${
+                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded border shadow-2xs tabular-nums flex items-center space-x-1 ${
                             isTaskCrit ? 'font-bold' : 'font-semibold'
                           }`}
                         >
-                          {task.name} ({task.progress}%)
+                          <span>{task.name} ({task.progress}%)</span>
                           {task.baselineVarianceDays !== undefined && task.baselineVarianceDays > 0 && (
                             <span style={{ color: theme.critical }} className="ml-1 font-bold">
                               +{task.baselineVarianceDays}d
+                            </span>
+                          )}
+                          {task.notes && task.notes.trim() && (
+                            <span title={`Note:\n${task.notes}`} className="inline-flex items-center ml-1">
+                              <FileText className="w-3 h-3 text-amber-500 shrink-0" />
                             </span>
                           )}
                         </span>

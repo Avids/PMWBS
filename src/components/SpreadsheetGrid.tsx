@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Task, WeightMode, FontSizeOption, ColorTheme } from '../types/project';
 import { getTheme } from '../theme/themeConfig';
-import { Flag, GitCommit, GripVertical } from 'lucide-react';
+import { Flag, GitCommit, GripVertical, FileText } from 'lucide-react';
 import { parsePredecessors } from '../engine/scheduler';
 
 interface SpreadsheetGridProps {
@@ -454,12 +454,24 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                           >
                             {task.name}
                           </span>
+                          {task.notes && task.notes.trim() && (
+                            <span
+                              className="inline-flex items-center shrink-0 cursor-help ml-1 p-0.5 rounded hover:bg-amber-100/60 transition-colors"
+                              title={`Note:\n${task.notes}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onOpenTaskInfo?.(task);
+                              }}
+                            >
+                              <FileText className="w-3.5 h-3.5 text-amber-500 hover:text-amber-600" />
+                            </span>
+                          )}
                         </div>
                       );
                     } else if (col.field === 'duration') {
                       displayVal = (
                         <span className="font-bold text-slate-900">
-                          {task.duration === 0 ? '0 d (Milestone)' : `${task.duration} d`}
+                          {`${task.duration} d`}
                         </span>
                       );
                     } else if (col.field === 'startDate') {
