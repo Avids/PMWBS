@@ -14,6 +14,7 @@ interface SpreadsheetGridProps {
   onIndentTask: (taskId: string) => void;
   onOutdentTask: (taskId: string) => void;
   onOpenPredecessorModal: (task: Task) => void;
+  onOpenTaskInfo?: (task: Task) => void;
   onToggleCollapse: (taskId: string) => void;
   weightMode: WeightMode;
   fontSize?: FontSizeOption;
@@ -37,7 +38,8 @@ type ColumnField =
   | 'earnedManHours'
   | 'baselineStart'
   | 'baselineEnd'
-  | 'variance';
+  | 'variance'
+  | 'notes';
 
 const COLUMNS: { field: ColumnField; label: string; width: number; readonly?: boolean }[] = [
   { field: 'wbs', label: 'WBS', width: 65, readonly: true },
@@ -55,7 +57,8 @@ const COLUMNS: { field: ColumnField; label: string; width: number; readonly?: bo
   { field: 'earnedManHours', label: 'Earn MH', width: 85, readonly: true },
   { field: 'baselineStart', label: 'Base Start', width: 105, readonly: true },
   { field: 'baselineEnd', label: 'Base End', width: 105, readonly: true },
-  { field: 'variance', label: 'Variance (d)', width: 95, readonly: true }
+  { field: 'variance', label: 'Variance (d)', width: 95, readonly: true },
+  { field: 'notes', label: 'Notes', width: 160 }
 ];
 
 export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
@@ -69,6 +72,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   onIndentTask,
   onOutdentTask,
   onOpenPredecessorModal,
+  onOpenTaskInfo,
   onToggleCollapse,
   fontSize = 'normal',
   scrollContainerRef,
@@ -119,6 +123,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       updates.predecessors = parsePredecessors(editValue, allTasks);
     } else if (col.field === 'plannedManHours') updates.plannedManHours = Math.max(0, parseFloat(editValue) || 0);
     else if (col.field === 'actualManHours') updates.actualManHours = Math.max(0, parseFloat(editValue) || 0);
+    else if (col.field === 'notes') updates.notes = editValue;
 
     onUpdateTask(task.id, updates);
     setEditingCell(null);
@@ -130,8 +135,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     if (!col || col.readonly) return;
     const task = tasks[rowIdx];
     if (!task) return;
-    // For summary tasks, calculated rollup fields cannot be edited directly; only task name is editable
-    if (task.isSummary && col.field !== 'name') return;
+    // For summary tasks, calculated rollup fields cannot be edited directly; only task name and notes are editable
+    if (task.isSummary && col.field !== 'name' && col.field !== 'notes') return;
 
     let val = '';
     if (col.field === 'name') val = task.name;
@@ -142,6 +147,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     else if (col.field === 'predecessors') val = task.predecessorText || '';
     else if (col.field === 'plannedManHours') val = String(task.plannedManHours || 0);
     else if (col.field === 'actualManHours') val = String(task.actualManHours || 0);
+    else if (col.field === 'notes') val = task.notes || '';
 
     setEditValue(val);
     setEditingCell({ rowIdx, colIdx });
@@ -370,7 +376,13 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                   {/* Row Index with OnlineGantt-style Grip Handle */}
                   <td
                     style={{ height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, boxSizing: 'border-box' }}
-                    className="px-1 text-center border-r border-slate-200 select-none bg-slate-50/50"
+                    className="px-1 text-center border-r border-slate-200 select-none bg-slate-50/50 cursor-pointer"
+                    title="Double-click to view Task Information"
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      onSelectTask(task.id);
+                      onOpenTaskInfo?.(task);
+                    }}
                   >
                     <div className="flex items-center justify-center space-x-0.5 text-slate-700">
                       <GripVertical className="w-3 h-3 text-slate-400" />
@@ -507,6 +519,14 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       } else {
                         displayVal = <span className="text-slate-400">-</span>;
                       }
+                    } else if (col.field === 'notes') {
+                      displayVal = task.notes ? (
+                        <span className="text-slate-700 truncate block text-[11px]" title={task.notes}>
+                          {task.notes}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300 italic text-[11px]">Click to add note</span>
+                      );
                     }
 
                     return (
@@ -524,7 +544,11 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                           onSelectTask(task.id);
                           setActiveCell({ rowIdx, colIdx });
                           gridContainerRef.current?.focus();
-                          startEdit(rowIdx, colIdx);
+                          if (col.field === 'wbs') {
+                            onOpenTaskInfo?.(task);
+                          } else {
+                            startEdit(rowIdx, colIdx);
+                          }
                         }}
                         className={`px-2.5 py-1 border-r border-slate-200 relative whitespace-nowrap overflow-hidden text-ellipsis ${
                           isCellActive ? 'ring-2 ring-indigo-600 ring-inset z-10' : ''

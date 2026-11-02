@@ -17,6 +17,9 @@ export interface ExportSettings {
   orientation: 'landscape' | 'portrait';
   pageFit: PageFitMode;
   resolution: number; // 1, 2, 3
+  taskRangeMode?: 'all' | 'custom';
+  taskFromId?: number;
+  taskToId?: number;
 }
 
 export const PAPER_DIMENSIONS: Record<PaperSize, { name: string; width: number; height: number; defaultRowsLandscape: number; defaultRowsPortrait: number }> = {
@@ -36,7 +39,10 @@ export const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
   paperSize: 'letter',
   orientation: 'landscape',
   pageFit: 'auto',
-  resolution: 2
+  resolution: 2,
+  taskRangeMode: 'all',
+  taskFromId: 1,
+  taskToId: 100
 };
 
 /**
@@ -54,6 +60,21 @@ export async function exportProjectDocument(
     throw new Error('No tasks in project to export.');
   }
 
+  // Task Range Filtering (From ID - To ID)
+  let filteredTasks = tasks;
+  let rangeStartNumber = 1;
+
+  if (exportConfig.taskRangeMode === 'custom') {
+    const from = Math.max(1, Math.min(exportConfig.taskFromId || 1, tasks.length));
+    const to = Math.max(from, Math.min(exportConfig.taskToId || tasks.length, tasks.length));
+    filteredTasks = tasks.slice(from - 1, to);
+    rangeStartNumber = from;
+  }
+
+  if (filteredTasks.length === 0) {
+    throw new Error('No tasks found in the specified export range.');
+  }
+
   onProgress?.('Preparing schedule data...');
 
   const showGantt = exportConfig.timelineScale !== 'none';
@@ -67,7 +88,7 @@ export async function exportProjectDocument(
   // Determine row height and pagination limits
   const rowHeight = 32;
   const baseRowsPerPage = isLandscape ? paperInfo.defaultRowsLandscape : paperInfo.defaultRowsPortrait;
-  const rowsPerPage = exportConfig.pageFit === 'single' ? tasks.length : Math.max(8, baseRowsPerPage);
+  const rowsPerPage = exportConfig.pageFit === 'single' ? filteredTasks.length : Math.max(8, baseRowsPerPage);
 
   // 1. Column Definitions
   type ColDef = { key: keyof Task | 'id' | 'wbsCode' | 'predecessorText'; label: string; width: number; align?: string };
@@ -91,19 +112,26 @@ export async function exportProjectDocument(
       { key: 'predecessorText', label: 'PREDECESSORS', width: showGantt ? 100 : 130, align: 'center' }
     ];
   } else {
-    // All Columns
+    // All Columns (Complete 18 spreadsheet columns)
     chosenCols = [
-      { key: 'id', label: 'ID', width: 40, align: 'center' },
-      { key: 'wbsCode', label: 'WBS', width: 60, align: 'center' },
-      { key: 'name', label: 'TASK NAME', width: showGantt ? 230 : 320 },
-      { key: 'duration', label: 'DUR', width: 55, align: 'center' },
-      { key: 'startDate', label: 'START', width: 85, align: 'center' },
-      { key: 'endDate', label: 'END', width: 85, align: 'center' },
-      { key: 'progress', label: '%', width: 50, align: 'center' },
-      { key: 'predecessorText', label: 'PRED', width: 90, align: 'center' },
-      { key: 'plannedManHours', label: 'PLAN MH', width: 70, align: 'right' },
-      { key: 'actualManHours', label: 'ACT MH', width: 70, align: 'right' },
-      { key: 'weight', label: 'WT %', width: 55, align: 'right' }
+      { key: 'id', label: '#', width: 34, align: 'center' },
+      { key: 'wbsCode', label: 'WBS', width: 55, align: 'center' },
+      { key: 'name', label: 'TASK NAME', width: showGantt ? 200 : 260 },
+      { key: 'duration', label: 'DUR', width: 48, align: 'center' },
+      { key: 'startDate', label: 'START', width: 75, align: 'center' },
+      { key: 'endDate', label: 'END', width: 75, align: 'center' },
+      { key: 'progress', label: '%', width: 42, align: 'center' },
+      { key: 'weight', label: 'WT %', width: 48, align: 'right' },
+      { key: 'predecessorText', label: 'PRED', width: 70, align: 'center' },
+      { key: 'totalFloat', label: 'FLOAT', width: 48, align: 'center' },
+      { key: 'plannedManHours', label: 'PLAN MH', width: 58, align: 'right' },
+      { key: 'actualManHours', label: 'ACT MH', width: 58, align: 'right' },
+      { key: 'remainingManHours', label: 'REM MH', width: 58, align: 'right' },
+      { key: 'earnedManHours', label: 'EARN MH', width: 58, align: 'right' },
+      { key: 'baselineStartDate', label: 'BASE START', width: 75, align: 'center' },
+      { key: 'baselineEndDate', label: 'BASE END', width: 75, align: 'center' },
+      { key: 'baselineVarianceDays', label: 'VAR', width: 48, align: 'center' },
+      { key: 'notes', label: 'NOTES', width: showGantt ? 90 : 160, align: 'left' }
     ];
   }
 
@@ -340,10 +368,10 @@ export async function exportProjectDocument(
     }
   }
 
-  // 3. Paginate tasks into chunks
+  // 3. Paginate filtered tasks into chunks
   const taskChunks: Task[][] = [];
-  for (let i = 0; i < tasks.length; i += rowsPerPage) {
-    taskChunks.push(tasks.slice(i, i + rowsPerPage));
+  for (let i = 0; i < filteredTasks.length; i += rowsPerPage) {
+    taskChunks.push(filteredTasks.slice(i, i + rowsPerPage));
   }
   const totalPages = Math.max(1, taskChunks.length);
 
@@ -368,28 +396,23 @@ export async function exportProjectDocument(
 
     onProgress?.(`Rendering page ${pageIdx + 1} of ${totalPages}...`);
 
-    // Top Header HTML
+    // Top Header HTML (Clean, professional engineering document header - no bubbly badge boxes)
     let headerHTML = '';
     if (exportConfig.header !== 'none') {
       headerHTML = `
-        <div style="border-bottom: 2px solid #1e293b; padding-bottom: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div style="border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
-            <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 3px 0; font-family: Arial, sans-serif;">${settings.name}</h1>
-            <div style="font-size: 12px; color: #64748b;">
+            <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; letter-spacing: -0.2px;">${settings.name}</h1>
+            <div style="font-size: 11px; color: #64748b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
               <span>Author: <strong style="color: #334155;">${settings.author || 'Project Scheduler'}</strong></span>
               ${exportConfig.header === 'project_name_date' ? `<span style="margin-left: 16px;">Export Date: <strong style="color: #334155;">${new Date().toLocaleDateString()}</strong></span>` : ''}
-              ${totalPages > 1 ? `<span style="margin-left: 16px; font-weight: 700; color: #2563eb;">Page ${pageIdx + 1} of ${totalPages}</span>` : ''}
+              ${exportConfig.taskRangeMode === 'custom' ? `<span style="margin-left: 16px; color: #475569;">Scope: <strong>Task IDs ${exportConfig.taskFromId} – ${exportConfig.taskToId}</strong></span>` : ''}
             </div>
           </div>
-          <div style="display: flex; gap: 10px; font-size: 11px;">
-            <div style="background: #f8fafc; padding: 5px 10px; border-radius: 5px; border: 1px solid #cbd5e1;">
-              <div style="font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: 600;">Schedule Start</div>
-              <div style="font-weight: 700; color: #0f172a; font-family: monospace;">${settings.startDate}</div>
-            </div>
-            <div style="background: #eef2ff; padding: 5px 10px; border-radius: 5px; border: 1px solid #c7d2fe;">
-              <div style="font-size: 9px; color: #4338ca; text-transform: uppercase; font-weight: 600;">Total Tasks</div>
-              <div style="font-weight: 700; color: #3730a3; font-family: monospace;">${tasks.length}</div>
-            </div>
+          <div style="text-align: right; font-size: 11px; line-height: 1.5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <div><span style="color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Schedule Start:</span> <strong style="color: #0f172a; font-family: monospace; font-size: 11px; margin-left: 6px;">${settings.startDate}</strong></div>
+            <div><span style="color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Activities:</span> <strong style="color: #0f172a; font-family: monospace; font-size: 11px; margin-left: 6px;">${filteredTasks.length} ${filteredTasks.length !== tasks.length ? `(of ${tasks.length})` : ''}</strong></div>
+            ${totalPages > 1 ? `<div><span style="color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Page:</span> <strong style="color: #1e293b; font-size: 11px; margin-left: 6px;">${pageIdx + 1} of ${totalPages}</strong></div>` : ''}
           </div>
         </div>
       `;
@@ -398,7 +421,7 @@ export async function exportProjectDocument(
     // Table Rows HTML for this page
     let tableRowsHTML = '';
     pageTasks.forEach((t, localIdx) => {
-      const globalRowIdx = pageStartIdx + localIdx;
+      const globalRowIdx = rangeStartNumber + pageStartIdx + localIdx;
       const isEven = localIdx % 2 === 0;
       const depth = (t.wbsCode.match(/\./g) || []).length;
 
@@ -406,7 +429,7 @@ export async function exportProjectDocument(
       chosenCols.forEach(col => {
         let content = '';
         if (col.key === 'id') {
-          content = `<strong style="font-family: monospace; font-size: 11px; color: #0f172a;">${globalRowIdx + 1}</strong>`;
+          content = `<strong style="font-family: monospace; font-size: 11px; color: #0f172a;">${globalRowIdx}</strong>`;
         } else if (col.key === 'name') {
           const indent = depth * 14;
           let prefixIcon = '';
@@ -428,6 +451,30 @@ export async function exportProjectDocument(
           content = `<span style="font-size: 11px; font-weight: 600; color: #0f172a;">${t.duration}d</span>`;
         } else if (col.key === 'predecessorText') {
           content = `<span style="font-family: monospace; font-size: 10px; font-weight: 700; color: #1e1b4b;">${t.predecessorText || '-'}</span>`;
+        } else if (col.key === 'weight') {
+          content = `<span style="font-size: 11px; color: #334155; font-family: monospace;">${(t.weight || 0).toFixed(1)}%</span>`;
+        } else if (col.key === 'totalFloat') {
+          content = `<span style="font-size: 11px; font-weight: 600; color: ${t.isCritical ? '#dc2626' : '#334155'}; font-family: monospace;">${t.totalFloat !== undefined ? `${t.totalFloat}d` : '-'}</span>`;
+        } else if (col.key === 'plannedManHours') {
+          content = `<span style="font-size: 11px; color: #334155; font-family: monospace;">${t.plannedManHours || 0}</span>`;
+        } else if (col.key === 'actualManHours') {
+          content = `<span style="font-size: 11px; color: #334155; font-family: monospace;">${t.actualManHours || 0}</span>`;
+        } else if (col.key === 'remainingManHours') {
+          const val = t.remainingManHours !== undefined ? t.remainingManHours : Math.max(0, (t.plannedManHours || 0) - (t.actualManHours || 0));
+          content = `<span style="font-size: 11px; color: #334155; font-family: monospace;">${val}</span>`;
+        } else if (col.key === 'earnedManHours') {
+          const val = t.earnedManHours !== undefined ? t.earnedManHours : Math.round(((t.plannedManHours || 0) * (t.progress || 0)) / 100);
+          content = `<span style="font-size: 11px; color: #166534; font-weight: 600; font-family: monospace;">${val}</span>`;
+        } else if (col.key === 'baselineStartDate') {
+          content = `<span style="font-size: 10px; color: #475569; font-family: monospace;">${t.baselineStartDate || '-'}</span>`;
+        } else if (col.key === 'baselineEndDate') {
+          content = `<span style="font-size: 10px; color: #475569; font-family: monospace;">${t.baselineEndDate || '-'}</span>`;
+        } else if (col.key === 'baselineVarianceDays') {
+          content = t.baselineVarianceDays !== undefined
+            ? `<span style="font-size: 11px; font-weight: 600; color: ${t.baselineVarianceDays > 0 ? '#dc2626' : t.baselineVarianceDays < 0 ? '#16a34a' : '#334155'}; font-family: monospace;">${t.baselineVarianceDays > 0 ? `+${t.baselineVarianceDays}d` : `${t.baselineVarianceDays}d`}</span>`
+            : `<span style="font-size: 11px; color: #94a3b8;">-</span>`;
+        } else if (col.key === 'notes') {
+          content = `<span style="font-size: 10px; color: #475569; max-width: 140px; overflow: hidden; text-overflow: ellipsis; display: block;" title="${t.notes || ''}">${t.notes || ''}</span>`;
         } else {
           const rawVal = (t as any)[col.key] ?? '';
           content = `<span style="font-size: 11px; color: #334155;">${rawVal}</span>`;
@@ -461,13 +508,13 @@ export async function exportProjectDocument(
         } else if (t.isMilestone || t.duration === 0) {
           const isCrit = !!(settings.showCriticalPath && t.isCritical);
           taskBarsHTML += `
-            <div style="position: absolute; left: ${startX - 6}px; top: ${topY + 2}px; width: 12px; height: 12px; background-color: ${isCrit ? '#dc2626' : '#0f172a'}; transform: rotate(45deg); border: 2px solid #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.15);"></div>
+            <div style="position: absolute; left: ${startX - 6}px; top: ${topY + 2}px; width: 12px; height: 12px; background-color: ${isCrit ? '#dc2626' : t.color ? t.color : '#0f172a'}; transform: rotate(45deg); border: 2px solid #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.15);"></div>
           `;
         } else {
           const depth = (t.wbsCode.match(/\./g) || []).length;
           const isCrit = !!(settings.showCriticalPath && t.isCritical);
-          const barColor = isCrit ? '#dc2626' : depth <= 1 ? '#2563eb' : depth === 2 ? '#0284c7' : '#4f46e5';
-          const borderColor = isCrit ? '#b91c1c' : depth <= 1 ? '#1d4ed8' : depth === 2 ? '#0369a1' : '#4338ca';
+          const barColor = isCrit ? '#dc2626' : t.color ? t.color : depth <= 1 ? '#2563eb' : depth === 2 ? '#0284c7' : '#4f46e5';
+          const borderColor = isCrit ? '#b91c1c' : t.color ? t.color : depth <= 1 ? '#1d4ed8' : depth === 2 ? '#0369a1' : '#4338ca';
 
           taskBarsHTML += `
             <div style="position: absolute; left: ${startX}px; top: ${topY + 1}px; width: ${barWidth}px; height: 18px; background-color: ${barColor}; border-radius: 3px; border: 1px solid ${borderColor}; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">

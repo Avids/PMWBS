@@ -132,6 +132,8 @@ export async function parseExcelProject(file: File, calendar: ProjectCalendar): 
       headerMap[colIdx] = 'baselineEnd';
     } else if (/^(assigned\s*to|assigned|resource|resources)$/i.test(norm)) {
       headerMap[colIdx] = 'assignedTo';
+    } else if (/^(notes|note|comments|comment|remarks|remark|description)$/i.test(norm)) {
+      headerMap[colIdx] = 'notes';
     }
   });
 
@@ -168,6 +170,7 @@ export async function parseExcelProject(file: File, calendar: ProjectCalendar): 
     baselineStartDate?: string;
     baselineEndDate?: string;
     assignedTo?: string;
+    notes?: string;
   }
 
   const rawRecords: RawRecord[] = [];
@@ -242,7 +245,8 @@ export async function parseExcelProject(file: File, calendar: ProjectCalendar): 
       actualManHours,
       baselineStartDate,
       baselineEndDate,
-      assignedTo
+      assignedTo,
+      notes: rowData['notes'] ? String(rowData['notes']).trim() : undefined
     });
   }
 
@@ -301,7 +305,8 @@ export async function parseExcelProject(file: File, calendar: ProjectCalendar): 
       weight: rec.weight,
       baselineStartDate: rec.baselineStartDate,
       baselineEndDate: rec.baselineEndDate,
-      assignedTo: rec.assignedTo
+      assignedTo: rec.assignedTo,
+      notes: rec.notes
     });
   });
 

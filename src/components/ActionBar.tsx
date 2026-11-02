@@ -12,7 +12,8 @@ import {
   ZoomOut,
   Scan,
   Type,
-  Tag
+  Tag,
+  Info
 } from 'lucide-react';
 
 interface ActionBarProps {
@@ -22,6 +23,7 @@ interface ActionBarProps {
   onIndentTask: () => void;
   onOutdentTask: () => void;
   onOpenRelationships: () => void;
+  onOpenTaskInfo?: () => void;
   onDeleteTask: () => void;
   selectedTaskId: string | null;
   isSummarySelected: boolean;
@@ -50,6 +52,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   onIndentTask,
   onOutdentTask,
   onOpenRelationships,
+  onOpenTaskInfo,
   onDeleteTask,
   selectedTaskId,
   isSummarySelected,
@@ -126,6 +129,16 @@ export const ActionBar: React.FC<ActionBarProps> = ({
         >
           <GitCommit className="w-3.5 h-3.5 text-indigo-600" />
           <span className="hidden md:inline font-medium">Relationships</span>
+        </button>
+
+        <button
+          onClick={onOpenTaskInfo}
+          disabled={!selectedTaskId}
+          title="Task Information & Properties (Double-click WBS cell)"
+          className="p-1.5 hover:bg-slate-100 text-slate-800 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <Info className="w-3.5 h-3.5 text-sky-600" />
+          <span className="hidden md:inline font-medium">Task Info</span>
         </button>
 
         <button

@@ -116,17 +116,69 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </select>
           </div>
 
+          {/* Task Range (Scope) */}
+          <div className="space-y-1.5 pt-1 border-t border-slate-100">
+            <div className="flex items-center justify-between gap-4">
+              <label className="w-32 font-medium text-slate-700">Task Scope</label>
+              <select
+                value={config.taskRangeMode || 'all'}
+                onChange={(e) => setConfig(c => ({
+                  ...c,
+                  taskRangeMode: e.target.value as any,
+                  taskFromId: c.taskFromId || 1,
+                  taskToId: c.taskToId || tasks.length
+                }))}
+                className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+              >
+                <option value="all">All Activities (1 to {tasks.length})</option>
+                <option value="custom">Custom Task Range (From - To)</option>
+              </select>
+            </div>
+
+            {config.taskRangeMode === 'custom' && (
+              <div className="flex items-center justify-end space-x-2 pt-1 pl-36">
+                <span className="text-slate-500">From ID:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={tasks.length}
+                  value={config.taskFromId || 1}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10) || 1;
+                    setConfig(c => ({ ...c, taskFromId: Math.max(1, Math.min(val, tasks.length)) }));
+                  }}
+                  className="w-16 px-2 py-1 border border-slate-300 rounded bg-white font-mono text-center"
+                />
+                <span className="text-slate-500">To ID:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={tasks.length}
+                  value={config.taskToId || tasks.length}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10) || tasks.length;
+                    setConfig(c => ({ ...c, taskToId: Math.max(1, Math.min(val, tasks.length)) }));
+                  }}
+                  className="w-16 px-2 py-1 border border-slate-300 rounded bg-white font-mono text-center"
+                />
+                <span className="text-[11px] text-slate-400">
+                  ({Math.max(0, (config.taskToId || tasks.length) - (config.taskFromId || 1) + 1)} tasks)
+                </span>
+              </div>
+            )}
+          </div>
+
           {/* Columns */}
           <div className="flex items-center justify-between gap-4">
             <label className="w-32 font-medium text-slate-700">Columns</label>
             <select
               value={config.columns}
               onChange={(e) => setConfig(c => ({ ...c, columns: e.target.value as any }))}
-              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
             >
-              <option value="core">Core Columns (WBS, Name, Duration, Dates, %)</option>
-              <option value="name_only">WBS and Task Name</option>
-              <option value="all">All Columns (including Man-Hours & Weights)</option>
+              <option value="all">All Columns (Full 18: WBS, Dates, Floats, All MH, Baselines, Notes)</option>
+              <option value="core">Core Columns (WBS, Name, Duration, Dates, %, Predecessors)</option>
+              <option value="name_only">WBS and Task Name Only</option>
             </select>
           </div>
 

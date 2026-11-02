@@ -52,7 +52,8 @@ export function exportToExcel(tasks: Task[], settings: ProjectSettings, filename
     'Baseline Start': t.baselineStartDate || '',
     'Baseline End': t.baselineEndDate || '',
     'Variance (Days)': t.baselineVarianceDays !== undefined ? t.baselineVarianceDays : '',
-    'Assigned To': t.assignedTo || ''
+    'Assigned To': t.assignedTo || '',
+    'Notes': t.notes || ''
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -75,7 +76,8 @@ export function exportToExcel(tasks: Task[], settings: ProjectSettings, filename
     { wch: 14 }, // Baseline Start
     { wch: 14 }, // Baseline End
     { wch: 14 }, // Variance
-    { wch: 18 }  // Assigned To
+    { wch: 18 }, // Assigned To
+    { wch: 28 }  // Notes
   ];
 
   const workbook = XLSX.utils.book_new();

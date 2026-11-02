@@ -12,6 +12,7 @@ import { BaselineModal } from './components/BaselineModal';
 import { ProjectSettingsModal } from './components/ProjectSettingsModal';
 import { PredecessorModal } from './components/PredecessorModal';
 import { ExportModal } from './components/ExportModal';
+import { TaskInformationModal } from './components/TaskInformationModal';
 
 const DEFAULT_CALENDAR: ProjectCalendar = {
   workingDays: [1, 2, 3, 4, 5], // Mon - Fri
@@ -339,6 +340,13 @@ export function App() {
   const [isPredecessorModalOpen, setIsPredecessorModalOpen] = useState(false);
   const [predecessorModalTask, setPredecessorModalTask] = useState<Task | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isTaskInfoModalOpen, setIsTaskInfoModalOpen] = useState(false);
+  const [taskInfoModalTask, setTaskInfoModalTask] = useState<Task | null>(null);
+
+  const handleOpenTaskInfo = useCallback((task: Task) => {
+    setTaskInfoModalTask(task);
+    setIsTaskInfoModalOpen(true);
+  }, []);
 
   // Auto recalculate schedule whenever tasks, calendar, or weightMode change
   const tasks = useMemo(() => {
@@ -960,6 +968,10 @@ export function App() {
             const t = tasks.find(x => x.id === selectedTaskId);
             if (t && !t.isSummary) handleOpenPredecessorModal(t);
           }}
+          onOpenTaskInfo={() => {
+            const t = tasks.find(x => x.id === selectedTaskId);
+            if (t) handleOpenTaskInfo(t);
+          }}
           onDeleteTask={() => selectedTaskId && handleDeleteTask(selectedTaskId)}
           selectedTaskId={selectedTaskId}
           isSummarySelected={!!tasks.find(x => x.id === selectedTaskId)?.isSummary}
@@ -993,6 +1005,7 @@ export function App() {
               onIndentTask={handleIndentTask}
               onOutdentTask={handleOutdentTask}
               onOpenPredecessorModal={handleOpenPredecessorModal}
+              onOpenTaskInfo={handleOpenTaskInfo}
               onToggleCollapse={handleToggleCollapse}
               weightMode={settings.weightMode}
               fontSize={settings.fontSize || 'normal'}
@@ -1023,6 +1036,7 @@ export function App() {
               onSelectTask={setSelectedTaskId}
               selectedTaskId={selectedTaskId}
               onOpenPredecessorModal={handleOpenPredecessorModal}
+              onOpenTaskInfo={handleOpenTaskInfo}
               fontSize={settings.fontSize || 'normal'}
               zoom={zoomTier}
               dayWidth={dayWidth}
@@ -1059,6 +1073,18 @@ export function App() {
         task={predecessorModalTask}
         allTasks={tasks}
         onSaveDependencies={handleSaveDependencies}
+      />
+
+      <TaskInformationModal
+        isOpen={isTaskInfoModalOpen}
+        onClose={() => {
+          setIsTaskInfoModalOpen(false);
+          setTaskInfoModalTask(null);
+        }}
+        task={taskInfoModalTask}
+        allTasks={tasks}
+        calendar={settings.calendar}
+        onSaveTask={handleUpdateTask}
       />
 
       <ExportModal

@@ -14,6 +14,7 @@ interface GanttTimelineProps {
   onSelectTask: (taskId: string) => void;
   selectedTaskId: string | null;
   onOpenPredecessorModal?: (task: Task) => void;
+  onOpenTaskInfo?: (task: Task) => void;
   fontSize?: FontSizeOption;
   zoom: ZoomTier;
   dayWidth: number;
@@ -37,6 +38,14 @@ export function getTaskLevelStyle(task: Task, isCritical: boolean = false) {
       bg: '#dc2626',
       border: '#b91c1c',
       progress: '#991b1b'
+    };
+  }
+
+  if (task.color && !task.isSummary) {
+    return {
+      bg: task.color,
+      border: task.color,
+      progress: 'rgba(0, 0, 0, 0.25)'
     };
   }
 
@@ -96,6 +105,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   onSelectTask,
   selectedTaskId,
   onOpenPredecessorModal,
+  onOpenTaskInfo,
   fontSize = 'normal',
   zoom,
   dayWidth,
@@ -638,6 +648,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     if (panStateRef.current?.hasMoved) return;
                     onSelectTask(task.id);
                   }}
+                  onDoubleClick={() => onOpenTaskInfo?.(task)}
                   className={`absolute left-0 right-0 flex items-center border-b border-slate-200 transition-colors ${
                     isSelected ? 'bg-sky-100/50' : 'hover:bg-slate-100/50'
                   }`}
@@ -665,6 +676,10 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                         backgroundColor: style.bg,
                         borderColor: style.border
                       }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        onOpenTaskInfo?.(task);
+                      }}
                       className="absolute border rounded-[4px] flex items-center shadow-xs cursor-pointer group"
                     >
                       {/* Interior Progress fill */}
@@ -684,6 +699,10 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     <div
                       style={{ left: `${startX + dayWidth / 2 - 8}px` }}
                       className={`absolute w-4 h-4 ${isTaskCrit ? 'bg-red-600' : 'bg-slate-900'} rotate-45 border-2 border-white shadow-md cursor-grab active:cursor-grabbing group hover:scale-110 transition-transform`}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        onOpenTaskInfo?.(task);
+                      }}
                       onMouseDown={(e) => handleMouseDown(e, task, 'move')}
                       onMouseUp={(e) => {
                         if (connectingFrom && connectingFrom.taskId !== task.id) {
@@ -721,6 +740,10 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                         height: `${barHeight}px`,
                         backgroundColor: style.bg,
                         borderColor: style.border
+                      }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        onOpenTaskInfo?.(task);
                       }}
                       onMouseDown={(e) => handleMouseDown(e, task, 'move')}
                       onMouseUp={(e) => {
