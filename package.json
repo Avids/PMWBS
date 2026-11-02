@@ -13,6 +13,8 @@
     "dev:electron": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development tsc -p electron && electron .\"",
     "package:win": "pnpm run build && pnpm run build:electron && electron-builder --win",
     "lint": "oxlint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -37,6 +39,7 @@
     "oxlint": "^1.89.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.5",
+    "vitest": "^3.0.0",
     "wait-on": "^9.5.1"
   }
 }

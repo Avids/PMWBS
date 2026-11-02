@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Task, TaskDependency, DependencyType, WeightMode, ProjectCalendar } from '../types/project';
-import { X, Plus, Trash2 } from 'lucide-react';
-import { addWorkingDays, countWorkingDays } from '../engine/scheduler';
+import { X, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { addWorkingDays, countWorkingDays, detectDependencyCycle } from '../engine/scheduler';
 
 interface TaskInformationModalProps {
   isOpen: boolean;
@@ -127,7 +127,18 @@ export const TaskInformationModal: React.FC<TaskInformationModalProps> = ({
     setDependencies(prev => prev.filter((_, i) => i !== index));
   };
 
+  const cycleCheck = useMemo(() => {
+    if (!task) return { hasCycle: false, cycleTaskIds: [], cyclePathFormatted: [], message: '' };
+    return detectDependencyCycle(allTasks, { taskId: task.id, newPredecessors: dependencies });
+  }, [allTasks, task, dependencies]);
+
   const handleSave = () => {
+    if (cycleCheck.hasCycle) {
+      setActiveTab('dependency');
+      alert(cycleCheck.message);
+      return;
+    }
+
     const updates: Partial<Task> = {
       name,
       startDate,
@@ -333,6 +344,16 @@ export const TaskInformationModal: React.FC<TaskInformationModalProps> = ({
           {/* TAB 2: DEPENDENCY */}
           {activeTab === 'dependency' && (
             <div className="space-y-4 text-xs">
+              {cycleCheck.hasCycle && (
+                <div className="p-3 bg-red-50 border border-red-300 rounded-lg flex items-start space-x-2.5 text-xs text-red-800 animate-fade-in">
+                  <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-red-900">Circular Dependency Loop Detected!</p>
+                    <p className="mt-0.5 text-red-700 leading-snug">{cycleCheck.message}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-semibold text-slate-800">Predecessors</h4>

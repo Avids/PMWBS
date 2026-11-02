@@ -111,8 +111,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               onChange={(e) => setConfig(c => ({ ...c, footer: e.target.value as any }))}
               className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
             >
-              <option value="summary">Schedule Summary & Total Duration</option>
-              <option value="none">None</option>
+              <option value="summary">Schedule Summary & Duration</option>
+              <option value="none">Legend Only (No Summary Info)</option>
             </select>
           </div>
 

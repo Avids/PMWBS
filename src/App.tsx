@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier, ProjectCalendar } from './types/project';
-import { recalculateSchedule, formatDate, addWorkingDays, sanitizeCalendar } from './engine/scheduler';
+import { recalculateSchedule, formatDate, addWorkingDays, sanitizeCalendar, detectDependencyCycle } from './engine/scheduler';
 import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML, parseExcelProject } from './engine/importers';
 import { saveProjectWithDialog } from './services/platform';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, CircleAlert, Info, X } from 'lucide-react';
 import { Toolbar } from './components/Toolbar';
 import { ActionBar } from './components/ActionBar';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
@@ -28,8 +28,8 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   weightMode: 'duration',
   calendar: DEFAULT_CALENDAR,
   currency: '$',
-  showBaseline: true,
-  showCriticalPath: true,
+  showBaseline: false,
+  showCriticalPath: false,
   showTaskLabels: true,
   fontSize: 'normal'
 };
@@ -260,13 +260,17 @@ const INITIAL_TASKS: Task[] = [
 ];
 
 export function App() {
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'warning' | 'error' | 'info';
+    title?: string;
+  } | null>(null);
 
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
+  const showToast = useCallback((msg: string, type: 'success' | 'warning' | 'error' | 'info' = 'success', title?: string) => {
+    setToast({ message: msg, type, title });
     setTimeout(() => {
-      setToastMessage(prev => prev === msg ? null : prev);
-    }, 4500);
+      setToast(prev => prev && prev.message === msg ? null : prev);
+    }, 6000);
   }, []);
 
   const [settings, setSettings] = useState<ProjectSettings>(() => {
@@ -277,6 +281,9 @@ export function App() {
         return {
           ...DEFAULT_SETTINGS,
           ...parsed,
+          // Critical path and baseline are OFF by default; user can turn them on
+          showBaseline: false,
+          showCriticalPath: false,
           calendar: sanitizeCalendar(parsed.calendar)
         };
       } catch (e) {
@@ -485,10 +492,116 @@ export function App() {
     };
   }, [tasks]);
 
-  // Task CRUD operations
-  const handleUpdateTask = useCallback((taskId: string, updates: Partial<Task>) => {
-    setRawTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
+  // Undo / Redo History Stack (up to 50 operations)
+  const [history, setHistory] = useState<{
+    past: Task[][];
+    future: Task[][];
+  }>({
+    past: [],
+    future: []
+  });
+
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
+
+  // Central updater that records history for discrete mutations
+  const updateRawTasks = useCallback((updater: (prev: Task[]) => Task[], recordHistory = true) => {
+    setRawTasks(prev => {
+      const next = updater(prev);
+      if (next === prev) return prev;
+      if (recordHistory) {
+        setHistory(h => ({
+          past: [...h.past.slice(-49), prev],
+          future: []
+        }));
+      }
+      return next;
+    });
   }, []);
+
+  const handleDragStart = useCallback(() => {
+    setRawTasks(current => {
+      setHistory(h => ({
+        past: [...h.past.slice(-49), current],
+        future: []
+      }));
+      return current;
+    });
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    setRawTasks(current => {
+      let target: Task[] | null = null;
+      setHistory(h => {
+        if (h.past.length === 0) return h;
+        target = h.past[h.past.length - 1];
+        return {
+          past: h.past.slice(0, -1),
+          future: [current, ...h.future].slice(0, 50)
+        };
+      });
+      return target || current;
+    });
+    showToast('Action undone (Ctrl+Z)', 'info');
+  }, [showToast]);
+
+  const handleRedo = useCallback(() => {
+    setRawTasks(current => {
+      let target: Task[] | null = null;
+      setHistory(h => {
+        if (h.future.length === 0) return h;
+        target = h.future[0];
+        return {
+          past: [...h.past, current].slice(-50),
+          future: h.future.slice(1)
+        };
+      });
+      return target || current;
+    });
+    showToast('Action redone (Ctrl+Y)', 'info');
+  }, [showToast]);
+
+  // Global Keyboard listener for Undo (Ctrl+Z) & Redo (Ctrl+Y / Ctrl+Shift+Z)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        handleUndo();
+      } else if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
+      ) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
+
+  // Task CRUD operations
+  const handleUpdateTask = useCallback((taskId: string, updates: Partial<Task>, recordHistory = true) => {
+    if (updates.predecessors) {
+      const cycleCheck = detectDependencyCycle(rawTasks, {
+        taskId,
+        newPredecessors: updates.predecessors
+      });
+      if (cycleCheck.hasCycle) {
+        showToast(cycleCheck.message, 'warning', 'Circular Relationship Blocked');
+        const { predecessors: _, predecessorText: __, ...safeUpdates } = updates;
+        if (Object.keys(safeUpdates).length === 0) return;
+        updates = safeUpdates;
+      }
+    }
+
+    updateRawTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t), recordHistory);
+  }, [rawTasks, updateRawTasks, showToast]);
 
   const handleAddTask = useCallback((afterTaskId?: string, asChild?: boolean) => {
     const newId = `t-${Date.now().toString(36)}`;
@@ -539,7 +652,7 @@ export function App() {
       weight: 0
     };
 
-    setRawTasks(prev => {
+    updateRawTasks(prev => {
       // Auto-expand parent if it was collapsed so the new child task is immediately visible
       const copy = prev.map(t => {
         if (parentId && t.id === parentId && t.isCollapsed) {
@@ -552,7 +665,7 @@ export function App() {
     });
 
     setSelectedTaskId(newId);
-  }, [rawTasks, settings.calendar]);
+  }, [rawTasks, settings.calendar, updateRawTasks]);
 
   const handleAddSubtask = useCallback((parentTaskId: string) => {
     handleAddTask(parentTaskId, true);
@@ -575,17 +688,17 @@ export function App() {
       predecessors: (original.predecessors || []).map(p => ({ ...p }))
     };
 
-    setRawTasks(prev => {
+    updateRawTasks(prev => {
       const copy = [...prev];
       copy.splice(idx + 1, 0, duplicatedTask);
       return copy;
     });
 
     setSelectedTaskId(newId);
-  }, [rawTasks]);
+  }, [rawTasks, updateRawTasks]);
 
   const handleClearDependencies = useCallback((taskId: string) => {
-    setRawTasks(prev => prev.map(t => {
+    updateRawTasks(prev => prev.map(t => {
       if (t.id === taskId) {
         return { ...t, predecessors: [] };
       }
@@ -594,7 +707,7 @@ export function App() {
         predecessors: (t.predecessors || []).filter(p => p.taskId !== taskId)
       };
     }));
-  }, []);
+  }, [updateRawTasks]);
 
   const handleToggleMilestone = useCallback((taskId: string) => {
     const task = rawTasks.find(t => t.id === taskId);
@@ -621,7 +734,7 @@ export function App() {
       return;
     }
 
-    setRawTasks(prev => {
+    updateRawTasks(prev => {
       const idsToDelete = new Set<string>([taskId]);
       let added = true;
       while (added) {
@@ -644,10 +757,10 @@ export function App() {
     });
 
     setSelectedTaskId(prevSelected => (prevSelected === taskId ? null : prevSelected));
-  }, [rawTasks]);
+  }, [rawTasks, updateRawTasks]);
 
   const handleIndentTask = useCallback((taskId: string) => {
-    setRawTasks(prev => {
+    updateRawTasks(prev => {
       const idx = prev.findIndex(t => t.id === taskId);
       if (idx <= 0) return prev;
 
@@ -659,10 +772,10 @@ export function App() {
         return t;
       });
     });
-  }, []);
+  }, [updateRawTasks]);
 
   const handleOutdentTask = useCallback((taskId: string) => {
-    setRawTasks(prev => {
+    updateRawTasks(prev => {
       const current = prev.find(t => t.id === taskId);
       if (!current || !current.parentId) return prev;
 
@@ -676,21 +789,38 @@ export function App() {
         return t;
       });
     });
-  }, []);
+  }, [updateRawTasks]);
 
   const handleAddDependency = useCallback((fromTaskId: string, toTaskId: string, type: TaskDependency['type'] = 'FS') => {
-    if (fromTaskId === toTaskId) return;
+    if (fromTaskId === toTaskId) {
+      showToast('Task cannot depend on itself.', 'warning', 'Invalid Dependency');
+      return;
+    }
 
-    setRawTasks(prev => prev.map(t => {
+    const target = rawTasks.find(t => t.id === toTaskId);
+    if (!target) return;
+    const existing = target.predecessors || [];
+    if (existing.some(d => d.taskId === fromTaskId)) return;
+
+    const proposedDeps = [...existing, { taskId: fromTaskId, type, lag: 0 }].slice(0, 10);
+    const cycleCheck = detectDependencyCycle(rawTasks, {
+      taskId: toTaskId,
+      newPredecessors: proposedDeps
+    });
+
+    if (cycleCheck.hasCycle) {
+      showToast(cycleCheck.message, 'warning', 'Circular Relationship Blocked');
+      return;
+    }
+
+    updateRawTasks(prev => prev.map(t => {
       if (t.id === toTaskId) {
-        const existing = t.predecessors || [];
-        if (existing.some(d => d.taskId === fromTaskId)) return t;
-        const newDeps = [...existing, { taskId: fromTaskId, type, lag: 0 }].slice(0, 10);
-        return { ...t, predecessors: newDeps };
+        return { ...t, predecessors: proposedDeps };
       }
       return t;
     }));
-  }, []);
+    showToast('Dependency created', 'success');
+  }, [rawTasks, updateRawTasks, showToast]);
 
   // Collapse / Expand All
   const handleToggleCollapse = useCallback((taskId: string) => {
@@ -743,13 +873,24 @@ export function App() {
   }, []);
 
   const handleSaveDependencies = useCallback((taskId: string, dependencies: TaskDependency[]) => {
-    setRawTasks(prev => prev.map(t => {
+    const cycleCheck = detectDependencyCycle(rawTasks, {
+      taskId,
+      newPredecessors: dependencies
+    });
+
+    if (cycleCheck.hasCycle) {
+      showToast(cycleCheck.message, 'warning', 'Circular Relationship Blocked');
+      return;
+    }
+
+    updateRawTasks(prev => prev.map(t => {
       if (t.id === taskId) {
         return { ...t, predecessors: dependencies };
       }
       return t;
     }));
-  }, []);
+    showToast('Relationships updated', 'success');
+  }, [rawTasks, updateRawTasks, showToast]);
 
   // Helper to safely restore a loaded project with complete calendar settings
   const applyLoadedProject = useCallback((projectFile: any, sourceName: string = 'project') => {
@@ -765,8 +906,8 @@ export function App() {
       calendar: sanitizedCal,
       weightMode: rawMeta.weightMode || 'duration',
       currency: rawMeta.currency || '$',
-      showBaseline: rawMeta.showBaseline ?? true,
-      showCriticalPath: rawMeta.showCriticalPath ?? true,
+      showBaseline: rawMeta.showBaseline ?? false,
+      showCriticalPath: rawMeta.showCriticalPath ?? false,
       showTaskLabels: rawMeta.showTaskLabels ?? true,
       fontSize: rawMeta.fontSize || 'normal'
     };
@@ -775,6 +916,7 @@ export function App() {
 
     if (Array.isArray(projectFile.tasks)) {
       setRawTasks(projectFile.tasks);
+      setHistory({ past: [], future: [] });
       if (projectFile.tasks.length > 0) {
         setSelectedTaskId(projectFile.tasks[0].id);
       }
@@ -928,6 +1070,7 @@ export function App() {
           weight: 100
         }
       ]);
+      setHistory({ past: [], future: [] });
       setSettings({
         ...DEFAULT_SETTINGS,
         name: 'Untitled Project Schedule',
@@ -1062,6 +1205,10 @@ export function App() {
           onDeleteTask={() => selectedTaskId && handleDeleteTask(selectedTaskId)}
           selectedTaskId={selectedTaskId}
           isSummarySelected={!!tasks.find(x => x.id === selectedTaskId)?.isSummary}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
           fontSize={settings.fontSize || 'normal'}
           onChangeFontSize={(size) => setSettings(s => ({ ...s, fontSize: size }))}
           showTaskLabels={settings.showTaskLabels ?? true}
@@ -1071,7 +1218,6 @@ export function App() {
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onZoomFit={handleZoomFit}
-          showBaseline={settings.showBaseline}
         />
 
         {/* Main Splitter Work Area */}
@@ -1126,12 +1272,62 @@ export function App() {
               onOpenPredecessorModal={handleOpenPredecessorModal}
               onOpenTaskInfo={handleOpenTaskInfo}
               onContextMenu={handleOpenContextMenu}
+              onDragStart={handleDragStart}
               fontSize={settings.fontSize || 'normal'}
               zoom={zoomTier}
               dayWidth={dayWidth}
               scrollContainerRef={timelineScrollRef}
               onVerticalScroll={handleTimelineScroll}
             />
+          </div>
+        </div>
+
+        {/* Bottom View Legend & Schedule Status Bar */}
+        <div className="h-8 px-4 bg-slate-100/90 border-t border-slate-300 flex items-center justify-between text-[11px] text-slate-700 select-none z-20 shrink-0">
+          {/* Status info */}
+          <div className="flex items-center space-x-2 text-slate-600 font-medium">
+            <span><strong>{tasks.length}</strong> tasks</span>
+            <span>•</span>
+            <span><strong>{visibleTasks.length}</strong> visible</span>
+            {finishDate && (
+              <>
+                <span>•</span>
+                <span>Target Finish: <strong className="text-slate-800">{finishDate}</strong></span>
+              </>
+            )}
+          </div>
+
+          {/* Professional Standard Legend */}
+          <div className="flex items-center space-x-4 font-semibold text-slate-700">
+            <span className="text-slate-500 font-medium">Legend:</span>
+            <div className="flex items-center space-x-1.5">
+              <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs"></div>
+              <span>Summary</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <div className="w-2.5 h-2.5 bg-blue-600 rounded-xs"></div>
+              <span>Lvl 2 Activity</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <div className="w-2.5 h-2.5 bg-sky-600 rounded-xs"></div>
+              <span>Lvl 3 Activity</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <div className="w-2.5 h-2.5 bg-slate-900 rotate-45"></div>
+              <span>Milestone</span>
+            </div>
+            {settings.showCriticalPath && (
+              <div className="flex items-center space-x-1.5">
+                <div className="w-2.5 h-2.5 bg-red-600 rounded-xs"></div>
+                <span className="text-red-700">Critical Path</span>
+              </div>
+            )}
+            {settings.showBaseline && (
+              <div className="flex items-center space-x-1.5">
+                <div className="w-2.5 h-1.5 bg-amber-400 border border-amber-600"></div>
+                <span className="text-amber-800">Baseline</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1205,11 +1401,33 @@ export function App() {
         onToggleMilestone={handleToggleMilestone}
       />
 
-      {/* Floating Save/Status Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-indigo-500/40 flex items-center space-x-2.5 text-xs font-medium backdrop-blur-md animate-fade-in max-w-md">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="leading-tight">{toastMessage}</span>
+      {/* Floating Save/Status/Warning Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl border flex items-start space-x-3 text-xs font-medium backdrop-blur-md animate-fade-in max-w-lg transition-all ${
+            toast.type === 'warning'
+              ? 'bg-amber-950/95 text-amber-100 border-amber-500/60 shadow-amber-950/50'
+              : toast.type === 'error'
+              ? 'bg-red-950/95 text-red-100 border-red-500/60 shadow-red-950/50'
+              : toast.type === 'info'
+              ? 'bg-sky-950/95 text-sky-100 border-sky-500/60'
+              : 'bg-slate-900/95 text-white border-indigo-500/40 shadow-slate-950/50'
+          }`}
+        >
+          {toast.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />}
+          {toast.type === 'error' && <CircleAlert className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />}
+          {toast.type === 'info' && <Info className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />}
+          {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />}
+          <div className="flex-1 pr-1">
+            {toast.title && <p className="font-semibold text-[13px] mb-0.5">{toast.title}</p>}
+            <p className="leading-snug whitespace-pre-wrap">{toast.message}</p>
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
     </div>

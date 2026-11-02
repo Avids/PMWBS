@@ -9,13 +9,14 @@ interface GanttTimelineProps {
   showBaseline: boolean;
   showCriticalPath?: boolean;
   showTaskLabels?: boolean;
-  onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
+  onUpdateTask: (taskId: string, updates: Partial<Task>, recordHistory?: boolean) => void;
   onAddDependency: (fromTaskId: string, toTaskId: string, type: DependencyType) => void;
   onSelectTask: (taskId: string) => void;
   selectedTaskId: string | null;
   onOpenPredecessorModal?: (task: Task) => void;
   onOpenTaskInfo?: (task: Task) => void;
   onContextMenu?: (e: React.MouseEvent, task: Task) => void;
+  onDragStart?: () => void;
   fontSize?: FontSizeOption;
   zoom: ZoomTier;
   dayWidth: number;
@@ -99,7 +100,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   tasks,
   calendar,
   showBaseline,
-  showCriticalPath = true,
+  showCriticalPath = false,
   showTaskLabels = true,
   onUpdateTask,
   onAddDependency,
@@ -108,6 +109,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   onOpenPredecessorModal,
   onOpenTaskInfo,
   onContextMenu,
+  onDragStart,
   fontSize = 'normal',
   zoom,
   dayWidth,
@@ -183,7 +185,10 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
   const minDateTime = useMemo(() => new Date(minDate + 'T00:00:00').getTime(), [minDate]);
 
-  // OnlineGantt Style Top Header Spans (Grouped by Weeks with Start Date e.g. 2026-10-25 or Months)
+  // Top Header Spans:
+  // - In Month View: Grouped by Year (only the year: 2026, 2027)
+  // - In Week View: Grouped by 7-day period start date (e.g. 2026-10-25)
+  // - In Day View: Grouped by Month & Year (e.g. November 2026)
   const topHeaderSpans = useMemo(() => {
     const spans: Array<{ key: string; label: string; width: number }> = [];
     if (datesList.length === 0) return spans;
@@ -198,6 +203,9 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
       let label = '';
 
       if (zoom === 'month') {
+        key = String(dObj.getFullYear());
+        label = String(dObj.getFullYear()); // Show only the year in Month view
+      } else if (zoom === 'day') {
         key = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}`;
         label = dObj.toLocaleString('default', { month: 'long', year: 'numeric' });
       } else {
@@ -236,6 +244,55 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     return spans;
   }, [datesList, dayWidth, zoom]);
 
+  // Sub Header Spans for Month View:
+  // Shows months (e.g. "November", "December", "January"...) instead of crammed day numbers
+  const subHeaderSpans = useMemo(() => {
+    if (zoom !== 'month') return null;
+
+    const spans: Array<{ key: string; label: string; shortLabel: string; width: number }> = [];
+    if (datesList.length === 0) return spans;
+
+    let currentKey = '';
+    let currentLabel = '';
+    let currentShort = '';
+    let count = 0;
+
+    datesList.forEach((d) => {
+      const dObj = new Date(d + 'T00:00:00');
+      const key = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}`;
+      const label = dObj.toLocaleString('default', { month: 'long' });
+      const shortLabel = dObj.toLocaleString('default', { month: 'short' });
+
+      if (key === currentKey) {
+        count++;
+      } else {
+        if (currentKey) {
+          spans.push({
+            key: currentKey,
+            label: currentLabel,
+            shortLabel: currentShort,
+            width: count * dayWidth
+          });
+        }
+        currentKey = key;
+        currentLabel = label;
+        currentShort = shortLabel;
+        count = 1;
+      }
+    });
+
+    if (currentKey) {
+      spans.push({
+        key: currentKey,
+        label: currentLabel,
+        shortLabel: currentShort,
+        width: count * dayWidth
+      });
+    }
+
+    return spans;
+  }, [datesList, dayWidth, zoom]);
+
   // Convert date string to X coordinate
   const dateToX = (dateStr: string): number => {
     if (!dateStr) return 0;
@@ -265,6 +322,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   const handleMouseDown = (e: React.MouseEvent, task: Task, type: 'move' | 'resize') => {
     if (task.isSummary) return;
     e.stopPropagation();
+    if (onDragStart) onDragStart();
     setDraggingTaskId(task.id);
     setDragType(type);
     setDragStartX(e.clientX);
@@ -304,11 +362,11 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
       orig.setDate(orig.getDate() + diffDays);
       const newStart = formatDate(orig);
       const newEnd = addWorkingDays(newStart, originalDuration, calendar);
-      onUpdateTask(draggingTaskId, { startDate: newStart, endDate: newEnd });
+      onUpdateTask(draggingTaskId, { startDate: newStart, endDate: newEnd }, false);
     } else if (dragType === 'resize') {
       const newDuration = Math.max(1, originalDuration + diffDays);
       const newEnd = addWorkingDays(originalStartDate, newDuration, calendar);
-      onUpdateTask(draggingTaskId, { duration: newDuration, endDate: newEnd });
+      onUpdateTask(draggingTaskId, { duration: newDuration, endDate: newEnd }, false);
     }
   };
 
@@ -491,29 +549,42 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
               ))}
             </div>
 
-            {/* Tier 2: Days Header with High Contrast */}
+            {/* Tier 2: Days Header with High Contrast (or Months in Month View) */}
             <div className="flex h-7">
-              {datesList.map((d) => {
-                const dateObj = new Date(d + 'T00:00:00');
-                const isNonWorking = !isWorkingDay(d, calendar);
-                const isToday = d === todayStr;
-                return (
+              {zoom === 'month' && subHeaderSpans ? (
+                subHeaderSpans.map((span) => (
                   <div
-                    key={d}
-                    style={{ width: `${dayWidth}px` }}
-                    className={`flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-r border-slate-200 ${
-                      isToday
-                        ? 'bg-indigo-100 text-indigo-900 font-black'
-                        : isNonWorking
-                        ? 'bg-slate-200/90 text-slate-500'
-                        : 'text-slate-900 bg-white'
-                    }`}
-                    title={`${d} (${dateObj.toLocaleDateString(undefined, { weekday: 'short' })}) - ${isNonWorking ? 'Non-Working' : 'Working'}`}
+                    key={span.key}
+                    style={{ width: `${span.width}px` }}
+                    className="flex-shrink-0 flex items-center justify-center text-xs font-bold border-r border-slate-300 bg-white text-slate-800 tracking-wide select-none overflow-hidden px-1"
+                    title={span.label}
                   >
-                    <span>{dateObj.getDate()}</span>
+                    <span className="truncate">{span.width >= 70 ? span.label : span.shortLabel}</span>
                   </div>
-                );
-              })}
+                ))
+              ) : (
+                datesList.map((d) => {
+                  const dateObj = new Date(d + 'T00:00:00');
+                  const isNonWorking = !isWorkingDay(d, calendar);
+                  const isToday = d === todayStr;
+                  return (
+                    <div
+                      key={d}
+                      style={{ width: `${dayWidth}px` }}
+                      className={`flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-r border-slate-200 ${
+                        isToday
+                          ? 'bg-indigo-100 text-indigo-900 font-black'
+                          : isNonWorking
+                          ? 'bg-slate-200/90 text-slate-500'
+                          : 'text-slate-900 bg-white'
+                      }`}
+                      title={`${d} (${dateObj.toLocaleDateString(undefined, { weekday: 'short' })}) - ${isNonWorking ? 'Non-Working' : 'Working'}`}
+                    >
+                      <span>{dateObj.getDate()}</span>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -702,10 +773,14 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       )}
                     </div>
                   ) : task.isMilestone || task.duration === 0 ? (
-                    /* Milestone Diamond (Crisp Dark Diamond or Critical Red) */
+                    /* Milestone Diamond Wrapper & Symbol */
                     <div
-                      style={{ left: `${startX + dayWidth / 2 - 8}px` }}
-                      className={`absolute w-4 h-4 ${isTaskCrit ? 'bg-red-600' : 'bg-slate-900'} rotate-45 border-2 border-white shadow-md cursor-grab active:cursor-grabbing group hover:scale-110 transition-transform`}
+                      style={{
+                        left: `${startX + dayWidth / 2 - 8}px`,
+                        width: '16px',
+                        height: `${barHeight}px`
+                      }}
+                      className="absolute flex items-center group cursor-grab active:cursor-grabbing select-none"
                       onDoubleClick={(e) => {
                         e.stopPropagation();
                         onOpenTaskInfo?.(task);
@@ -718,23 +793,34 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       }}
                       title={`Milestone: ${task.name} (${task.startDate})`}
                     >
-                      {/* Milestone Connect Handles on Both Ends */}
+                      {/* Rotated Diamond Symbol */}
                       <div
-                        onMouseDown={(e) => handleConnectStart(e, task.id, 'start')}
-                        onMouseUp={(e) => handleConnectEnd(e, task.id, 'start')}
-                        className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-indigo-600 opacity-0 group-hover:opacity-100 cursor-crosshair z-20"
-                        title="Connect from Milestone (Start)"
-                      />
-                      <div
-                        onMouseDown={(e) => handleConnectStart(e, task.id, 'finish')}
-                        onMouseUp={(e) => handleConnectEnd(e, task.id, 'finish')}
-                        className="absolute -right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-indigo-600 opacity-0 group-hover:opacity-100 cursor-crosshair z-20"
-                        title="Connect from Milestone (Finish)"
-                      />
+                        className={`w-4 h-4 ${isTaskCrit ? 'bg-red-600' : 'bg-slate-900'} rotate-45 border-2 border-white shadow-md hover:scale-110 transition-transform relative shrink-0`}
+                      >
+                        {/* Milestone Connect Handles on Both Ends */}
+                        <div
+                          onMouseDown={(e) => handleConnectStart(e, task.id, 'start')}
+                          onMouseUp={(e) => handleConnectEnd(e, task.id, 'start')}
+                          className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-indigo-600 opacity-0 group-hover:opacity-100 cursor-crosshair z-20"
+                          title="Connect from Milestone (Start)"
+                        />
+                        <div
+                          onMouseDown={(e) => handleConnectStart(e, task.id, 'finish')}
+                          onMouseUp={(e) => handleConnectEnd(e, task.id, 'finish')}
+                          className="absolute -right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-indigo-600 opacity-0 group-hover:opacity-100 cursor-crosshair z-20"
+                          title="Connect from Milestone (Finish)"
+                        />
+                      </div>
 
+                      {/* Milestone Label on the Right Side (Unrotated, aligned with task bars) */}
                       {showTaskLabels && (
-                        <span className={`absolute left-full ml-3 -top-1 -rotate-45 text-xs font-bold ${isTaskCrit ? 'text-red-700' : 'text-slate-900'} whitespace-nowrap`}>
+                        <span className={`absolute left-full ml-2 text-xs font-bold ${isTaskCrit ? 'text-red-700' : 'text-slate-900'} whitespace-nowrap select-none pointer-events-none`}>
                           {task.name}
+                          {task.baselineVarianceDays !== undefined && task.baselineVarianceDays !== 0 && (
+                            <span className={`ml-1 text-[11px] font-bold ${task.baselineVarianceDays > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                              {task.baselineVarianceDays > 0 ? `+${task.baselineVarianceDays}d` : `${task.baselineVarianceDays}d`}
+                            </span>
+                          )}
                         </span>
                       )}
                     </div>

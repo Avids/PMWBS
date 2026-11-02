@@ -232,14 +232,28 @@ export function parsePredecessors(text: string, taskList?: Task[]): TaskDependen
   }
 
   for (const part of parts.slice(0, 10)) {
-    // Regex matches: (RowNumber or TaskID)(FS|SS|FF|SF optional)([+-]number optional)(d optional)
-    // Examples: "2", "2FS", "2FS+5d", "2+5d", "2FS+5", "2SS-2d", "t-1FS+3d"
-    const match = part.match(/^([A-Za-z0-9_-]+)\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+)?\s*d?$/i);
-    if (match) {
-      const rawRef = match[1];
-      const type = (match[2]?.toUpperCase() as DependencyType) || 'FS';
-      const lag = match[3] ? parseInt(match[3].replace(/\s+/g, ''), 10) : 0;
+    // Robust 2-pass regex matching:
+    // Pass 1: Explicit relationship type (FS, SS, FF, SF) e.g. "2SS-1d", "t-1FS+3d", "1.2FF"
+    // Pass 2: Implicit default relationship (FS) e.g. "2", "2+5d", "1.1-2d"
+    let rawRef = '';
+    let type: DependencyType = 'FS';
+    let lag = 0;
 
+    const relMatch = part.match(/^(.+?)\s*(FS|SS|FF|SF)\s*([+-]\s*\d+)?\s*d?$/i);
+    if (relMatch) {
+      rawRef = relMatch[1].trim();
+      type = (relMatch[2]?.toUpperCase() as DependencyType) || 'FS';
+      lag = relMatch[3] ? parseInt(relMatch[3].replace(/\s+/g, ''), 10) : 0;
+    } else {
+      const simpleMatch = part.match(/^(.+?)\s*([+-]\s*\d+)?\s*d?$/i);
+      if (simpleMatch) {
+        rawRef = simpleMatch[1].trim();
+        type = 'FS';
+        lag = simpleMatch[2] ? parseInt(simpleMatch[2].replace(/\s+/g, ''), 10) : 0;
+      }
+    }
+
+    if (rawRef) {
       // Determine actual taskId
       let resolvedId = rawRef;
       const parsedRowNum = parseInt(rawRef, 10);
@@ -256,6 +270,186 @@ export function parsePredecessors(text: string, taskList?: Task[]): TaskDependen
   }
 
   return result;
+}
+
+export interface CycleDetectionResult {
+  hasCycle: boolean;
+  cycleTaskIds: string[];
+  cyclePathFormatted: string[];
+  message: string;
+}
+
+/**
+ * Validates whether proposed dependencies would create a circular dependency loop,
+ * a self-dependency, or an invalid parent-child hierarchy loop.
+ */
+export function detectDependencyCycle(
+  tasks: Task[],
+  proposedChange?: {
+    taskId: string;
+    newPredecessors: TaskDependency[];
+  }
+): CycleDetectionResult {
+  if (!tasks || tasks.length === 0) {
+    return { hasCycle: false, cycleTaskIds: [], cyclePathFormatted: [], message: '' };
+  }
+
+  const taskMap = new Map<string, Task>();
+  tasks.forEach(t => taskMap.set(t.id, t));
+
+  // Helper to format task label
+  const formatTaskLabel = (id: string): string => {
+    const t = taskMap.get(id);
+    if (!t) return `[${id}]`;
+    const wbs = t.wbsCode ? `[${t.wbsCode}] ` : '';
+    return `${wbs}"${t.name || 'Unnamed'}"`;
+  };
+
+  // Helper to check ancestor/descendant relationships
+  const isAncestor = (ancestorId: string, childId: string): boolean => {
+    let curr: string | null = childId;
+    let guard = 500;
+    while (curr && guard-- > 0) {
+      const parentTask = taskMap.get(curr);
+      if (!parentTask || !parentTask.parentId) break;
+      if (parentTask.parentId === ancestorId) return true;
+      curr = parentTask.parentId;
+    }
+    return false;
+  };
+
+  // 1. Check direct self-loop & hierarchy violations in proposed change
+  if (proposedChange) {
+    const { taskId, newPredecessors } = proposedChange;
+
+    for (const dep of newPredecessors) {
+      if (dep.taskId === taskId) {
+        const label = formatTaskLabel(taskId);
+        return {
+          hasCycle: true,
+          cycleTaskIds: [taskId, taskId],
+          cyclePathFormatted: [label, label],
+          message: `Self-dependency error: Task ${label} cannot depend on itself.`
+        };
+      }
+
+      if (isAncestor(dep.taskId, taskId)) {
+        const parentLabel = formatTaskLabel(dep.taskId);
+        const childLabel = formatTaskLabel(taskId);
+        return {
+          hasCycle: true,
+          cycleTaskIds: [dep.taskId, taskId],
+          cyclePathFormatted: [parentLabel, childLabel],
+          message: `Hierarchy loop: Subtask ${childLabel} cannot depend on its own parent summary task ${parentLabel}.`
+        };
+      }
+
+      if (isAncestor(taskId, dep.taskId)) {
+        const parentLabel = formatTaskLabel(taskId);
+        const childLabel = formatTaskLabel(dep.taskId);
+        return {
+          hasCycle: true,
+          cycleTaskIds: [taskId, dep.taskId],
+          cyclePathFormatted: [parentLabel, childLabel],
+          message: `Hierarchy loop: Summary task ${parentLabel} cannot depend on its own child subtask ${childLabel}.`
+        };
+      }
+    }
+  }
+
+  // 2. Build graph: Predecessor -> Successor edges
+  // If task B has predecessor A, edge goes A -> B (A precedes B).
+  const graph = new Map<string, Set<string>>();
+  tasks.forEach(t => graph.set(t.id, new Set<string>()));
+
+  tasks.forEach(t => {
+    const deps = (proposedChange && t.id === proposedChange.taskId)
+      ? proposedChange.newPredecessors
+      : (t.predecessors || []);
+
+    deps.forEach(dep => {
+      if (taskMap.has(dep.taskId)) {
+        if (!graph.has(dep.taskId)) graph.set(dep.taskId, new Set());
+        graph.get(dep.taskId)!.add(t.id);
+      }
+    });
+  });
+
+  // 3. DFS 3-color cycle detection
+  // 0 = unvisited, 1 = visiting (in current stack), 2 = visited
+  const state = new Map<string, number>();
+  const stack: string[] = [];
+  let detectedCycleIds: string[] = [];
+
+  function dfs(u: string): boolean {
+    state.set(u, 1); // visiting
+    stack.push(u);
+
+    const neighbors = graph.get(u) || new Set();
+    for (const v of neighbors) {
+      if (state.get(v) === 1) {
+        // Cycle found! Extract cycle from stack
+        const cycleStartIndex = stack.indexOf(v);
+        if (cycleStartIndex !== -1) {
+          detectedCycleIds = stack.slice(cycleStartIndex);
+          detectedCycleIds.push(v); // close the loop
+        } else {
+          detectedCycleIds = [v, u, v];
+        }
+        return true;
+      }
+
+      if (!state.get(v)) {
+        if (dfs(v)) return true;
+      }
+    }
+
+    stack.pop();
+    state.set(u, 2); // visited
+    return false;
+  }
+
+  // If proposedChange is given, start DFS at proposed predecessor(s) or task first
+  const startOrder: string[] = [];
+  if (proposedChange) {
+    proposedChange.newPredecessors.forEach(d => {
+      if (taskMap.has(d.taskId) && !startOrder.includes(d.taskId)) {
+        startOrder.push(d.taskId);
+      }
+    });
+    if (!startOrder.includes(proposedChange.taskId)) {
+      startOrder.push(proposedChange.taskId);
+    }
+  }
+  tasks.forEach(t => {
+    if (!startOrder.includes(t.id)) {
+      startOrder.push(t.id);
+    }
+  });
+
+  for (const nodeId of startOrder) {
+    if (!state.get(nodeId)) {
+      if (dfs(nodeId)) break;
+    }
+  }
+
+  if (detectedCycleIds.length > 0) {
+    const formattedPath = detectedCycleIds.map(id => formatTaskLabel(id));
+    const pathString = formattedPath.join(' ➔ ');
+    return {
+      hasCycle: true,
+      cycleTaskIds: detectedCycleIds,
+      cyclePathFormatted: formattedPath,
+      message: `Circular dependency loop detected: ${pathString}. This relationship was prevented to avoid an infinite loop.`
+    };
+  }
+
+  return {
+    hasCycle: false,
+    cycleTaskIds: [],
+    cyclePathFormatted: [],
+    message: ''
+  };
 }
 
 /**

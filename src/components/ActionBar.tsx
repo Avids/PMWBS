@@ -13,7 +13,9 @@ import {
   Scan,
   Type,
   Tag,
-  Info
+  Info,
+  Undo2,
+  Redo2
 } from 'lucide-react';
 
 interface ActionBarProps {
@@ -27,6 +29,10 @@ interface ActionBarProps {
   onDeleteTask: () => void;
   selectedTaskId: string | null;
   isSummarySelected: boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
   
   // Font Size
   fontSize: FontSizeOption;
@@ -42,7 +48,6 @@ interface ActionBarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomFit: () => void;
-  showBaseline: boolean;
 }
 
 export const ActionBar: React.FC<ActionBarProps> = ({
@@ -65,7 +70,10 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   onZoomIn,
   onZoomOut,
   onZoomFit,
-  showBaseline
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo
 }) => {
   return (
     <div className="h-11 px-3 bg-white border-b-2 border-slate-300 flex items-center justify-between text-xs text-slate-900 shadow-xs select-none z-20">
@@ -79,6 +87,29 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           <Plus className="w-3.5 h-3.5 text-indigo-700 font-bold" />
           <span>Add</span>
         </button>
+
+        {/* Undo / Redo */}
+        <button
+          onClick={onUndo}
+          disabled={!canUndo}
+          title="Undo Last Action (Ctrl+Z)"
+          className="p-1.5 hover:bg-slate-100 text-slate-800 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <Undo2 className="w-3.5 h-3.5 text-slate-700" />
+          <span className="hidden lg:inline font-medium">Undo</span>
+        </button>
+
+        <button
+          onClick={onRedo}
+          disabled={!canRedo}
+          title="Redo Action (Ctrl+Y)"
+          className="p-1.5 hover:bg-slate-100 text-slate-800 rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <Redo2 className="w-3.5 h-3.5 text-slate-700" />
+          <span className="hidden lg:inline font-medium">Redo</span>
+        </button>
+
+        <div className="h-5 w-px bg-slate-300 mx-1"></div>
 
         <button
           onClick={onExpandAll}
@@ -269,32 +300,6 @@ export const ActionBar: React.FC<ActionBarProps> = ({
               Months
             </button>
           </div>
-        </div>
-
-        {/* Professional Standard Legend */}
-        <div className="hidden xl:flex items-center space-x-3 text-[11px] font-semibold text-slate-700 pl-2 border-l border-slate-300">
-          <div className="flex items-center space-x-1">
-            <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs"></div>
-            <span>Summary</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2.5 h-2.5 bg-blue-600 rounded-xs"></div>
-            <span>Lvl 2 Activity</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2.5 h-2.5 bg-sky-600 rounded-xs"></div>
-            <span>Lvl 3 Activity</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2.5 h-2.5 bg-slate-900 rotate-45"></div>
-            <span>Milestone</span>
-          </div>
-          {showBaseline && (
-            <div className="flex items-center space-x-1">
-              <div className="w-2.5 h-1.5 bg-amber-400 border border-amber-600"></div>
-              <span>Baseline</span>
-            </div>
-          )}
         </div>
       </div>
     </div>

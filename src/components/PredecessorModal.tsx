@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Task, TaskDependency, DependencyType } from '../types/project';
-import { GitCommit, Plus, Trash2, X, HelpCircle } from 'lucide-react';
+import { GitCommit, Plus, Trash2, X, HelpCircle, AlertTriangle } from 'lucide-react';
+import { detectDependencyCycle } from '../engine/scheduler';
 
 interface PredecessorModalProps {
   isOpen: boolean;
@@ -51,7 +52,15 @@ export const PredecessorModal: React.FC<PredecessorModalProps> = ({
     setDependencies(prev => prev.filter((_, i) => i !== index));
   };
 
+  const cycleCheck = useMemo(() => {
+    return detectDependencyCycle(allTasks, { taskId: task.id, newPredecessors: dependencies });
+  }, [allTasks, task.id, dependencies]);
+
   const handleSave = () => {
+    if (cycleCheck.hasCycle) {
+      alert(cycleCheck.message);
+      return;
+    }
     onSaveDependencies(task.id, dependencies);
     onClose();
   };
@@ -203,6 +212,17 @@ export const PredecessorModal: React.FC<PredecessorModalProps> = ({
           </div>
         </div>
 
+        {/* Cycle Warning Banner */}
+        {cycleCheck.hasCycle && (
+          <div className="mx-5 mb-2 p-3 bg-red-50 border border-red-300 rounded-lg flex items-start space-x-2.5 text-xs text-red-800 animate-fade-in">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-900">Circular Dependency Loop Detected!</p>
+              <p className="mt-0.5 text-red-700 leading-snug">{cycleCheck.message}</p>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2">
           <button
@@ -215,9 +235,14 @@ export const PredecessorModal: React.FC<PredecessorModalProps> = ({
           <button
             type="button"
             onClick={handleSave}
-            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors shadow-xs"
+            disabled={cycleCheck.hasCycle}
+            className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-xs ${
+              cycleCheck.hasCycle
+                ? 'bg-red-400 text-white cursor-not-allowed opacity-70'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
           >
-            Apply Relationships
+            {cycleCheck.hasCycle ? 'Resolve Loop to Apply' : 'Apply Relationships'}
           </button>
         </div>
       </div>
