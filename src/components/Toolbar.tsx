@@ -22,6 +22,7 @@ interface ToolbarProps {
   onSaveWBS: () => void;
   onLoadWBS: (file: File) => void;
   onImportMSP: (file: File) => void;
+  onImportExcel: (file: File) => void;
   onExportExcel: () => void;
   onOpenExportModal: () => void;
   onOpenBaselineModal: () => void;
@@ -40,6 +41,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSaveWBS,
   onLoadWBS,
   onImportMSP,
+  onImportExcel,
   onExportExcel,
   onOpenExportModal,
   onOpenBaselineModal,
@@ -52,6 +54,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mspFileInputRef = useRef<HTMLInputElement>(null);
+  const excelFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,6 +68,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       onImportMSP(file);
+      e.target.value = '';
+    }
+  };
+
+  const handleExcelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onImportExcel(file);
       e.target.value = '';
     }
   };
@@ -171,6 +182,23 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             type="file"
             accept=".xml,.mpp"
             onChange={handleMspFileChange}
+            className="hidden"
+          />
+
+          {/* Import Excel Action */}
+          <button
+            onClick={() => excelFileInputRef.current?.click()}
+            className="px-2.5 py-1 rounded-md bg-emerald-700 hover:bg-emerald-600 text-white font-semibold flex items-center space-x-1.5 transition-colors shadow-xs"
+            title="Import activities and schedule from Excel (*.xlsx, *.xls, *.csv)"
+          >
+            <UploadCloud className="w-3.5 h-3.5 text-emerald-200" />
+            <span>Import Excel</span>
+          </button>
+          <input
+            ref={excelFileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleExcelFileChange}
             className="hidden"
           />
 

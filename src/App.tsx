@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier } from './types/project';
 import { recalculateSchedule, formatDate, addWorkingDays } from './engine/scheduler';
-import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML } from './engine/importers';
+import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML, parseExcelProject } from './engine/importers';
 import { saveProjectWithDialog } from './services/platform';
 import { Toolbar } from './components/Toolbar';
 import { ActionBar } from './components/ActionBar';
@@ -711,6 +711,25 @@ export function App() {
     }
   };
 
+  // Import Excel (.xlsx, .xls, .csv)
+  const handleImportExcel = async (file: File) => {
+    try {
+      const result = await parseExcelProject(file, settings.calendar);
+      setSettings(prev => ({
+        ...prev,
+        name: result.projectTitle || prev.name,
+        startDate: result.startDate || prev.startDate
+      }));
+      setRawTasks(result.tasks);
+      if (result.tasks.length > 0) {
+        setSelectedTaskId(result.tasks[0].id);
+      }
+      alert(`Successfully imported "${result.projectTitle}" (${result.tasks.length} activities) from Excel!`);
+    } catch (err: any) {
+      alert(err.message || 'Error importing Excel file');
+    }
+  };
+
   const handleNewProject = () => {
     if (confirm('Create a new schedule? Any unsaved changes will be cleared.')) {
       setRawTasks([
@@ -810,6 +829,7 @@ export function App() {
           onSaveWBS={handleSaveWBS}
           onLoadWBS={handleLoadWBS}
           onImportMSP={handleImportMSP}
+          onImportExcel={handleImportExcel}
           onExportExcel={handleExportExcel}
           onOpenExportModal={() => setIsExportModalOpen(true)}
           onOpenBaselineModal={() => setIsBaselineModalOpen(true)}
