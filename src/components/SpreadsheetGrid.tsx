@@ -89,7 +89,70 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     }
   }, [selectedTaskId, tasks]);
 
-  // Global ArrowUp / ArrowDown navigation (prevents window scrolling and navigates tasks)
+  // Height and font sizing based on fontSize prop
+  const rowHeight = fontSize === 'small' ? 30 : fontSize === 'large' ? 44 : 36;
+  const textSizeClass = fontSize === 'small' ? 'text-[11px]' : fontSize === 'large' ? 'text-[15px]' : 'text-[13px]';
+  const headerSizeClass = fontSize === 'small' ? 'text-[11px]' : fontSize === 'large' ? 'text-[14px]' : 'text-xs';
+
+  const commitEdit = () => {
+    if (!editingCell) return;
+    const task = tasks[editingCell.rowIdx];
+    if (!task) return;
+    const col = COLUMNS[editingCell.colIdx];
+    if (col.readonly) return;
+
+    const updates: Partial<Task> = {};
+    if (col.field === 'name') updates.name = editValue;
+    else if (col.field === 'duration') updates.duration = Math.max(0, parseInt(editValue, 10) || 0);
+    else if (col.field === 'startDate') updates.startDate = editValue;
+    else if (col.field === 'endDate') updates.endDate = editValue;
+    else if (col.field === 'progress') updates.progress = Math.min(100, Math.max(0, parseInt(editValue, 10) || 0));
+    else if (col.field === 'predecessors') {
+      updates.predecessorText = editValue;
+      // Resolve against allTasks for valid references
+      updates.predecessors = parsePredecessors(editValue, allTasks);
+    } else if (col.field === 'plannedManHours') updates.plannedManHours = Math.max(0, parseFloat(editValue) || 0);
+    else if (col.field === 'actualManHours') updates.actualManHours = Math.max(0, parseFloat(editValue) || 0);
+
+    onUpdateTask(task.id, updates);
+    setEditingCell(null);
+    gridContainerRef.current?.focus();
+  };
+
+  const startEdit = (rowIdx: number, colIdx: number) => {
+    const col = COLUMNS[colIdx];
+    if (!col || col.readonly) return;
+    const task = tasks[rowIdx];
+    if (!task) return;
+    // For summary tasks, calculated rollup fields cannot be edited directly; only task name is editable
+    if (task.isSummary && col.field !== 'name') return;
+
+    let val = '';
+    if (col.field === 'name') val = task.name;
+    else if (col.field === 'duration') val = String(task.duration);
+    else if (col.field === 'startDate') val = task.startDate;
+    else if (col.field === 'endDate') val = task.endDate;
+    else if (col.field === 'progress') val = String(task.progress);
+    else if (col.field === 'predecessors') val = task.predecessorText || '';
+    else if (col.field === 'plannedManHours') val = String(task.plannedManHours || 0);
+    else if (col.field === 'actualManHours') val = String(task.actualManHours || 0);
+
+    setEditValue(val);
+    setEditingCell({ rowIdx, colIdx });
+  };
+
+  useEffect(() => {
+    if (editingCell && inputRef.current) {
+      inputRef.current.focus();
+      try {
+        inputRef.current.select();
+      } catch {
+        // Some input types (e.g. date) do not support text selection
+      }
+    }
+  }, [editingCell]);
+
+  // Global ArrowUp / ArrowDown / Enter navigation (prevents window scrolling and navigates tasks)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       // Don't intercept if an input, textarea, or select is focused or cell is editing
@@ -131,6 +194,27 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
           document.getElementById(`grid-row-${tasks[prevRow].id}`)?.scrollIntoView({ block: 'nearest' });
         }
         gridContainerRef.current?.focus();
+      } else if (e.key === 'Enter' || e.key === 'F2') {
+        let currentRowIdx = activeCell?.rowIdx ?? -1;
+        const currentColIdx = activeCell?.colIdx ?? 1;
+
+        if (currentRowIdx === -1 && selectedTaskId) {
+          currentRowIdx = tasks.findIndex((t) => t.id === selectedTaskId);
+        }
+        if (currentRowIdx === -1 && tasks.length > 0) {
+          currentRowIdx = 0;
+        }
+        if (currentRowIdx === -1) return;
+
+        const col = COLUMNS[currentColIdx];
+        if (col && !col.readonly) {
+          const task = tasks[currentRowIdx];
+          if (task && (!task.isSummary || col.field === 'name')) {
+            e.preventDefault();
+            gridContainerRef.current?.focus();
+            startEdit(currentRowIdx, currentColIdx);
+          }
+        }
       }
     };
 
@@ -138,63 +222,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  }, [activeCell, selectedTaskId, tasks, editingCell, onSelectTask]);
-
-  // Height and font sizing based on fontSize prop
-  const rowHeight = fontSize === 'small' ? 30 : fontSize === 'large' ? 44 : 36;
-  const textSizeClass = fontSize === 'small' ? 'text-[11px]' : fontSize === 'large' ? 'text-[15px]' : 'text-[13px]';
-  const headerSizeClass = fontSize === 'small' ? 'text-[11px]' : fontSize === 'large' ? 'text-[14px]' : 'text-xs';
-
-  useEffect(() => {
-    if (editingCell && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editingCell]);
-
-  const commitEdit = () => {
-    if (!editingCell) return;
-    const task = tasks[editingCell.rowIdx];
-    if (!task) return;
-    const col = COLUMNS[editingCell.colIdx];
-    if (col.readonly) return;
-
-    const updates: Partial<Task> = {};
-    if (col.field === 'name') updates.name = editValue;
-    else if (col.field === 'duration') updates.duration = Math.max(0, parseInt(editValue, 10) || 0);
-    else if (col.field === 'startDate') updates.startDate = editValue;
-    else if (col.field === 'endDate') updates.endDate = editValue;
-    else if (col.field === 'progress') updates.progress = Math.min(100, Math.max(0, parseInt(editValue, 10) || 0));
-    else if (col.field === 'predecessors') {
-      updates.predecessorText = editValue;
-      // Resolve against allTasks for valid references
-      updates.predecessors = parsePredecessors(editValue, allTasks);
-    } else if (col.field === 'plannedManHours') updates.plannedManHours = Math.max(0, parseFloat(editValue) || 0);
-    else if (col.field === 'actualManHours') updates.actualManHours = Math.max(0, parseFloat(editValue) || 0);
-
-    onUpdateTask(task.id, updates);
-    setEditingCell(null);
-  };
-
-  const startEdit = (rowIdx: number, colIdx: number) => {
-    const col = COLUMNS[colIdx];
-    if (col.readonly) return;
-    const task = tasks[rowIdx];
-    if (!task) return;
-
-    let val = '';
-    if (col.field === 'name') val = task.name;
-    else if (col.field === 'duration') val = String(task.duration);
-    else if (col.field === 'startDate') val = task.startDate;
-    else if (col.field === 'endDate') val = task.endDate;
-    else if (col.field === 'progress') val = String(task.progress);
-    else if (col.field === 'predecessors') val = task.predecessorText || '';
-    else if (col.field === 'plannedManHours') val = String(task.plannedManHours || 0);
-    else if (col.field === 'actualManHours') val = String(task.actualManHours || 0);
-
-    setEditValue(val);
-    setEditingCell({ rowIdx, colIdx });
-  };
+  }, [activeCell, selectedTaskId, tasks, editingCell, onSelectTask, allTasks]);
 
   // Keyboard Navigation Handler (Spreadsheet Excel/MSP Style)
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -215,7 +243,9 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
         setActiveCell({ rowIdx: editingCell.rowIdx, colIdx: nextCol });
         startEdit(editingCell.rowIdx, nextCol);
       } else if (e.key === 'Escape') {
+        e.preventDefault();
         setEditingCell(null);
+        gridContainerRef.current?.focus();
       }
       return;
     }
@@ -256,8 +286,9 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       e.preventDefault();
       const prevCol = Math.max(0, currentColIdx - 1);
       setActiveCell({ rowIdx: currentRowIdx, colIdx: prevCol });
-    } else if (e.key === 'Enter') {
+    } else if (e.key === 'Enter' || e.key === 'F2') {
       e.preventDefault();
+      e.stopPropagation();
       startEdit(currentRowIdx, currentColIdx);
     } else if (e.key === 'Delete') {
       e.preventDefault();
@@ -312,7 +343,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                   style={{ height: `${rowHeight}px` }}
                   onClick={() => {
                     onSelectTask(task.id);
-                    setActiveCell({ rowIdx, colIdx: 1 });
+                    setActiveCell((prev) => ({ rowIdx, colIdx: prev?.colIdx ?? 1 }));
                     gridContainerRef.current?.focus();
                   }}
                   className={`border-b border-slate-200 cursor-pointer transition-colors ${
@@ -465,7 +496,19 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                     return (
                       <td
                         key={col.field}
-                        onDoubleClick={() => startEdit(rowIdx, colIdx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectTask(task.id);
+                          setActiveCell({ rowIdx, colIdx });
+                          gridContainerRef.current?.focus();
+                        }}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          onSelectTask(task.id);
+                          setActiveCell({ rowIdx, colIdx });
+                          gridContainerRef.current?.focus();
+                          startEdit(rowIdx, colIdx);
+                        }}
                         className={`px-2.5 py-1 border-r border-slate-200 relative whitespace-nowrap overflow-hidden text-ellipsis ${
                           isCellActive ? 'ring-2 ring-indigo-600 ring-inset z-10' : ''
                         }`}
@@ -483,6 +526,36 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
                             onBlur={commitEdit}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                commitEdit();
+                                if (editingCell.rowIdx < tasks.length - 1) {
+                                  const nextRow = editingCell.rowIdx + 1;
+                                  setActiveCell({ rowIdx: nextRow, colIdx: editingCell.colIdx });
+                                  onSelectTask(tasks[nextRow].id);
+                                  document.getElementById(`grid-row-${tasks[nextRow].id}`)?.scrollIntoView({ block: 'nearest' });
+                                } else {
+                                  onAddTask(tasks[editingCell.rowIdx].id);
+                                }
+                                gridContainerRef.current?.focus();
+                              } else if (e.key === 'Tab') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                commitEdit();
+                                const nextCol = e.shiftKey
+                                  ? Math.max(0, editingCell.colIdx - 1)
+                                  : Math.min(COLUMNS.length - 1, editingCell.colIdx + 1);
+                                setActiveCell({ rowIdx: editingCell.rowIdx, colIdx: nextCol });
+                                startEdit(editingCell.rowIdx, nextCol);
+                              } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditingCell(null);
+                                gridContainerRef.current?.focus();
+                              }
+                            }}
                             className="w-full h-full bg-white border border-indigo-600 px-1 py-0.5 text-xs text-slate-900 font-bold outline-none rounded shadow-xs"
                           />
                         ) : (
