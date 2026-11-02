@@ -180,7 +180,7 @@ export async function exportProjectDocument(
         } else if (t.isMilestone || t.duration === 0) {
           prefixIcon = `<span style="display:inline-block;width:8px;height:8px;background:#0f172a;transform:rotate(45deg);margin-right:7px;vertical-align:middle;"></span>`;
         } else {
-          prefixIcon = `<span style="display:inline-block;width:5px;height:5px;background:#2563eb;border-radius:50%;margin-right:8px;vertical-align:middle;"></span>`;
+          prefixIcon = '';
         }
 
         content = `

@@ -278,9 +278,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                             </button>
                           ) : task.isMilestone || task.duration === 0 ? (
                             <Flag className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                          ) : (
-                            <div className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0 ml-1"></div>
-                          )}
+                          ) : null}
                           <span
                             className={`truncate ${
                               task.isSummary ? 'font-bold text-slate-950 text-sm' : 'font-medium text-slate-900'
