@@ -458,23 +458,23 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
             <defs>
               <marker
                 id="arrowhead-blue"
-                markerWidth="8"
-                markerHeight="6"
-                refX="7"
-                refY="3"
+                markerWidth="6"
+                markerHeight="5"
+                refX="5"
+                refY="2.5"
                 orient="auto"
               >
-                <polygon points="0 0, 8 3, 0 6" fill="#0284c7" />
+                <polygon points="0 0, 6 2.5, 0 5" fill="#0284c7" />
               </marker>
               <marker
                 id="arrowhead-critical"
-                markerWidth="8"
-                markerHeight="6"
-                refX="7"
-                refY="3"
+                markerWidth="6"
+                markerHeight="5"
+                refX="5"
+                refY="2.5"
                 orient="auto"
               >
-                <polygon points="0 0, 8 3, 0 6" fill="#ef4444" />
+                <polygon points="0 0, 6 2.5, 0 5" fill="#ef4444" />
               </marker>
             </defs>
             {dependencyLines.map((line) => (
@@ -483,7 +483,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                   d={line.d}
                   fill="none"
                   stroke={line.isCritical ? '#ef4444' : '#0284c7'}
-                  strokeWidth={line.isCritical ? 2.5 : 2}
+                  strokeWidth={line.isCritical ? 1.75 : 1.25}
                   markerEnd={line.isCritical ? 'url(#arrowhead-critical)' : 'url(#arrowhead-blue)'}
                   className="opacity-90 group-hover:opacity-100 transition-all"
                   onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
@@ -527,7 +527,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                   x2={mousePos.x}
                   y2={mousePos.y}
                   stroke="#0284c7"
-                  strokeWidth="2.5"
+                  strokeWidth="1.5"
                   strokeDasharray="4 4"
                 />
               );

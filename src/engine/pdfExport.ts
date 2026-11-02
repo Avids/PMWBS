@@ -334,6 +334,7 @@ export async function exportProjectDocument(
 
       const isCritical = !!(sourceTask.isCritical && targetTask.isCritical);
       const stroke = isCritical ? '#dc2626' : '#0284c7';
+      const strokeWidth = isCritical ? '1.75' : '1.25';
       const marker = isCritical ? 'url(#export-arrowhead-crit)' : 'url(#export-arrowhead)';
 
       dependencyPathsHTML += `
@@ -341,7 +342,7 @@ export async function exportProjectDocument(
           d="${path}"
           fill="none"
           stroke="${stroke}"
-          stroke-width="1.75"
+          stroke-width="${strokeWidth}"
           marker-end="${marker}"
         />
       `;
