@@ -130,43 +130,62 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </select>
           </div>
 
-          {/* Timeline */}
+          {/* Gantt Timeline Scale / Option to turn off Gantt */}
           <div className="flex items-center justify-between gap-4">
-            <label className="w-32 font-medium text-slate-700">Timeline</label>
+            <label className="w-32 font-medium text-slate-700">Gantt Chart</label>
             <select
-              value={config.timeline}
-              onChange={(e) => setConfig(c => ({ ...c, timeline: e.target.value as any }))}
-              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+              value={config.timelineScale}
+              onChange={(e) => setConfig(c => ({ ...c, timelineScale: e.target.value as any }))}
+              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
             >
-              <option value="zoom_fit">Zoom to fit</option>
-              <option value="full">Full Timeline (Standard Scale)</option>
+              <option value="weeks">Weeks (Recommended for Schedules)</option>
+              <option value="months">Months (Summary / Long Duration)</option>
+              <option value="days">Days (Detailed Lookahead)</option>
+              <option value="none">Off (Spreadsheet Table Only)</option>
             </select>
           </div>
 
           {/* Paper Size & Orientation (if PDF) */}
           {config.format === 'pdf' && (
-            <div className="flex items-center justify-between gap-4">
-              <label className="w-32 font-medium text-slate-700">Page Setup</label>
-              <div className="flex-1 grid grid-cols-2 gap-2">
+            <>
+              <div className="flex items-center justify-between gap-4">
+                <label className="w-32 font-medium text-slate-700">Paper Size</label>
+                <div className="flex-1 grid grid-cols-2 gap-2">
+                  <select
+                    value={config.paperSize}
+                    onChange={(e) => setConfig(c => ({ ...c, paperSize: e.target.value as any }))}
+                    className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+                  >
+                    <option value="letter">Letter (8.5" x 11")</option>
+                    <option value="tabloid">11x17 / Tabloid (11" x 17")</option>
+                    <option value="legal">Legal (8.5" x 14")</option>
+                    <option value="a4">A4 (210 x 297 mm)</option>
+                    <option value="a3">A3 (297 x 420 mm)</option>
+                  </select>
+                  <select
+                    value={config.orientation}
+                    onChange={(e) => setConfig(c => ({ ...c, orientation: e.target.value as any }))}
+                    className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="landscape">Landscape</option>
+                    <option value="portrait">Portrait</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Page Fit / Multi-page Pagination */}
+              <div className="flex items-center justify-between gap-4">
+                <label className="w-32 font-medium text-slate-700">Pagination</label>
                 <select
-                  value={config.paperSize}
-                  onChange={(e) => setConfig(c => ({ ...c, paperSize: e.target.value as any }))}
-                  className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  value={config.pageFit}
+                  onChange={(e) => setConfig(c => ({ ...c, pageFit: e.target.value as any }))}
+                  className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
-                  <option value="a4">A4</option>
-                  <option value="a3">A3 (Wide)</option>
-                  <option value="letter">Letter</option>
-                </select>
-                <select
-                  value={config.orientation}
-                  onChange={(e) => setConfig(c => ({ ...c, orientation: e.target.value as any }))}
-                  className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
-                >
-                  <option value="landscape">Landscape</option>
-                  <option value="portrait">Portrait</option>
+                  <option value="auto">Multi-Page (Auto-paginate rows)</option>
+                  <option value="single">Fit all on 1 Page</option>
                 </select>
               </div>
-            </div>
+            </>
           )}
 
           {/* Image Resolution */}
