@@ -435,8 +435,18 @@ export function App() {
     if (afterTaskId) {
       const idx = rawTasks.findIndex(t => t.id === afterTaskId);
       if (idx !== -1) {
-        parentId = rawTasks[idx].parentId;
-        insertIndex = idx + 1;
+        const selectedTask = rawTasks[idx];
+        const isSummary = !!(selectedTask.isSummary || rawTasks.some(t => t.parentId === selectedTask.id));
+
+        if (isSummary) {
+          // When adding under a summary task, it MUST be added as a child of that summary task
+          parentId = selectedTask.id;
+          insertIndex = idx + 1;
+        } else {
+          // When adding under a regular leaf task, add as a sibling under the same parent
+          parentId = selectedTask.parentId;
+          insertIndex = idx + 1;
+        }
       }
     }
 
@@ -460,7 +470,13 @@ export function App() {
     };
 
     setRawTasks(prev => {
-      const copy = [...prev];
+      // Auto-expand parent if it was collapsed so the new child task is immediately visible
+      const copy = prev.map(t => {
+        if (parentId && t.id === parentId && t.isCollapsed) {
+          return { ...t, isCollapsed: false };
+        }
+        return t;
+      });
       copy.splice(insertIndex, 0, newTask);
       return copy;
     });
