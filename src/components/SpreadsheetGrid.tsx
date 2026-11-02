@@ -28,6 +28,7 @@ type ColumnField =
   | 'progress'
   | 'weight'
   | 'predecessors'
+  | 'totalFloat'
   | 'plannedManHours'
   | 'actualManHours'
   | 'remainingManHours'
@@ -45,6 +46,7 @@ const COLUMNS: { field: ColumnField; label: string; width: number; readonly?: bo
   { field: 'progress', label: '% Complete', width: 95 },
   { field: 'weight', label: 'Weight %', width: 85, readonly: true },
   { field: 'predecessors', label: 'Predecessors', width: 140 },
+  { field: 'totalFloat', label: 'Total Float', width: 90, readonly: true },
   { field: 'plannedManHours', label: 'Plan MH', width: 85 },
   { field: 'actualManHours', label: 'Act MH', width: 85 },
   { field: 'remainingManHours', label: 'Rem MH', width: 85, readonly: true },
@@ -332,6 +334,19 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                             </button>
                           )}
                         </div>
+                      );
+                    } else if (col.field === 'totalFloat') {
+                      const tf = task.totalFloat ?? 0;
+                      displayVal = (
+                        <span
+                          className={`font-mono font-bold ${
+                            task.isCritical
+                              ? 'text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded text-[11px]'
+                              : 'text-slate-700'
+                          }`}
+                        >
+                          {tf}d
+                        </span>
                       );
                     } else if (col.field === 'plannedManHours') {
                       displayVal = <span className="font-mono font-bold text-slate-900">{task.plannedManHours || 0}</span>;

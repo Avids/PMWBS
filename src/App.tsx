@@ -807,6 +807,7 @@ export function App() {
               allTasks={tasks}
               calendar={settings.calendar}
               showBaseline={settings.showBaseline}
+              showCriticalPath={settings.showCriticalPath}
               showTaskLabels={settings.showTaskLabels ?? true}
               onUpdateTask={handleUpdateTask}
               onAddDependency={handleAddDependency}

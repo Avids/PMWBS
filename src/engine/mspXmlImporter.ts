@@ -130,6 +130,7 @@ export async function parseMicrosoftProjectXML(file: File): Promise<{
     outlineNumber: string;
     isSummary: boolean;
     isMilestone: boolean;
+    isCritical?: boolean;
     workHours: number;
     actualWorkHours: number;
     predLinks: Array<{ predUid: string; type: DependencyType; lag: number }>;
@@ -162,6 +163,7 @@ export async function parseMicrosoftProjectXML(file: File): Promise<{
 
     const isSummary = el.querySelector('Summary')?.textContent?.trim() === '1';
     const isMilestone = el.querySelector('Milestone')?.textContent?.trim() === '1';
+    const isCritical = el.querySelector('Critical')?.textContent?.trim() === '1';
     const duration = isMilestone ? 0 : parseMspDuration(el.querySelector('Duration')?.textContent);
     const percentComplete = parseInt(el.querySelector('PercentComplete')?.textContent?.trim() || '0', 10) || 0;
 
@@ -192,6 +194,7 @@ export async function parseMicrosoftProjectXML(file: File): Promise<{
       outlineNumber,
       isSummary,
       isMilestone,
+      isCritical,
       workHours,
       actualWorkHours,
       predLinks
@@ -247,6 +250,7 @@ export async function parseMicrosoftProjectXML(file: File): Promise<{
       endDate: t.finish,
       duration: t.duration,
       progress: Math.min(100, Math.max(0, t.percentComplete)),
+      isCritical: t.isCritical,
       predecessors,
       plannedManHours: t.workHours,
       actualManHours: t.actualWorkHours,

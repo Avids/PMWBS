@@ -7,6 +7,7 @@ interface GanttTimelineProps {
   allTasks?: Task[];
   calendar: ProjectCalendar;
   showBaseline: boolean;
+  showCriticalPath?: boolean;
   showTaskLabels?: boolean;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onAddDependency: (fromTaskId: string, toTaskId: string, type: DependencyType) => void;
@@ -86,6 +87,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   tasks,
   calendar,
   showBaseline,
+  showCriticalPath = true,
   showTaskLabels = true,
   onUpdateTask,
   onAddDependency,
@@ -363,13 +365,13 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           labelX: (sourceX + targetX) / 2,
           labelY: (sourceY + targetY) / 2,
           d: path,
-          isCritical: !!(sourceTask.isCritical && targetTask.isCritical)
+          isCritical: !!(showCriticalPath && sourceTask.isCritical && targetTask.isCritical)
         });
       });
     });
 
     return lines;
-  }, [tasks, minDateTime, dayWidth, rowHeight]);
+  }, [tasks, minDateTime, dayWidth, rowHeight, showCriticalPath]);
 
   const todayStr = formatDate(new Date());
   const todayX = dateToX(todayStr);
@@ -548,8 +550,9 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
               const bEndX = hasBaseline ? dateToX(task.baselineEndDate!) + dayWidth : 0;
               const bWidth = Math.max(dayWidth, bEndX - bStartX);
 
-              // Standard WBS-Level style (unified color per hierarchy level)
-              const style = getTaskLevelStyle(task);
+              const isTaskCrit = !!(showCriticalPath && task.isCritical);
+              // Standard WBS-Level style (or Critical Red if Critical Path active)
+              const style = getTaskLevelStyle(task, isTaskCrit);
 
               return (
                 <div
@@ -592,16 +595,16 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       />
                       
                       {showTaskLabels && (
-                        <span className="absolute left-full ml-2 text-xs font-bold text-slate-900 whitespace-nowrap">
+                        <span className={`absolute left-full ml-2 text-xs font-bold ${isTaskCrit ? 'text-red-700' : 'text-slate-900'} whitespace-nowrap`}>
                           {task.name} ({task.progress}%)
                         </span>
                       )}
                     </div>
                   ) : task.isMilestone || task.duration === 0 ? (
-                    /* Milestone Diamond (Crisp Dark Diamond) */
+                    /* Milestone Diamond (Crisp Dark Diamond or Critical Red) */
                     <div
                       style={{ left: `${startX + dayWidth / 2 - 8}px` }}
-                      className="absolute w-4 h-4 bg-slate-900 rotate-45 border-2 border-white shadow-md cursor-grab active:cursor-grabbing group hover:scale-110 transition-transform"
+                      className={`absolute w-4 h-4 ${isTaskCrit ? 'bg-red-600' : 'bg-slate-900'} rotate-45 border-2 border-white shadow-md cursor-grab active:cursor-grabbing group hover:scale-110 transition-transform`}
                       onMouseDown={(e) => handleMouseDown(e, task, 'move')}
                       onMouseUp={(e) => {
                         if (connectingFrom && connectingFrom.taskId !== task.id) {
@@ -625,7 +628,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       />
 
                       {showTaskLabels && (
-                        <span className="absolute left-full ml-3 -top-1 -rotate-45 text-xs font-bold text-slate-900 whitespace-nowrap">
+                        <span className={`absolute left-full ml-3 -top-1 -rotate-45 text-xs font-bold ${isTaskCrit ? 'text-red-700' : 'text-slate-900'} whitespace-nowrap`}>
                           {task.name}
                         </span>
                       )}
@@ -664,9 +667,9 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                         className="h-full rounded-l-[4px] pointer-events-none"
                       />
 
-                      {/* Text Label next to bar (High contrast dark) */}
+                      {/* Text Label next to bar (High contrast dark or Critical Red) */}
                       {showTaskLabels && (
-                        <span className="absolute left-full ml-2 text-xs font-semibold text-slate-900 whitespace-nowrap pointer-events-none">
+                        <span className={`absolute left-full ml-2 text-xs font-semibold ${isTaskCrit ? 'text-red-700 font-bold' : 'text-slate-900'} whitespace-nowrap pointer-events-none`}>
                           {task.name} ({task.progress}%)
                           {task.baselineVarianceDays !== undefined && task.baselineVarianceDays > 0 && (
                             <span className="ml-1 text-red-600 font-bold">+{task.baselineVarianceDays}d</span>

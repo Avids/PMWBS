@@ -11,7 +11,8 @@ import {
   EyeOff,
   Settings,
   Scale,
-  UploadCloud
+  UploadCloud,
+  Flame
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -218,6 +219,22 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           >
             {settings.showBaseline ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             <span>{settings.showBaseline ? 'Hide Baseline' : 'Show Baseline'}</span>
+          </button>
+
+          <div className="h-4 w-px bg-slate-700 mx-1"></div>
+
+          {/* Critical Path Toggle */}
+          <button
+            onClick={() => onUpdateSettings({ showCriticalPath: !settings.showCriticalPath })}
+            className={`px-2.5 py-1 rounded-md font-medium flex items-center space-x-1.5 transition-colors ${
+              settings.showCriticalPath
+                ? 'bg-red-500/20 text-red-300 border border-red-500/50 shadow-xs'
+                : 'hover:bg-slate-700 text-slate-300'
+            }`}
+            title="Highlight Critical Path (tasks and relationships with zero / least float)"
+          >
+            <Flame className={`w-3.5 h-3.5 ${settings.showCriticalPath ? 'text-red-400' : 'text-slate-400'}`} />
+            <span>Critical Path</span>
           </button>
 
           <div className="h-4 w-px bg-slate-700 mx-1"></div>

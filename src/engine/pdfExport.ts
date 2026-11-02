@@ -272,13 +272,15 @@ export async function exportProjectDocument(
         </div>
       `;
     } else if (t.isMilestone || t.duration === 0) {
+      const isCrit = !!(settings.showCriticalPath && t.isCritical);
       taskBarsHTML += `
-        <div style="position: absolute; left: ${startX + dayWidth / 2 - 7}px; top: ${topY + 2}px; width: 14px; height: 14px; background-color: #0f172a; transform: rotate(45deg); border: 2px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></div>
+        <div style="position: absolute; left: ${startX + dayWidth / 2 - 7}px; top: ${topY + 2}px; width: 14px; height: 14px; background-color: ${isCrit ? '#dc2626' : '#0f172a'}; transform: rotate(45deg); border: 2px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></div>
       `;
     } else {
       const depth = (t.wbsCode.match(/\./g) || []).length;
-      const barColor = t.isCritical ? '#dc2626' : depth <= 1 ? '#2563eb' : depth === 2 ? '#0284c7' : '#4f46e5';
-      const borderColor = t.isCritical ? '#b91c1c' : depth <= 1 ? '#1d4ed8' : depth === 2 ? '#0369a1' : '#4338ca';
+      const isCrit = !!(settings.showCriticalPath && t.isCritical);
+      const barColor = isCrit ? '#dc2626' : depth <= 1 ? '#2563eb' : depth === 2 ? '#0284c7' : '#4f46e5';
+      const borderColor = isCrit ? '#b91c1c' : depth <= 1 ? '#1d4ed8' : depth === 2 ? '#0369a1' : '#4338ca';
 
       taskBarsHTML += `
         <div style="position: absolute; left: ${startX}px; top: ${topY + 1}px; width: ${barWidth}px; height: 20px; background-color: ${barColor}; border-radius: 4px; border: 1px solid ${borderColor}; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
@@ -332,7 +334,7 @@ export async function exportProjectDocument(
         path = `M ${sourceX} ${sourceY} H ${sourceX + 8} V ${detourY} H ${targetX - 10} V ${targetY} H ${targetX}`;
       }
 
-      const isCritical = !!(sourceTask.isCritical && targetTask.isCritical);
+      const isCritical = !!(settings.showCriticalPath && sourceTask.isCritical && targetTask.isCritical);
       const stroke = isCritical ? '#dc2626' : '#0284c7';
       const strokeWidth = isCritical ? '1.75' : '1.25';
       const marker = isCritical ? 'url(#export-arrowhead-crit)' : 'url(#export-arrowhead)';

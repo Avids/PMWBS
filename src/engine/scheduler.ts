@@ -105,6 +105,34 @@ export function getNextWorkingDay(dateStr: string, calendar: ProjectCalendar): s
 }
 
 /**
+ * Finds the previous working day before a given date.
+ */
+export function getPrevWorkingDay(dateStr: string, calendar: ProjectCalendar): string {
+  const curr = new Date(dateStr + 'T00:00:00');
+  curr.setDate(curr.getDate() - 1);
+  while (!isWorkingDay(formatDate(curr), calendar)) {
+    curr.setDate(curr.getDate() - 1);
+  }
+  return formatDate(curr);
+}
+
+/**
+ * Subtracts duration (in working days) from an end date to get the required start date.
+ */
+export function subtractWorkingDays(endDateStr: string, days: number, calendar: ProjectCalendar): string {
+  if (!endDateStr) return formatDate(new Date());
+  if (days <= 0) return endDateStr;
+
+  const curr = new Date(endDateStr + 'T00:00:00');
+  while (!isWorkingDay(formatDate(curr), calendar)) {
+    curr.setDate(curr.getDate() - 1);
+  }
+  if (days === 1) return formatDate(curr);
+
+  return addWorkingDaysOffset(formatDate(curr), -(days - 1), calendar);
+}
+
+/**
  * Formats dependencies into MSP/Primavera string using human-friendly row numbers.
  * e.g. "2FS+5d, 3SS-1d"
  */
@@ -353,7 +381,139 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
     task.progress = Math.min(100, Math.round(weightedProgressSum));
   });
 
-  // 5. Baseline Variances & Formatted Predecessor Text
+  // 5. Critical Path Method (CPM) Backward Pass: Late Dates, Total Float, Free Float, & Critical Path
+  const leafTasks = cloned.filter(t => !t.isSummary);
+
+  // Find project finish date (max finish across leaf tasks)
+  let maxProjectFinish = '';
+  leafTasks.forEach(t => {
+    if (!maxProjectFinish || t.endDate > maxProjectFinish) {
+      maxProjectFinish = t.endDate;
+    }
+  });
+
+  if (!maxProjectFinish && leafTasks.length > 0) {
+    maxProjectFinish = leafTasks[0].endDate;
+  }
+
+  // Build successor map: predecessorTaskId -> list of { succId, type, lag }
+  const successorsMap = new Map<string, { succId: string; type: DependencyType; lag: number }[]>();
+  leafTasks.forEach(t => {
+    (t.predecessors || []).forEach(dep => {
+      if (!successorsMap.has(dep.taskId)) {
+        successorsMap.set(dep.taskId, []);
+      }
+      successorsMap.get(dep.taskId)!.push({ succId: t.id, type: dep.type, lag: dep.lag });
+    });
+  });
+
+  // Initialize Late Dates for leaf tasks
+  leafTasks.forEach(t => {
+    t.earlyStart = t.startDate;
+    t.earlyFinish = t.endDate;
+    t.lateFinish = maxProjectFinish;
+    if (t.isMilestone || t.duration === 0) {
+      t.lateStart = t.lateFinish;
+    } else {
+      t.lateStart = subtractWorkingDays(t.lateFinish, t.duration, calendar);
+    }
+  });
+
+  // Iteratively propagate backward constraints (up to 25 iterations)
+  for (let iter = 0; iter < maxIterations; iter++) {
+    let changed = false;
+
+    leafTasks.forEach(task => {
+      const succList = successorsMap.get(task.id) || [];
+      if (succList.length === 0) return; // Terminal tasks remain bounded by project finish
+
+      let maxAllowedLF = maxProjectFinish;
+
+      succList.forEach(rel => {
+        const succ = taskMap.get(rel.succId);
+        if (!succ || !succ.lateStart || !succ.lateFinish) return;
+
+        let constraintLF = maxProjectFinish;
+
+        if (rel.type === 'FS') {
+          // succ.lateStart is when successor must start
+          const requiredFinish = addWorkingDaysOffset(succ.lateStart, -rel.lag, calendar);
+          constraintLF = getPrevWorkingDay(requiredFinish, calendar);
+        } else if (rel.type === 'SS') {
+          // succ.lateStart >= pred.lateStart + lag => pred.lateStart <= succ.lateStart - lag
+          const requiredLS = addWorkingDaysOffset(succ.lateStart, -rel.lag, calendar);
+          constraintLF = (task.isMilestone || task.duration === 0)
+            ? requiredLS
+            : addWorkingDays(requiredLS, task.duration, calendar);
+        } else if (rel.type === 'FF') {
+          // succ.lateFinish >= pred.lateFinish + lag => pred.lateFinish <= succ.lateFinish - lag
+          constraintLF = addWorkingDaysOffset(succ.lateFinish, -rel.lag, calendar);
+        } else if (rel.type === 'SF') {
+          // succ.lateFinish >= pred.lateStart + lag => pred.lateStart <= succ.lateFinish - lag
+          const requiredLS = addWorkingDaysOffset(succ.lateFinish, -rel.lag, calendar);
+          constraintLF = (task.isMilestone || task.duration === 0)
+            ? requiredLS
+            : addWorkingDays(requiredLS, task.duration, calendar);
+        }
+
+        if (constraintLF && constraintLF < maxAllowedLF) {
+          maxAllowedLF = constraintLF;
+        }
+      });
+
+      if (maxAllowedLF !== task.lateFinish) {
+        task.lateFinish = maxAllowedLF;
+        if (task.isMilestone || task.duration === 0) {
+          task.lateStart = maxAllowedLF;
+        } else {
+          task.lateStart = subtractWorkingDays(maxAllowedLF, task.duration, calendar);
+        }
+        changed = true;
+      }
+    });
+
+    if (!changed) break;
+  }
+
+  // Calculate Total Float & Free Float for leaf tasks
+  let minFloat = Infinity;
+  leafTasks.forEach(task => {
+    if (task.lateStart && task.startDate) {
+      if (task.lateStart >= task.startDate) {
+        task.totalFloat = countWorkingDays(task.startDate, task.lateStart, calendar) - 1;
+      } else {
+        task.totalFloat = -(countWorkingDays(task.lateStart, task.startDate, calendar) - 1);
+      }
+    } else {
+      task.totalFloat = 0;
+    }
+
+    if (task.totalFloat !== undefined && task.totalFloat < minFloat) {
+      minFloat = task.totalFloat;
+    }
+  });
+
+  if (minFloat === Infinity) minFloat = 0;
+
+  // Identify Critical Path: Tasks with least / zero float
+  const criticalThreshold = Math.max(0, minFloat);
+  leafTasks.forEach(t => {
+    t.isCritical = (t.totalFloat ?? 0) <= criticalThreshold;
+  });
+
+  // Roll up critical path and float to Summary Tasks
+  sortedByDepthDesc.forEach(t => {
+    if (t.isSummary) {
+      const children = childrenMap.get(t.id) || [];
+      t.isCritical = children.some(c => c.isCritical);
+      const childFloats = children.map(c => c.totalFloat ?? 0);
+      t.totalFloat = childFloats.length > 0 ? Math.min(...childFloats) : 0;
+      t.earlyStart = t.startDate;
+      t.earlyFinish = t.endDate;
+    }
+  });
+
+  // 6. Baseline Variances & Formatted Predecessor Text
   cloned.forEach(t => {
     if (t.baselineEndDate) {
       t.baselineVarianceDays = countWorkingDays(t.baselineEndDate, t.endDate, calendar) - 1;
