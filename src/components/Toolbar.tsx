@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import type { ProjectSettings, WeightMode, ColorTheme } from '../types/project';
+import type { ProjectSettings, WeightMode } from '../types/project';
+import { getTheme, SELECTABLE_THEMES } from '../theme/themeConfig';
 import {
   FilePlus,
   FolderOpen,
@@ -12,7 +13,7 @@ import {
   UploadCloud,
   Flame,
   ChevronDown,
-  Palette
+  Check
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -61,7 +62,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const fileButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-  const isSiteDrawing = settings.colorTheme === 'site-drawing';
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
+  const themeButtonRef = useRef<HTMLButtonElement>(null);
+  const [themeMenuPos, setThemeMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
+
+  const currentTheme = getTheme(settings.colorTheme);
+  const isSiteDrawing = currentTheme.id === 'construction';
 
   const toggleFileMenu = () => {
     if (!isFileMenuOpen && fileButtonRef.current) {
@@ -69,6 +76,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       setMenuPos({ top: rect.bottom + 4, left: rect.left });
     }
     setIsFileMenuOpen((prev) => !prev);
+    setIsThemeMenuOpen(false);
+  };
+
+  const toggleThemeMenu = () => {
+    if (!isThemeMenuOpen && themeButtonRef.current) {
+      const rect = themeButtonRef.current.getBoundingClientRect();
+      setThemeMenuPos({ top: rect.bottom + 4, right: Math.max(10, window.innerWidth - rect.right) });
+    }
+    setIsThemeMenuOpen((prev) => !prev);
+    setIsFileMenuOpen(false);
   };
 
   // Close dropdown on click outside, Escape, resize or scroll
@@ -83,15 +100,27 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       ) {
         setIsFileMenuOpen(false);
       }
+      if (
+        themeMenuRef.current &&
+        !themeMenuRef.current.contains(target) &&
+        themeButtonRef.current &&
+        !themeButtonRef.current.contains(target)
+      ) {
+        setIsThemeMenuOpen(false);
+      }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsFileMenuOpen(false);
+      if (e.key === 'Escape') {
+        setIsFileMenuOpen(false);
+        setIsThemeMenuOpen(false);
+      }
     };
     const handleRepositionOrClose = () => {
       setIsFileMenuOpen(false);
+      setIsThemeMenuOpen(false);
     };
 
-    if (isFileMenuOpen) {
+    if (isFileMenuOpen || isThemeMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
       window.addEventListener('resize', handleRepositionOrClose);
@@ -103,7 +132,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       window.removeEventListener('resize', handleRepositionOrClose);
       window.removeEventListener('scroll', handleRepositionOrClose, true);
     };
-  }, [isFileMenuOpen]);
+  }, [isFileMenuOpen, isThemeMenuOpen]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -130,11 +159,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <header className={`text-white shadow-xs no-print select-none border-b ${
-      isSiteDrawing
-        ? "bg-[#37434D] border-[#29323A] font-['Barlow',sans-serif]"
-        : 'bg-slate-900 border-slate-800'
-    }`}>
+    <header
+      style={{ backgroundColor: currentTheme.headerBg, borderColor: currentTheme.border, fontFamily: currentTheme.fontFamily }}
+      className="text-white shadow-xs no-print select-none border-b transition-colors"
+    >
       {/* Hidden File Inputs */}
       <input
         ref={fileInputRef}
@@ -159,24 +187,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       />
 
       {/* Top Bar: Brand, Project Name, and KPI summary (Responsive) */}
-      <div className={`min-h-12 px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 border-b ${
-        isSiteDrawing ? 'border-[#29323A]/80' : 'border-slate-800/80'
-      }`}>
+      <div className="min-h-12 px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 border-b border-black/20">
         {/* Brand & Project Name Input */}
         <div className="flex items-center space-x-2.5 min-w-0">
-          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shadow-md font-bold text-white text-sm sm:text-base shrink-0 tracking-tight ${
-            isSiteDrawing ? 'bg-[#E8590C]' : 'bg-indigo-600'
-          }`}>
+          <div
+            style={{ backgroundColor: currentTheme.signal }}
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shadow-md font-bold text-white text-sm sm:text-base shrink-0 tracking-tight"
+          >
             P
           </div>
           <div className="min-w-0">
             <div className="flex items-center space-x-2">
               <span className="font-bold text-xs sm:text-sm tracking-wide text-white truncate">PathMaster</span>
-              {isSiteDrawing && (
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 bg-[#29323A] text-slate-300 rounded border border-slate-600/60">
-                  Site Drawing
-                </span>
-              )}
+              <span className="text-[10px] font-semibold tracking-wider px-1.5 py-0.2 bg-black/30 text-slate-200 rounded border border-white/10">
+                {currentTheme.name}
+              </span>
             </div>
             <input
               type="text"
@@ -233,9 +258,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       </div>
 
       {/* Ribbon Action Tools */}
-      <div className={`h-10 px-3 flex items-center justify-between text-xs overflow-x-auto no-scrollbar gap-2 ${
-        isSiteDrawing ? 'bg-[#29323A]' : 'bg-slate-800/95'
-      }`}>
+      <div
+        style={{
+          backgroundColor: currentTheme.headerSubBg === '#FFFFFF' ? '#1E293B' : currentTheme.headerSubBg,
+          borderColor: currentTheme.border
+        }}
+        className="h-10 px-3 flex items-center justify-between text-xs overflow-x-auto no-scrollbar gap-2 transition-colors"
+      >
         <div className="flex items-center space-x-1.5 shrink-0">
           {/* Unified File & Project Dropdown */}
           <div className="relative">
@@ -448,22 +477,79 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         {/* Right Settings & Color Theme Toggle */}
         <div className="flex items-center space-x-2 shrink-0">
-          {/* Quick Theme Switcher */}
-          <button
-            onClick={() => {
-              const nextTheme: ColorTheme = isSiteDrawing ? 'classic' : 'site-drawing';
-              onUpdateSettings({ colorTheme: nextTheme });
-            }}
-            className={`px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 transition-colors border ${
-              isSiteDrawing
-                ? 'bg-[#E8590C]/20 border-[#E8590C]/60 text-orange-200 hover:bg-[#E8590C]/30'
-                : 'border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700/80'
-            }`}
-            title={`Current Theme: ${isSiteDrawing ? 'Site Drawing' : 'Classic'}. Click to toggle.`}
-          >
-            <Palette className={`w-3.5 h-3.5 ${isSiteDrawing ? 'text-[#E8590C]' : 'text-slate-400'}`} />
-            <span className="hidden sm:inline">Theme: <strong>{isSiteDrawing ? 'Site Drawing' : 'Classic'}</strong></span>
-          </button>
+          {/* Quick Theme Switcher Popover */}
+          <div className="relative">
+            <button
+              ref={themeButtonRef}
+              onClick={toggleThemeMenu}
+              className={`px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 transition-colors border ${
+                isThemeMenuOpen
+                  ? 'bg-slate-700 text-white border-slate-600'
+                  : 'border-slate-700/80 text-slate-200 hover:text-white hover:bg-slate-700/80'
+              }`}
+              title={`Active Palette: ${currentTheme.name}. Click to change palette.`}
+            >
+              <div className="flex space-x-0.5 items-center mr-0.5">
+                {currentTheme.swatches.slice(0, 3).map((c, i) => (
+                  <span key={i} className="w-2 h-2 rounded-full border border-black/20" style={{ backgroundColor: c }} />
+                ))}
+              </div>
+              <span className="hidden sm:inline">Theme: <strong>{currentTheme.name}</strong></span>
+              <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+            </button>
+
+            {isThemeMenuOpen && (
+              <div
+                ref={themeMenuRef}
+                style={{ top: `${themeMenuPos.top}px`, right: `${themeMenuPos.right}px` }}
+                className="fixed w-80 border rounded-xl shadow-2xl py-2 z-50 text-xs bg-slate-900 border-slate-700 text-slate-200"
+              >
+                <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center justify-between border-b border-slate-800 mb-1">
+                  <span>Color Theme Palettes</span>
+                  <span className="text-[10px] text-slate-400 font-normal">5 Profiles</span>
+                </div>
+                {SELECTABLE_THEMES.map((theme) => {
+                  const isSelected = (settings.colorTheme || 'construction') === theme.id ||
+                    (theme.id === 'construction' && settings.colorTheme === 'site-drawing') ||
+                    (theme.id === 'modern-enterprise' && settings.colorTheme === 'classic');
+                  return (
+                    <button
+                      key={theme.id}
+                      onClick={() => {
+                        onUpdateSettings({ colorTheme: theme.id });
+                        setIsThemeMenuOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 text-left flex items-start space-x-2.5 transition-colors ${
+                        isSelected ? 'bg-indigo-600/25 text-white' : 'hover:bg-slate-800 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center mt-0.5 space-y-1 shrink-0">
+                        <div className="grid grid-cols-2 gap-0.5 p-1 rounded bg-black/40 border border-slate-700">
+                          {theme.swatches.map((color, i) => (
+                            <div key={i} className="w-2.5 h-2.5 rounded-2xs" style={{ backgroundColor: color }} />
+                          ))}
+                        </div>
+                        {isSelected && <Check className="w-3 h-3 text-indigo-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`font-bold truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                            {theme.name}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-indigo-400 block font-medium truncate">
+                          {theme.subtitle}
+                        </span>
+                        <p className="text-[10px] text-slate-400 line-clamp-2 mt-0.5 leading-snug">
+                          {theme.description}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <button
             onClick={onOpenSettingsModal}

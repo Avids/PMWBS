@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { ProjectSettings } from '../types/project';
+import { SELECTABLE_THEMES } from '../theme/themeConfig';
 import { Settings, X, Plus, Check } from 'lucide-react';
 
 interface ProjectSettingsModalProps {
@@ -150,51 +151,51 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
           {/* Visual Color Theme Profile */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-800">Visual Theme Profile</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-800">Visual Theme Profile</label>
+              <span className="text-[11px] text-slate-500 font-medium">
+                5 Construction & Engineering Palettes
+              </span>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div
-                onClick={() => onUpdateSettings({ colorTheme: 'classic' })}
-                className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                  settings.colorTheme !== 'site-drawing'
-                    ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20 shadow-xs'
-                    : 'border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-xs text-slate-900">Modern Classic</span>
-                  <div className="flex space-x-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+              {SELECTABLE_THEMES.map((theme) => {
+                const isSelected =
+                  (settings.colorTheme || 'construction') === theme.id ||
+                  (theme.id === 'construction' && settings.colorTheme === 'site-drawing') ||
+                  (theme.id === 'modern-enterprise' && settings.colorTheme === 'classic');
+                return (
+                  <div
+                    key={theme.id}
+                    onClick={() => onUpdateSettings({ colorTheme: theme.id })}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20 shadow-xs'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-xs text-slate-900">{theme.name}</span>
+                        <div className="flex space-x-1">
+                          {theme.swatches.map((color, i) => (
+                            <span
+                              key={i}
+                              className="w-2.5 h-2.5 rounded-full border border-black/10"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold text-indigo-700 block mb-1">
+                        {theme.subtitle}
+                      </span>
+                      <p className="text-[11px] text-slate-500 leading-tight">
+                        {theme.description}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-tight">
-                  High-contrast vibrant palette with dark slate ribbon, royal blue activity bars, and amber baselines.
-                </p>
-              </div>
-
-              <div
-                onClick={() => onUpdateSettings({ colorTheme: 'site-drawing' })}
-                className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                  settings.colorTheme === 'site-drawing'
-                    ? 'border-[#E8590C] bg-[#E8590C]/10 ring-2 ring-[#E8590C]/20 shadow-xs'
-                    : 'border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-xs text-slate-900">Site Drawing</span>
-                  <div className="flex space-x-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#37434D]"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#4F7A99]"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#9BA5AD]"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#E8590C]"></span>
-                  </div>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-tight">
-                  Architectural palette with steel/concrete neutrals, structural blue-grey bars, Barlow typography, and safety orange signals.
-                </p>
-              </div>
+                );
+              })}
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier, ProjectCalendar } from './types/project';
+import { getTheme } from './theme/themeConfig';
 import { recalculateSchedule, formatDate, addWorkingDays, sanitizeCalendar, detectDependencyCycle } from './engine/scheduler';
 import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML, parseExcelProject } from './engine/importers';
 import { saveProjectWithDialog } from './services/platform';
@@ -1163,16 +1164,19 @@ export function App() {
     setBaselines(prev => prev.filter(b => b.id !== baselineId));
   };
 
-  const isSiteDrawing = settings.colorTheme === 'site-drawing';
+  const theme = getTheme(settings.colorTheme);
+  const isSiteDrawing = theme.id === 'construction';
 
   return (
-    <div className={`flex flex-col h-screen w-screen overflow-hidden p-2 sm:p-3 transition-colors ${
-      isSiteDrawing ? "bg-[#E9ECEE] font-['Barlow',sans-serif]" : "bg-slate-100 font-sans"
-    }`}>
+    <div
+      style={{ backgroundColor: theme.appBg, fontFamily: theme.fontFamily }}
+      className="flex flex-col h-screen w-screen overflow-hidden p-2 sm:p-3 transition-colors"
+    >
       {/* Framed Application Container Floating with Calm Margins/Space Around */}
-      <div className={`flex-1 flex flex-col overflow-hidden rounded-xl border shadow-md ${
-        isSiteDrawing ? 'border-[#C9CED2] bg-[#FAFAF8]' : 'border-slate-300 bg-white'
-      }`}>
+      <div
+        style={{ backgroundColor: theme.surfaceBg, borderColor: theme.border }}
+        className="flex-1 flex flex-col overflow-hidden rounded-xl border shadow-md"
+      >
         {/* Top Ribbon Toolbar */}
         <Toolbar
           settings={settings}
@@ -1295,70 +1299,64 @@ export function App() {
         </div>
 
         {/* Bottom View Legend & Schedule Status Bar */}
-        <div className={`h-8 px-4 flex items-center justify-between text-[11px] select-none z-20 shrink-0 border-t ${
-          isSiteDrawing
-            ? 'bg-[#E9ECEE] border-[#C9CED2] text-[#37434D]'
-            : 'bg-slate-100/90 border-slate-300 text-slate-700'
-        }`}>
+        <div
+          style={{
+            backgroundColor: theme.headerSubBg === '#FFFFFF' ? '#F8FAFC' : theme.headerSubBg,
+            borderColor: theme.border,
+            color: theme.textSecondary
+          }}
+          className="h-8 px-4 flex items-center justify-between text-[11px] select-none z-20 shrink-0 border-t"
+        >
           {/* Status info */}
-          <div className={`flex items-center space-x-2 font-medium ${isSiteDrawing ? 'text-[#37434D]' : 'text-slate-600'}`}>
-            <span><strong>{tasks.length}</strong> tasks</span>
+          <div className="flex items-center space-x-2 font-medium" style={{ color: theme.textSecondary }}>
+            <span><strong style={{ color: theme.textPrimary }}>{tasks.length}</strong> tasks</span>
             <span>•</span>
-            <span><strong>{visibleTasks.length}</strong> visible</span>
+            <span><strong style={{ color: theme.textPrimary }}>{visibleTasks.length}</strong> visible</span>
             {finishDate && (
               <>
                 <span>•</span>
-                <span>Target Finish: <strong className={isSiteDrawing ? 'text-black' : 'text-slate-800'}>{finishDate}</strong></span>
+                <span>Target Finish: <strong style={{ color: theme.textPrimary }}>{finishDate}</strong></span>
               </>
             )}
           </div>
 
           {/* Legend */}
           <div className="flex items-center space-x-4 font-semibold">
-            <span className={isSiteDrawing ? 'text-slate-500 font-medium' : 'text-slate-500 font-medium'}>Legend:</span>
+            <span style={{ color: theme.textSecondary }} className="font-medium">Legend:</span>
             <div className="flex items-center space-x-1.5">
-              <div className={`w-2.5 h-2.5 rounded-xs ${isSiteDrawing ? 'bg-[#37434D]' : 'bg-slate-900'}`}></div>
+              <div className="w-2.5 h-2.5 rounded-xs" style={{ backgroundColor: theme.summaryBar }} />
               <span>Summary</span>
             </div>
-            {isSiteDrawing ? (
-              <div className="flex items-center space-x-1.5">
-                <div className="w-2.5 h-2.5 bg-[#4F7A99] rounded-xs"></div>
-                <span>Task (Steel Blue)</span>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center space-x-1.5">
-                  <div className="w-2.5 h-2.5 bg-blue-600 rounded-xs"></div>
-                  <span>Lvl 2 Activity</span>
-                </div>
-                <div className="flex items-center space-x-1.5">
-                  <div className="w-2.5 h-2.5 bg-sky-600 rounded-xs"></div>
-                  <span>Lvl 3 Activity</span>
-                </div>
-              </>
-            )}
             <div className="flex items-center space-x-1.5">
-              <div className={`w-2.5 h-2.5 rotate-45 ${isSiteDrawing ? 'bg-[#37434D]' : 'bg-slate-900'}`}></div>
+              <div className="w-2.5 h-2.5 rounded-xs" style={{ backgroundColor: theme.taskBar }} />
+              <span>Task</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <div
+                className="w-2.5 h-2.5 rotate-45 border"
+                style={{ backgroundColor: theme.milestone, borderColor: theme.milestoneBorder || '#FFFFFF' }}
+              />
               <span>Milestone</span>
             </div>
             {settings.showCriticalPath && (
               <div className="flex items-center space-x-1.5">
-                <div className={`w-2.5 h-2.5 rounded-xs ${isSiteDrawing ? 'bg-[#C62828]' : 'bg-red-600'}`}></div>
-                <span className={isSiteDrawing ? 'text-[#C62828]' : 'text-red-700'}>Critical Path</span>
+                <div className="w-2.5 h-2.5 rounded-xs" style={{ backgroundColor: theme.critical }} />
+                <span style={{ color: theme.critical }}>Critical Path</span>
               </div>
             )}
             {settings.showBaseline && (
               <div className="flex items-center space-x-1.5">
-                <div className={`w-2.5 h-1.5 ${isSiteDrawing ? 'bg-[#9BA5AD] border border-[#7E8890]' : 'bg-amber-400 border border-amber-600'}`}></div>
-                <span className={isSiteDrawing ? 'text-slate-600' : 'text-amber-800'}>Baseline</span>
+                <div
+                  className="w-2.5 h-1.5 border"
+                  style={{ backgroundColor: theme.baseline, borderColor: theme.baselineBorder || theme.baseline }}
+                />
+                <span style={{ color: theme.textSecondary }}>Baseline</span>
               </div>
             )}
-            {isSiteDrawing && (
-              <div className="flex items-center space-x-1.5">
-                <div className="w-2.5 h-2 bg-[#E8590C] rounded-2xs"></div>
-                <span className="text-[#E8590C]">Signal / Today</span>
-              </div>
-            )}
+            <div className="flex items-center space-x-1.5">
+              <div className="w-2.5 h-2 rounded-2xs" style={{ backgroundColor: theme.signal }} />
+              <span style={{ color: theme.signal }}>Signal / Today</span>
+            </div>
           </div>
         </div>
       </div>

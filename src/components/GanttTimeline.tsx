@@ -1,6 +1,7 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
 import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType, ColorTheme } from '../types/project';
 import { formatDate, addWorkingDays, isWorkingDay } from '../engine/scheduler';
+import { getTheme } from '../theme/themeConfig';
 
 interface GanttTimelineProps {
   tasks: Task[];
@@ -26,48 +27,16 @@ interface GanttTimelineProps {
 }
 
 /**
- * Standard, professional WBS-level color palette (supporting Classic and Site Drawing profiles).
+ * Standard, professional WBS-level color palette powered by customizable theme profiles.
  */
-export function getTaskLevelStyle(task: Task, isCritical: boolean = false, colorTheme: ColorTheme = 'classic') {
-  if (colorTheme === 'site-drawing') {
-    if (isCritical) {
-      return {
-        bg: '#C62828', // Critical or late
-        border: '#9E1C1C',
-        progress: '#7E1515'
-      };
-    }
+export function getTaskLevelStyle(task: Task, isCritical: boolean = false, colorTheme: ColorTheme = 'construction') {
+  const theme = getTheme(colorTheme);
 
-    if (task.color && !task.isSummary) {
-      return {
-        bg: task.color,
-        border: task.color,
-        progress: 'rgba(0, 0, 0, 0.25)'
-      };
-    }
-
-    if (task.isSummary) {
-      return {
-        bg: '#37434D', // Steel summary bar
-        border: '#242C33',
-        progress: '#1B2228'
-      };
-    }
-
-    // Work tasks: structural blue-grey with progress fill #26465E
-    return {
-      bg: '#4F7A99',
-      border: '#3D5E76',
-      progress: '#26465E'
-    };
-  }
-
-  // Classic Theme (MSP / Primavera style)
   if (isCritical) {
     return {
-      bg: '#dc2626',
-      border: '#b91c1c',
-      progress: '#991b1b'
+      bg: theme.critical,
+      border: theme.criticalBorder || theme.critical,
+      progress: theme.criticalBorder || 'rgba(0,0,0,0.3)'
     };
   }
 
@@ -80,48 +49,18 @@ export function getTaskLevelStyle(task: Task, isCritical: boolean = false, color
   }
 
   if (task.isSummary) {
-    const depth = (task.wbsCode.match(/\./g) || []).length;
-    if (depth === 0) {
-      return {
-        bg: '#1e293b',
-        border: '#0f172a',
-        progress: '#0f172a'
-      };
-    } else {
-      return {
-        bg: '#334155',
-        border: '#1e293b',
-        progress: '#1e293b'
-      };
-    }
+    return {
+      bg: theme.summaryBar,
+      border: theme.summaryBarBorder || theme.summaryBar,
+      progress: theme.summaryBarProgress
+    };
   }
 
-  const depth = (task.wbsCode.match(/\./g) || []).length;
-  if (depth <= 1) {
-    return {
-      bg: '#2563eb',
-      border: '#1d4ed8',
-      progress: '#1e40af'
-    };
-  } else if (depth === 2) {
-    return {
-      bg: '#0284c7',
-      border: '#0369a1',
-      progress: '#075985'
-    };
-  } else if (depth === 3) {
-    return {
-      bg: '#4f46e5',
-      border: '#4338ca',
-      progress: '#3730a3'
-    };
-  } else {
-    return {
-      bg: '#64748b',
-      border: '#475569',
-      progress: '#334155'
-    };
-  }
+  return {
+    bg: theme.taskBar,
+    border: theme.taskBarBorder || theme.taskBar,
+    progress: theme.taskProgressFill
+  };
 }
 
 export const GanttTimeline: React.FC<GanttTimelineProps> = ({
@@ -147,7 +86,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 }) => {
   const internalContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = scrollContainerRef || internalContainerRef;
-  const isSiteDrawing = colorTheme === 'site-drawing';
+  const theme = getTheme(colorTheme);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragType, setDragType] = useState<'move' | 'resize' | null>(null);
   const [dragStartX, setDragStartX] = useState<number>(0);
@@ -549,11 +488,14 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   const todayX = dateToX(todayStr);
 
   return (
-    <div className={`flex flex-col h-full select-none overflow-hidden border-l-2 ${
-      isSiteDrawing
-        ? "bg-[#FAFAF8] border-[#C9CED2] font-['Barlow_Semi_Condensed','Barlow',sans-serif]"
-        : "bg-white border-slate-300"
-    }`}>
+    <div
+      style={{
+        backgroundColor: theme.surfaceBg,
+        borderLeftColor: theme.border,
+        fontFamily: theme.fontFamily
+      }}
+      className="flex flex-col h-full select-none overflow-hidden border-l-2"
+    >
       {/* Main Gantt Canvas Area */}
       <div
         ref={containerRef}
@@ -561,26 +503,28 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
-        className={`flex-1 overflow-auto relative select-none ${isSiteDrawing ? 'bg-[#FAFAF8]' : 'bg-white'}`}
+        style={{ cursor: isPanning ? 'grabbing' : 'grab', backgroundColor: theme.surfaceBg }}
+        className="flex-1 overflow-auto relative select-none"
       >
         <div
           style={{ width: `${totalDays * dayWidth}px`, height: `${headerHeight + tasks.length * rowHeight}px` }}
           className="relative"
         >
           {/* Header Tier 1 (Weeks/Months) & Tier 2 (Days) */}
-          <div className={`sticky top-0 z-20 flex flex-col shadow-2xs ${
-            isSiteDrawing ? 'bg-[#37434D] border-b border-[#C9CED2]' : 'bg-slate-100 border-b-2 border-slate-300'
-          }`}>
+          <div
+            style={{ backgroundColor: theme.headerBg, borderBottomColor: theme.border }}
+            className="sticky top-0 z-20 flex flex-col shadow-2xs border-b"
+          >
             {/* Tier 1: Weeks or Months */}
-            <div className={`flex h-7 border-b ${isSiteDrawing ? 'border-[#C9CED2] bg-[#37434D]' : 'border-slate-300 bg-slate-100'}`}>
+            <div
+              style={{ backgroundColor: theme.headerBg, borderBottomColor: theme.border }}
+              className="flex h-7 border-b"
+            >
               {topHeaderSpans.map((span) => (
                 <div
                   key={span.key}
-                  style={{ width: `${span.width}px` }}
-                  className={`flex-shrink-0 flex items-center justify-center border-r text-xs font-bold tracking-wide px-2 ${
-                    isSiteDrawing ? 'border-[#C9CED2] text-white bg-[#37434D]' : 'border-r-2 border-slate-300 text-slate-900 bg-slate-100'
-                  }`}
+                  style={{ width: `${span.width}px`, borderRightColor: theme.border, color: theme.headerText }}
+                  className="flex-shrink-0 flex items-center justify-center border-r text-xs font-bold tracking-wide px-2"
                 >
                   <span className="truncate">{span.label}</span>
                 </div>
@@ -588,15 +532,16 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
             </div>
 
             {/* Tier 2: Days Header with High Contrast (or Months in Month View) */}
-            <div className={`flex h-7 ${isSiteDrawing ? 'bg-[#FAFAF8]' : 'bg-slate-100'}`}>
+            <div
+              style={{ backgroundColor: theme.headerSubBg }}
+              className="flex h-7"
+            >
               {zoom === 'month' && subHeaderSpans ? (
                 subHeaderSpans.map((span) => (
                   <div
                     key={span.key}
-                    style={{ width: `${span.width}px` }}
-                    className={`flex-shrink-0 flex items-center justify-center text-xs font-bold border-r tracking-wide select-none overflow-hidden px-1 ${
-                      isSiteDrawing ? 'border-[#C9CED2] bg-[#FAFAF8] text-[#37434D]' : 'border-slate-300 bg-white text-slate-800'
-                    }`}
+                    style={{ width: `${span.width}px`, borderRightColor: theme.border, color: theme.headerSubText || theme.textPrimary }}
+                    className="flex-shrink-0 flex items-center justify-center text-xs font-bold border-r tracking-wide select-none overflow-hidden px-1"
                     title={span.label}
                   >
                     <span className="truncate">{span.width >= 70 ? span.label : span.shortLabel}</span>
@@ -610,16 +555,21 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                   return (
                     <div
                       key={d}
-                      style={{ width: `${dayWidth}px` }}
-                      className={`flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-r ${
-                        isSiteDrawing ? 'border-[#C9CED2]' : 'border-slate-200'
-                      } ${
-                        isToday
-                          ? isSiteDrawing ? 'bg-[#E8590C]/20 text-[#E8590C] font-black' : 'bg-indigo-100 text-indigo-900 font-black'
+                      style={{
+                        width: `${dayWidth}px`,
+                        borderRightColor: theme.border,
+                        backgroundColor: isToday
+                          ? `${theme.signal}33`
                           : isNonWorking
-                          ? isSiteDrawing ? 'bg-[#E9ECEE] text-slate-500' : 'bg-slate-200/90 text-slate-500'
-                          : isSiteDrawing ? 'text-[#37434D] bg-[#FAFAF8]' : 'text-slate-900 bg-white'
-                      }`}
+                          ? theme.weekendBg
+                          : theme.surfaceBg,
+                        color: isToday
+                          ? theme.signal
+                          : isNonWorking
+                          ? theme.textSecondary
+                          : theme.textPrimary
+                      }}
+                      className="flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-r"
                       title={`${d} (${dateObj.toLocaleDateString(undefined, { weekday: 'short' })}) - ${isNonWorking ? 'Non-Working' : 'Working'}`}
                     >
                       <span>{dateObj.getDate()}</span>
@@ -637,28 +587,27 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
               return (
                 <div
                   key={`bg-${d}`}
-                  style={{ width: `${dayWidth}px` }}
-                  className={`flex-shrink-0 h-full border-r ${
-                    isSiteDrawing
-                      ? isNonWorking ? 'bg-[#E9ECEE] border-[#C9CED2]/80' : 'bg-[#FAFAF8] border-[#C9CED2]/40'
-                      : isNonWorking ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-200'
-                  }`}
+                  style={{
+                    width: `${dayWidth}px`,
+                    backgroundColor: isNonWorking ? theme.weekendBg : theme.surfaceBg,
+                    borderRightColor: `${theme.border}80`
+                  }}
+                  className="flex-shrink-0 h-full border-r"
                 />
               );
             })}
           </div>
 
-          {/* Today Indicator Line (Safety Orange in Site Drawing, Indigo in Classic) */}
+          {/* Today Indicator Line */}
           {todayX > 0 && todayX < totalDays * dayWidth && (
             <div
-              style={{ left: `${todayX + dayWidth / 2}px` }}
-              className={`absolute top-[56px] bottom-0 w-0.5 z-10 pointer-events-none ${
-                isSiteDrawing ? 'bg-[#E8590C]' : 'bg-indigo-600'
-              }`}
+              style={{ left: `${todayX + dayWidth / 2}px`, backgroundColor: theme.signal }}
+              className="absolute top-[56px] bottom-0 w-0.5 z-10 pointer-events-none"
             >
-              <div className={`${
-                isSiteDrawing ? 'bg-[#E8590C]' : 'bg-indigo-600'
-              } text-white text-[9px] px-1 rounded-sm -ml-4 font-bold shadow-xs`}>
+              <div
+                style={{ backgroundColor: theme.signal }}
+                className="text-white text-[9px] px-1 rounded-sm -ml-4 font-bold shadow-xs"
+              >
                 Today
               </div>
             </div>
@@ -766,7 +715,16 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
               return (
                 <div
                   key={task.id}
-                  style={{ top: `${topY}px`, height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, boxSizing: 'border-box' }}
+                  style={{
+                    top: `${topY}px`,
+                    height: `${rowHeight}px`,
+                    maxHeight: `${rowHeight}px`,
+                    boxSizing: 'border-box',
+                    borderBottomColor: theme.border,
+                    backgroundColor: isSelected ? theme.rowSelectedBg : undefined,
+                    borderLeftColor: isSelected ? theme.signal : undefined,
+                    borderLeftWidth: isSelected ? '4px' : undefined
+                  }}
                   onClick={() => {
                     if (panStateRef.current?.hasMoved) return;
                     onSelectTask(task.id);
@@ -777,11 +735,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     onContextMenu?.(e, task);
                   }}
                   onDoubleClick={() => onOpenTaskInfo?.(task)}
-                  className={`absolute left-0 right-0 flex items-center border-b transition-colors ${
-                    isSiteDrawing
-                      ? (isSelected ? 'bg-[#E8590C]/10 border-l-4 border-[#E8590C] border-b-[#C9CED2]' : 'hover:bg-[#E9ECEE]/40 border-b-[#C9CED2]')
-                      : (isSelected ? 'bg-sky-100/50 border-b-slate-200' : 'hover:bg-slate-100/50 border-b-slate-200')
-                  }`}
+                  className="absolute left-0 right-0 flex items-center border-b transition-colors"
                 >
                   {/* Baseline Bar (Rendered underneath) */}
                   {hasBaseline && (
@@ -789,11 +743,11 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       style={{
                         left: `${bStartX}px`,
                         width: `${bWidth}px`,
-                        top: `${rowHeight - 6}px`
+                        top: `${rowHeight - 6}px`,
+                        backgroundColor: theme.baseline,
+                        borderColor: theme.baselineBorder || theme.baseline
                       }}
-                      className={`absolute h-1.5 rounded-2xs opacity-90 pointer-events-none ${
-                        isSiteDrawing ? 'bg-[#9BA5AD] border border-[#7E8890]' : 'bg-amber-400 border border-amber-600'
-                      }`}
+                      className="absolute h-1.5 rounded-2xs opacity-90 pointer-events-none border"
                       title={`Baseline: ${task.baselineStartDate} to ${task.baselineEndDate}`}
                     />
                   )}
@@ -822,15 +776,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       
                       {showTaskLabels && (
                         <span
-                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded shadow-2xs tabular-nums ${
-                            isSiteDrawing
-                              ? isTaskCrit
-                                ? 'text-[#C62828] bg-[#FAFAF8] border border-[#C62828]/50'
-                                : 'text-[#1E293B] bg-[#FAFAF8] border border-[#C9CED2]'
-                              : isTaskCrit
-                              ? 'text-red-700 bg-white border border-red-200 shadow-xs'
-                              : 'text-slate-900 bg-white border border-slate-200/90 shadow-xs'
-                          }`}
+                          style={{
+                            backgroundColor: theme.labelHaloBg,
+                            borderColor: isTaskCrit ? theme.critical : theme.labelHaloBorder,
+                            color: isTaskCrit ? (theme.criticalText || theme.critical) : theme.labelHaloText
+                          }}
+                          className="absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded border shadow-2xs tabular-nums"
                         >
                           {task.name} ({task.progress}%)
                         </span>
@@ -859,25 +810,23 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     >
                       {/* Rotated Diamond Symbol */}
                       <div
-                        className={`w-4 h-4 ${
-                          isTaskCrit ? (isSiteDrawing ? 'bg-[#C62828]' : 'bg-red-600') : (isSiteDrawing ? 'bg-[#37434D]' : 'bg-slate-900')
-                        } rotate-45 border-2 border-white shadow-md hover:scale-110 transition-transform relative shrink-0`}
+                        style={{
+                          backgroundColor: isTaskCrit ? theme.critical : theme.milestone,
+                          borderColor: theme.milestoneBorder || '#FFFFFF'
+                        }}
+                        className="w-4 h-4 rotate-45 border-2 shadow-md hover:scale-110 transition-transform relative shrink-0"
                       >
                         {/* Milestone Connect Handles on Both Ends */}
                         <div
                           onMouseDown={(e) => handleConnectStart(e, task.id, 'start')}
                           onMouseUp={(e) => handleConnectEnd(e, task.id, 'start')}
-                          className={`absolute -left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 ${
-                            isSiteDrawing ? 'border-[#E8590C]' : 'border-indigo-600'
-                          } opacity-0 group-hover:opacity-100 cursor-crosshair z-20`}
+                          className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-indigo-600 opacity-0 group-hover:opacity-100 cursor-crosshair z-20"
                           title="Connect from Milestone (Start)"
                         />
                         <div
                           onMouseDown={(e) => handleConnectStart(e, task.id, 'finish')}
                           onMouseUp={(e) => handleConnectEnd(e, task.id, 'finish')}
-                          className={`absolute -right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 ${
-                            isSiteDrawing ? 'border-[#E8590C]' : 'border-indigo-600'
-                          } opacity-0 group-hover:opacity-100 cursor-crosshair z-20`}
+                          className="absolute -right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-indigo-600 opacity-0 group-hover:opacity-100 cursor-crosshair z-20"
                           title="Connect from Milestone (Finish)"
                         />
                       </div>
@@ -885,19 +834,19 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       {/* Milestone Label on the Right Side (Unrotated, aligned with task bars) */}
                       {showTaskLabels && (
                         <span
-                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded shadow-2xs tabular-nums ${
-                            isSiteDrawing
-                              ? isTaskCrit
-                                ? 'text-[#C62828] bg-[#FAFAF8] border border-[#C62828]/50'
-                                : 'text-[#1E293B] bg-[#FAFAF8] border border-[#C9CED2]'
-                              : isTaskCrit
-                              ? 'text-red-700 bg-white border border-red-200 shadow-xs'
-                              : 'text-slate-900 bg-white border border-slate-200/90 shadow-xs'
-                          }`}
+                          style={{
+                            backgroundColor: theme.labelHaloBg,
+                            borderColor: isTaskCrit ? theme.critical : theme.labelHaloBorder,
+                            color: isTaskCrit ? (theme.criticalText || theme.critical) : theme.labelHaloText
+                          }}
+                          className="absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded border shadow-2xs tabular-nums"
                         >
                           {task.name}
                           {task.baselineVarianceDays !== undefined && task.baselineVarianceDays !== 0 && (
-                            <span className={`ml-1 text-[11px] font-bold ${task.baselineVarianceDays > 0 ? (isSiteDrawing ? 'text-[#C62828]' : 'text-red-600') : 'text-emerald-600'}`}>
+                            <span
+                              style={{ color: task.baselineVarianceDays > 0 ? theme.critical : '#059669' }}
+                              className="ml-1 text-[11px] font-bold"
+                            >
                               {task.baselineVarianceDays > 0 ? `+${task.baselineVarianceDays}d` : `${task.baselineVarianceDays}d`}
                             </span>
                           )}
@@ -942,22 +891,21 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                         className="h-full rounded-l-[4px] pointer-events-none"
                       />
 
-                      {/* Text Label next to bar (High contrast dark or Critical Red) */}
+                      {/* Text Label next to bar */}
                       {showTaskLabels && (
                         <span
-                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-semibold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded shadow-2xs tabular-nums ${
-                            isSiteDrawing
-                              ? isTaskCrit
-                                ? 'text-[#C62828] font-bold bg-[#FAFAF8] border border-[#C62828]/50'
-                                : 'text-[#1E293B] bg-[#FAFAF8] border border-[#C9CED2]'
-                              : isTaskCrit
-                              ? 'text-red-700 font-bold bg-white border border-red-200 shadow-xs'
-                              : 'text-slate-900 bg-white border border-slate-200/90 shadow-xs'
+                          style={{
+                            backgroundColor: theme.labelHaloBg,
+                            borderColor: isTaskCrit ? theme.critical : theme.labelHaloBorder,
+                            color: isTaskCrit ? (theme.criticalText || theme.critical) : theme.labelHaloText
+                          }}
+                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded border shadow-2xs tabular-nums ${
+                            isTaskCrit ? 'font-bold' : 'font-semibold'
                           }`}
                         >
                           {task.name} ({task.progress}%)
                           {task.baselineVarianceDays !== undefined && task.baselineVarianceDays > 0 && (
-                            <span className={`ml-1 font-bold ${isSiteDrawing ? 'text-[#C62828]' : 'text-red-600'}`}>
+                            <span style={{ color: theme.critical }} className="ml-1 font-bold">
                               +{task.baselineVarianceDays}d
                             </span>
                           )}
