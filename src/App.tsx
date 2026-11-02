@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier } from './types/project';
 import { recalculateSchedule, formatDate, addWorkingDays } from './engine/scheduler';
 import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML, parseExcelProject } from './engine/importers';
@@ -765,6 +765,33 @@ export function App() {
     exportToExcel(tasks, settings, `${settings.name.replace(/\s+/g, '_')}.xlsx`);
   };
 
+  // Synchronized Vertical Scrolling between Spreadsheet Grid & Gantt Timeline
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const isSyncingScroll = useRef(false);
+
+  const handleGridScroll = useCallback((scrollTop: number) => {
+    if (isSyncingScroll.current) return;
+    isSyncingScroll.current = true;
+    if (timelineScrollRef.current) {
+      timelineScrollRef.current.scrollTop = scrollTop;
+    }
+    requestAnimationFrame(() => {
+      isSyncingScroll.current = false;
+    });
+  }, []);
+
+  const handleTimelineScroll = useCallback((scrollTop: number) => {
+    if (isSyncingScroll.current) return;
+    isSyncingScroll.current = true;
+    if (gridScrollRef.current) {
+      gridScrollRef.current.scrollTop = scrollTop;
+    }
+    requestAnimationFrame(() => {
+      isSyncingScroll.current = false;
+    });
+  }, []);
+
   // Baseline Manager
   const handleSaveBaseline = (name: string) => {
     const taskSnapshots: BaselineData['tasks'] = {};
@@ -888,6 +915,8 @@ export function App() {
               onToggleCollapse={handleToggleCollapse}
               weightMode={settings.weightMode}
               fontSize={settings.fontSize || 'normal'}
+              scrollContainerRef={gridScrollRef}
+              onVerticalScroll={handleGridScroll}
             />
           </div>
 
@@ -916,6 +945,8 @@ export function App() {
               fontSize={settings.fontSize || 'normal'}
               zoom={zoomTier}
               dayWidth={dayWidth}
+              scrollContainerRef={timelineScrollRef}
+              onVerticalScroll={handleTimelineScroll}
             />
           </div>
         </div>

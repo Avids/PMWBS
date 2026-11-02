@@ -17,6 +17,8 @@ interface GanttTimelineProps {
   fontSize?: FontSizeOption;
   zoom: ZoomTier;
   dayWidth: number;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  onVerticalScroll?: (scrollTop: number) => void;
 }
 
 /**
@@ -96,9 +98,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   onOpenPredecessorModal,
   fontSize = 'normal',
   zoom,
-  dayWidth
+  dayWidth,
+  scrollContainerRef,
+  onVerticalScroll
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const internalContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = scrollContainerRef || internalContainerRef;
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragType, setDragType] = useState<'move' | 'resize' | null>(null);
   const [dragStartX, setDragStartX] = useState<number>(0);
@@ -448,6 +453,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
       {/* Main Gantt Canvas Area */}
       <div
         ref={containerRef}
+        onScroll={(e) => onVerticalScroll?.((e.target as HTMLElement).scrollTop)}
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -627,12 +633,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
               return (
                 <div
                   key={task.id}
-                  style={{ top: `${topY}px`, height: `${rowHeight}px` }}
+                  style={{ top: `${topY}px`, height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, boxSizing: 'border-box' }}
                   onClick={() => {
                     if (panStateRef.current?.hasMoved) return;
                     onSelectTask(task.id);
                   }}
-                  className={`absolute left-0 right-0 flex items-center transition-colors ${
+                  className={`absolute left-0 right-0 flex items-center border-b border-slate-200 transition-colors ${
                     isSelected ? 'bg-sky-100/50' : 'hover:bg-slate-100/50'
                   }`}
                 >

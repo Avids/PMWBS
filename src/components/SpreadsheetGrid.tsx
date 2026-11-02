@@ -17,6 +17,8 @@ interface SpreadsheetGridProps {
   onToggleCollapse: (taskId: string) => void;
   weightMode: WeightMode;
   fontSize?: FontSizeOption;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  onVerticalScroll?: (scrollTop: number) => void;
 }
 
 type ColumnField = 
@@ -68,13 +70,17 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   onOutdentTask,
   onOpenPredecessorModal,
   onToggleCollapse,
-  fontSize = 'normal'
+  fontSize = 'normal',
+  scrollContainerRef,
+  onVerticalScroll
 }) => {
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
   const [editingCell, setEditingCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
+  const internalScrollRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = scrollContainerRef || internalScrollRef;
 
   // Keep activeCell synchronized with selectedTaskId
   useEffect(() => {
@@ -313,17 +319,24 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       className="flex flex-col h-full bg-white select-none overflow-hidden focus:outline-none"
     >
       {/* Spreadsheet Table View */}
-      <div className="flex-1 overflow-auto bg-white">
-        <table className={`w-full border-collapse ${textSizeClass}`}>
+      <div
+        ref={tableScrollRef}
+        onScroll={(e) => onVerticalScroll?.((e.target as HTMLElement).scrollTop)}
+        className="flex-1 overflow-auto bg-white"
+      >
+        <table style={{ tableLayout: 'fixed' }} className={`w-full border-collapse ${textSizeClass}`}>
           <thead className="sticky top-0 z-10 bg-slate-100 border-b-2 border-slate-300 shadow-2xs">
-            <tr className="h-10">
-              <th className="w-10 px-1 py-2 text-center text-slate-800 font-bold border-r border-slate-300 bg-slate-100 select-none">
+            <tr style={{ height: '56px' }}>
+              <th
+                style={{ height: '56px' }}
+                className="w-10 px-1 py-2 text-center text-slate-800 font-bold border-r border-slate-300 bg-slate-100 select-none"
+              >
                 #
               </th>
               {COLUMNS.map((col) => (
                 <th
                   key={col.field}
-                  style={{ width: `${col.width}px` }}
+                  style={{ width: `${col.width}px`, height: '56px' }}
                   className={`px-2.5 py-2 text-left font-bold text-slate-900 border-r border-slate-300 bg-slate-100 whitespace-nowrap tracking-tight ${headerSizeClass}`}
                 >
                   {col.label}
@@ -340,7 +353,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                 <tr
                   key={task.id}
                   id={`grid-row-${task.id}`}
-                  style={{ height: `${rowHeight}px` }}
+                  style={{ height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, minHeight: `${rowHeight}px`, boxSizing: 'border-box' }}
                   onClick={() => {
                     onSelectTask(task.id);
                     setActiveCell((prev) => ({ rowIdx, colIdx: prev?.colIdx ?? 1 }));
@@ -355,7 +368,10 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                   }`}
                 >
                   {/* Row Index with OnlineGantt-style Grip Handle */}
-                  <td className="px-1 text-center border-r border-slate-200 select-none bg-slate-50/50">
+                  <td
+                    style={{ height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, boxSizing: 'border-box' }}
+                    className="px-1 text-center border-r border-slate-200 select-none bg-slate-50/50"
+                  >
                     <div className="flex items-center justify-center space-x-0.5 text-slate-700">
                       <GripVertical className="w-3 h-3 text-slate-400" />
                       <span className="font-mono font-bold text-[11px]">{rowIdx + 1}</span>
@@ -496,6 +512,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                     return (
                       <td
                         key={col.field}
+                        style={{ height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, boxSizing: 'border-box' }}
                         onClick={(e) => {
                           e.stopPropagation();
                           onSelectTask(task.id);
