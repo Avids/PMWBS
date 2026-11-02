@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType } from '../types/project';
 import { formatDate, addWorkingDays, isWorkingDay } from '../engine/scheduler';
 
@@ -106,6 +106,14 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   const [originalDuration, setOriginalDuration] = useState<number>(1);
   const [connectingFrom, setConnectingFrom] = useState<{ taskId: string; fromEnd: 'start' | 'finish' } | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const panStateRef = useRef<{
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+    hasMoved: boolean;
+  } | null>(null);
 
   // Height sizing derived from selected font size
   const rowHeight = fontSize === 'small' ? 30 : fontSize === 'large' ? 44 : 36;
@@ -219,7 +227,24 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     return Math.max(0, diffDays * dayWidth);
   };
 
-  // Dragging event handlers
+  // Canvas Panning & Dragging event handlers
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    // Only primary (left: 0) or auxiliary (middle: 1) button
+    if (e.button !== 0 && e.button !== 1) return;
+    if (connectingFrom || draggingTaskId) return;
+
+    if (containerRef.current) {
+      panStateRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        scrollLeft: containerRef.current.scrollLeft,
+        scrollTop: containerRef.current.scrollTop,
+        hasMoved: false
+      };
+      setIsPanning(true);
+    }
+  };
+
   const handleMouseDown = (e: React.MouseEvent, task: Task, type: 'move' | 'resize') => {
     if (task.isSummary) return;
     e.stopPropagation();
@@ -237,6 +262,17 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
         x: e.clientX - rect.left + containerRef.current.scrollLeft,
         y: e.clientY - rect.top + containerRef.current.scrollTop
       });
+      return;
+    }
+
+    if (panStateRef.current && containerRef.current) {
+      const dx = e.clientX - panStateRef.current.startX;
+      const dy = e.clientY - panStateRef.current.startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        panStateRef.current.hasMoved = true;
+      }
+      containerRef.current.scrollLeft = panStateRef.current.scrollLeft - dx;
+      containerRef.current.scrollTop = panStateRef.current.scrollTop - dy;
       return;
     }
 
@@ -260,11 +296,42 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   };
 
   const handleMouseUp = () => {
+    panStateRef.current = null;
+    setIsPanning(false);
     setDraggingTaskId(null);
     setDragType(null);
     setConnectingFrom(null);
     setMousePos(null);
   };
+
+  // Global window listeners so dragging/panning continues smoothly even outside the container
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (panStateRef.current && containerRef.current) {
+        const dx = e.clientX - panStateRef.current.startX;
+        const dy = e.clientY - panStateRef.current.startY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          panStateRef.current.hasMoved = true;
+        }
+        containerRef.current.scrollLeft = panStateRef.current.scrollLeft - dx;
+        containerRef.current.scrollTop = panStateRef.current.scrollTop - dy;
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (panStateRef.current) {
+        panStateRef.current = null;
+        setIsPanning(false);
+      }
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, []);
 
   const handleConnectStart = (e: React.MouseEvent, taskId: string, fromEnd: 'start' | 'finish') => {
     e.stopPropagation();
@@ -381,9 +448,11 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
       {/* Main Gantt Canvas Area */}
       <div
         ref={containerRef}
+        onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        className="flex-1 overflow-auto relative bg-white"
+        style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+        className="flex-1 overflow-auto relative bg-white select-none"
       >
         <div
           style={{ width: `${totalDays * dayWidth}px`, height: `${headerHeight + tasks.length * rowHeight}px` }}
@@ -559,7 +628,10 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                 <div
                   key={task.id}
                   style={{ top: `${topY}px`, height: `${rowHeight}px` }}
-                  onClick={() => onSelectTask(task.id)}
+                  onClick={() => {
+                    if (panStateRef.current?.hasMoved) return;
+                    onSelectTask(task.id);
+                  }}
                   className={`absolute left-0 right-0 flex items-center transition-colors ${
                     isSelected ? 'bg-sky-100/50' : 'hover:bg-slate-100/50'
                   }`}
