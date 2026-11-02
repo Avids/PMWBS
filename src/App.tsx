@@ -1163,10 +1163,16 @@ export function App() {
     setBaselines(prev => prev.filter(b => b.id !== baselineId));
   };
 
+  const isSiteDrawing = settings.colorTheme === 'site-drawing';
+
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 p-2 sm:p-3 font-sans">
+    <div className={`flex flex-col h-screen w-screen overflow-hidden p-2 sm:p-3 transition-colors ${
+      isSiteDrawing ? "bg-[#E9ECEE] font-['Barlow',sans-serif]" : "bg-slate-100 font-sans"
+    }`}>
       {/* Framed Application Container Floating with Calm Margins/Space Around */}
-      <div className="flex-1 flex flex-col overflow-hidden rounded-xl border border-slate-300 shadow-md bg-white">
+      <div className={`flex-1 flex flex-col overflow-hidden rounded-xl border shadow-md ${
+        isSiteDrawing ? 'border-[#C9CED2] bg-[#FAFAF8]' : 'border-slate-300 bg-white'
+      }`}>
         {/* Top Ribbon Toolbar */}
         <Toolbar
           settings={settings}
@@ -1245,15 +1251,20 @@ export function App() {
               fontSize={settings.fontSize || 'normal'}
               scrollContainerRef={gridScrollRef}
               onVerticalScroll={handleGridScroll}
+              colorTheme={settings.colorTheme}
             />
           </div>
 
           {/* Resizable Splitter Divider Bar */}
           <div
             onMouseDown={handleSplitterMouseDown}
-            className="w-2 bg-slate-300 hover:bg-indigo-600 active:bg-indigo-700 cursor-col-resize z-30 transition-colors flex items-center justify-center select-none shadow-xs"
+            className={`w-2 cursor-col-resize z-30 transition-colors flex items-center justify-center select-none shadow-xs ${
+              isSiteDrawing
+                ? 'bg-[#C9CED2] hover:bg-[#E8590C] active:bg-[#E8590C]'
+                : 'bg-slate-300 hover:bg-indigo-600 active:bg-indigo-700'
+            }`}
           >
-            <div className="h-8 w-1 bg-slate-500 rounded-full"></div>
+            <div className={`h-8 w-1 rounded-full ${isSiteDrawing ? 'bg-[#37434D]' : 'bg-slate-500'}`}></div>
           </div>
 
           {/* Right Pane: Gantt Timeline */}
@@ -1278,54 +1289,74 @@ export function App() {
               dayWidth={dayWidth}
               scrollContainerRef={timelineScrollRef}
               onVerticalScroll={handleTimelineScroll}
+              colorTheme={settings.colorTheme}
             />
           </div>
         </div>
 
         {/* Bottom View Legend & Schedule Status Bar */}
-        <div className="h-8 px-4 bg-slate-100/90 border-t border-slate-300 flex items-center justify-between text-[11px] text-slate-700 select-none z-20 shrink-0">
+        <div className={`h-8 px-4 flex items-center justify-between text-[11px] select-none z-20 shrink-0 border-t ${
+          isSiteDrawing
+            ? 'bg-[#E9ECEE] border-[#C9CED2] text-[#37434D]'
+            : 'bg-slate-100/90 border-slate-300 text-slate-700'
+        }`}>
           {/* Status info */}
-          <div className="flex items-center space-x-2 text-slate-600 font-medium">
+          <div className={`flex items-center space-x-2 font-medium ${isSiteDrawing ? 'text-[#37434D]' : 'text-slate-600'}`}>
             <span><strong>{tasks.length}</strong> tasks</span>
             <span>•</span>
             <span><strong>{visibleTasks.length}</strong> visible</span>
             {finishDate && (
               <>
                 <span>•</span>
-                <span>Target Finish: <strong className="text-slate-800">{finishDate}</strong></span>
+                <span>Target Finish: <strong className={isSiteDrawing ? 'text-black' : 'text-slate-800'}>{finishDate}</strong></span>
               </>
             )}
           </div>
 
-          {/* Professional Standard Legend */}
-          <div className="flex items-center space-x-4 font-semibold text-slate-700">
-            <span className="text-slate-500 font-medium">Legend:</span>
+          {/* Legend */}
+          <div className="flex items-center space-x-4 font-semibold">
+            <span className={isSiteDrawing ? 'text-slate-500 font-medium' : 'text-slate-500 font-medium'}>Legend:</span>
             <div className="flex items-center space-x-1.5">
-              <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs"></div>
+              <div className={`w-2.5 h-2.5 rounded-xs ${isSiteDrawing ? 'bg-[#37434D]' : 'bg-slate-900'}`}></div>
               <span>Summary</span>
             </div>
+            {isSiteDrawing ? (
+              <div className="flex items-center space-x-1.5">
+                <div className="w-2.5 h-2.5 bg-[#4F7A99] rounded-xs"></div>
+                <span>Task (Steel Blue)</span>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center space-x-1.5">
+                  <div className="w-2.5 h-2.5 bg-blue-600 rounded-xs"></div>
+                  <span>Lvl 2 Activity</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <div className="w-2.5 h-2.5 bg-sky-600 rounded-xs"></div>
+                  <span>Lvl 3 Activity</span>
+                </div>
+              </>
+            )}
             <div className="flex items-center space-x-1.5">
-              <div className="w-2.5 h-2.5 bg-blue-600 rounded-xs"></div>
-              <span>Lvl 2 Activity</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <div className="w-2.5 h-2.5 bg-sky-600 rounded-xs"></div>
-              <span>Lvl 3 Activity</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <div className="w-2.5 h-2.5 bg-slate-900 rotate-45"></div>
+              <div className={`w-2.5 h-2.5 rotate-45 ${isSiteDrawing ? 'bg-[#37434D]' : 'bg-slate-900'}`}></div>
               <span>Milestone</span>
             </div>
             {settings.showCriticalPath && (
               <div className="flex items-center space-x-1.5">
-                <div className="w-2.5 h-2.5 bg-red-600 rounded-xs"></div>
-                <span className="text-red-700">Critical Path</span>
+                <div className={`w-2.5 h-2.5 rounded-xs ${isSiteDrawing ? 'bg-[#C62828]' : 'bg-red-600'}`}></div>
+                <span className={isSiteDrawing ? 'text-[#C62828]' : 'text-red-700'}>Critical Path</span>
               </div>
             )}
             {settings.showBaseline && (
               <div className="flex items-center space-x-1.5">
-                <div className="w-2.5 h-1.5 bg-amber-400 border border-amber-600"></div>
-                <span className="text-amber-800">Baseline</span>
+                <div className={`w-2.5 h-1.5 ${isSiteDrawing ? 'bg-[#9BA5AD] border border-[#7E8890]' : 'bg-amber-400 border border-amber-600'}`}></div>
+                <span className={isSiteDrawing ? 'text-slate-600' : 'text-amber-800'}>Baseline</span>
+              </div>
+            )}
+            {isSiteDrawing && (
+              <div className="flex items-center space-x-1.5">
+                <div className="w-2.5 h-2 bg-[#E8590C] rounded-2xs"></div>
+                <span className="text-[#E8590C]">Signal / Today</span>
               </div>
             )}
           </div>

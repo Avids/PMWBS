@@ -148,6 +148,56 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
             </div>
           </div>
 
+          {/* Visual Color Theme Profile */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-800">Visual Theme Profile</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div
+                onClick={() => onUpdateSettings({ colorTheme: 'classic' })}
+                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  settings.colorTheme !== 'site-drawing'
+                    ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20 shadow-xs'
+                    : 'border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-xs text-slate-900">Modern Classic</span>
+                  <div className="flex space-x-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-tight">
+                  High-contrast vibrant palette with dark slate ribbon, royal blue activity bars, and amber baselines.
+                </p>
+              </div>
+
+              <div
+                onClick={() => onUpdateSettings({ colorTheme: 'site-drawing' })}
+                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  settings.colorTheme === 'site-drawing'
+                    ? 'border-[#E8590C] bg-[#E8590C]/10 ring-2 ring-[#E8590C]/20 shadow-xs'
+                    : 'border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-xs text-slate-900">Site Drawing</span>
+                  <div className="flex space-x-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#37434D]"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#4F7A99]"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#9BA5AD]"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#E8590C]"></span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-tight">
+                  Architectural palette with steel/concrete neutrals, structural blue-grey bars, Barlow typography, and safety orange signals.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Activity Weight Mode */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-slate-800">Activity Weight Computation Method</label>

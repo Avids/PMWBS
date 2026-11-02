@@ -9,6 +9,7 @@ export interface TaskDependency {
 export type WeightMode = 'equal' | 'duration' | 'manhour' | 'manual';
 export type FontSizeOption = 'small' | 'normal' | 'large'; // 8pt (small), 10pt (normal), 12pt (large)
 export type ZoomTier = 'day' | 'week' | 'month';
+export type ColorTheme = 'classic' | 'site-drawing';
 
 export interface BaselineData {
   id: string;
@@ -96,6 +97,7 @@ export interface ProjectSettings {
   showCriticalPath: boolean;
   showTaskLabels?: boolean;      // Toggle text labels next to bars on timeline
   fontSize?: FontSizeOption;     // 'small' (8pt), 'normal' (10pt), 'large' (12pt)
+  colorTheme?: ColorTheme;       // 'classic' | 'site-drawing' (Architectural Site Drawing profile)
 }
 
 export interface ProjectFile {

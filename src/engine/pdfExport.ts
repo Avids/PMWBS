@@ -494,31 +494,45 @@ export async function exportProjectDocument(
     let dependencyPathsHTML = '';
 
     if (showGantt) {
+      const isSiteDrawing = settings.colorTheme === 'site-drawing';
+
       pageTasks.forEach((t, localIdx) => {
         const startX = dateToX(t.startDate);
         const barWidth = calcBarWidth(t.startDate, t.endDate);
         const topY = localIdx * rowHeight + 5;
 
         if (t.isSummary) {
+          const sumColor = isSiteDrawing ? '#37434D' : '#1e293b';
+          const progColor = isSiteDrawing ? '#1B2228' : '#0f172a';
           taskBarsHTML += `
-            <div style="position: absolute; left: ${startX}px; top: ${topY + 3}px; width: ${barWidth}px; height: 14px; background-color: #1e293b; border-radius: 3px;">
-              <div style="width: ${t.progress}%; height: 100%; background-color: #0f172a; border-radius: 3px;"></div>
+            <div style="position: absolute; left: ${startX}px; top: ${topY + 3}px; width: ${barWidth}px; height: 14px; background-color: ${sumColor}; border-radius: 3px;">
+              <div style="width: ${t.progress}%; height: 100%; background-color: ${progColor}; border-radius: 3px;"></div>
             </div>
           `;
         } else if (t.isMilestone || t.duration === 0) {
           const isCrit = !!(settings.showCriticalPath && t.isCritical);
+          const mileColor = isCrit ? (isSiteDrawing ? '#C62828' : '#dc2626') : t.color ? t.color : (isSiteDrawing ? '#37434D' : '#0f172a');
           taskBarsHTML += `
-            <div style="position: absolute; left: ${startX - 6}px; top: ${topY + 2}px; width: 12px; height: 12px; background-color: ${isCrit ? '#dc2626' : t.color ? t.color : '#0f172a'}; transform: rotate(45deg); border: 2px solid #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.15);"></div>
+            <div style="position: absolute; left: ${startX - 6}px; top: ${topY + 2}px; width: 12px; height: 12px; background-color: ${mileColor}; transform: rotate(45deg); border: 2px solid #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.15);"></div>
           `;
         } else {
           const depth = (t.wbsCode.match(/\./g) || []).length;
           const isCrit = !!(settings.showCriticalPath && t.isCritical);
-          const barColor = isCrit ? '#dc2626' : t.color ? t.color : depth <= 1 ? '#2563eb' : depth === 2 ? '#0284c7' : '#4f46e5';
-          const borderColor = isCrit ? '#b91c1c' : t.color ? t.color : depth <= 1 ? '#1d4ed8' : depth === 2 ? '#0369a1' : '#4338ca';
+          const barColor = isCrit
+            ? (isSiteDrawing ? '#C62828' : '#dc2626')
+            : t.color ? t.color
+            : isSiteDrawing ? '#4F7A99'
+            : depth <= 1 ? '#2563eb' : depth === 2 ? '#0284c7' : '#4f46e5';
+          const borderColor = isCrit
+            ? (isSiteDrawing ? '#9E1C1C' : '#b91c1c')
+            : t.color ? t.color
+            : isSiteDrawing ? '#3D5E76'
+            : depth <= 1 ? '#1d4ed8' : depth === 2 ? '#0369a1' : '#4338ca';
+          const progFill = isSiteDrawing ? '#26465E' : 'rgba(0,0,0,0.25)';
 
           taskBarsHTML += `
             <div style="position: absolute; left: ${startX}px; top: ${topY + 1}px; width: ${barWidth}px; height: 18px; background-color: ${barColor}; border-radius: 3px; border: 1px solid ${borderColor}; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-              <div style="width: ${t.progress}%; height: 100%; background-color: rgba(0,0,0,0.25);"></div>
+              <div style="width: ${t.progress}%; height: 100%; background-color: ${progFill};"></div>
             </div>
           `;
         }
@@ -581,13 +595,19 @@ export async function exportProjectDocument(
     ` : '';
 
     // Footer HTML with Schedule Legend
+    const isSiteDrawing = settings.colorTheme === 'site-drawing';
     const legendHTML = `
       <div style="display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 10px; color: #334155;">
         <span style="font-weight: 700; color: #0f172a;">Legend:</span>
         <div style="display: flex; align-items: center; gap: 4px;">
-          <div style="width: 10px; height: 10px; background-color: #1e293b; border-radius: 2px;"></div>
+          <div style="width: 10px; height: 10px; background-color: ${isSiteDrawing ? '#37434D' : '#1e293b'}; border-radius: 2px;"></div>
           <span>Summary</span>
         </div>
+        ${isSiteDrawing ? `
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <div style="width: 10px; height: 10px; background-color: #4F7A99; border-radius: 2px;"></div>
+          <span>Task (Steel Blue)</span>
+        </div>` : `
         <div style="display: flex; align-items: center; gap: 4px;">
           <div style="width: 10px; height: 10px; background-color: #2563eb; border-radius: 2px;"></div>
           <span>Lvl 2 Activity</span>
@@ -595,20 +615,20 @@ export async function exportProjectDocument(
         <div style="display: flex; align-items: center; gap: 4px;">
           <div style="width: 10px; height: 10px; background-color: #0284c7; border-radius: 2px;"></div>
           <span>Lvl 3 Activity</span>
-        </div>
+        </div>`}
         <div style="display: flex; align-items: center; gap: 4px;">
-          <div style="width: 8px; height: 8px; background-color: #0f172a; transform: rotate(45deg); border: 1px solid #ffffff;"></div>
+          <div style="width: 8px; height: 8px; background-color: ${isSiteDrawing ? '#37434D' : '#0f172a'}; transform: rotate(45deg); border: 1px solid #ffffff;"></div>
           <span>Milestone</span>
         </div>
         ${settings.showCriticalPath ? `
         <div style="display: flex; align-items: center; gap: 4px;">
-          <div style="width: 10px; height: 10px; background-color: #dc2626; border-radius: 2px;"></div>
-          <span style="color: #b91c1c;">Critical Path</span>
+          <div style="width: 10px; height: 10px; background-color: ${isSiteDrawing ? '#C62828' : '#dc2626'}; border-radius: 2px;"></div>
+          <span style="color: ${isSiteDrawing ? '#C62828' : '#b91c1c'};">Critical Path</span>
         </div>` : ''}
         ${settings.showBaseline ? `
         <div style="display: flex; align-items: center; gap: 4px;">
-          <div style="width: 12px; height: 5px; background-color: #f59e0b; border: 1px solid #d97706; border-radius: 1px;"></div>
-          <span style="color: #b45309;">Baseline</span>
+          <div style="width: 12px; height: 5px; background-color: ${isSiteDrawing ? '#9BA5AD' : '#f59e0b'}; border: 1px solid ${isSiteDrawing ? '#7E8890' : '#d97706'}; border-radius: 1px;"></div>
+          <span style="color: ${isSiteDrawing ? '#5A6570' : '#b45309'};">Baseline</span>
         </div>` : ''}
       </div>
     `;

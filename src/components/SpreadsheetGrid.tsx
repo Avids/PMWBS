@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Task, WeightMode, FontSizeOption } from '../types/project';
+import type { Task, WeightMode, FontSizeOption, ColorTheme } from '../types/project';
 import { Flag, GitCommit, GripVertical } from 'lucide-react';
 import { parsePredecessors } from '../engine/scheduler';
 
@@ -21,6 +21,7 @@ interface SpreadsheetGridProps {
   fontSize?: FontSizeOption;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   onVerticalScroll?: (scrollTop: number) => void;
+  colorTheme?: ColorTheme;
 }
 
 type ColumnField = 
@@ -78,7 +79,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   onToggleCollapse,
   fontSize = 'normal',
   scrollContainerRef,
-  onVerticalScroll
+  onVerticalScroll,
+  colorTheme = 'classic'
 }) => {
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
   const [editingCell, setEditingCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
@@ -87,6 +89,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = scrollContainerRef || internalScrollRef;
+  const isSiteDrawing = colorTheme === 'site-drawing';
 
   // Keep activeCell synchronized with selectedTaskId
   useEffect(() => {
@@ -324,20 +327,32 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       ref={gridContainerRef}
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      className="flex flex-col h-full bg-white select-none overflow-hidden focus:outline-none"
+      className={`flex flex-col h-full select-none overflow-hidden focus:outline-none ${
+        isSiteDrawing
+          ? "bg-[#FAFAF8] font-['Barlow_Semi_Condensed',sans-serif]"
+          : "bg-white"
+      }`}
     >
       {/* Spreadsheet Table View */}
       <div
         ref={tableScrollRef}
         onScroll={(e) => onVerticalScroll?.((e.target as HTMLElement).scrollTop)}
-        className="flex-1 overflow-auto bg-white"
+        className={`flex-1 overflow-auto ${isSiteDrawing ? 'bg-[#FAFAF8]' : 'bg-white'}`}
       >
         <table style={{ tableLayout: 'fixed' }} className={`w-full border-collapse ${textSizeClass}`}>
-          <thead className="sticky top-0 z-10 bg-slate-100 border-b-2 border-slate-300 shadow-2xs">
+          <thead className={`sticky top-0 z-10 shadow-2xs ${
+            isSiteDrawing
+              ? 'bg-[#37434D] border-b border-[#C9CED2]'
+              : 'bg-slate-100 border-b-2 border-slate-300'
+          }`}>
             <tr style={{ height: '56px' }}>
               <th
                 style={{ height: '56px' }}
-                className="w-10 px-1 py-2 text-center text-slate-800 font-bold border-r border-slate-300 bg-slate-100 select-none"
+                className={`w-10 px-1 py-2 text-center font-bold select-none border-r ${
+                  isSiteDrawing
+                    ? 'text-white border-[#C9CED2] bg-[#37434D]'
+                    : 'text-slate-800 border-slate-300 bg-slate-100'
+                }`}
               >
                 #
               </th>
@@ -345,7 +360,11 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                 <th
                   key={col.field}
                   style={{ width: `${col.width}px`, height: '56px' }}
-                  className={`px-2.5 py-2 text-left font-bold text-slate-900 border-r border-slate-300 bg-slate-100 whitespace-nowrap tracking-tight ${headerSizeClass}`}
+                  className={`px-2.5 py-2 text-left font-bold border-r whitespace-nowrap tracking-tight ${headerSizeClass} ${
+                    isSiteDrawing
+                      ? 'text-white border-[#C9CED2] bg-[#37434D]'
+                      : 'text-slate-900 border-slate-300 bg-slate-100'
+                  }`}
                 >
                   {col.label}
                 </th>
@@ -372,12 +391,18 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                     onSelectTask(task.id);
                     onContextMenu?.(e, task);
                   }}
-                  className={`border-b border-slate-200 cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-sky-100/70 border-l-4 border-l-indigo-600'
+                  className={`border-b cursor-pointer transition-colors ${
+                    isSiteDrawing
+                      ? isSelected
+                        ? 'bg-[#E8590C]/10 border-l-4 border-l-[#E8590C] border-b-[#C9CED2]'
+                        : rowIdx % 2 === 0
+                        ? 'bg-[#FAFAF8] hover:bg-[#E9ECEE]/40 border-b-[#C9CED2]'
+                        : 'bg-[#F3F5F6] hover:bg-[#E9ECEE]/60 border-b-[#C9CED2]'
+                      : isSelected
+                      ? 'bg-sky-100/70 border-l-4 border-l-indigo-600 border-b-slate-200'
                       : rowIdx % 2 === 0
-                      ? 'bg-white hover:bg-slate-50'
-                      : 'bg-slate-50/70 hover:bg-slate-100/70'
+                      ? 'bg-white hover:bg-slate-50 border-b-slate-200'
+                      : 'bg-slate-50/70 hover:bg-slate-100/70 border-b-slate-200'
                   }`}
                 >
                   {/* Row Index with OnlineGantt-style Grip Handle */}
