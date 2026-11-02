@@ -80,9 +80,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <div>
             <div className="flex items-center space-x-2">
               <span className="font-bold text-sm tracking-wide text-white">PMWBS Master</span>
-              <span className="text-[10px] bg-indigo-900/80 text-indigo-200 border border-indigo-700/60 px-1.5 py-0.5 rounded-sm font-mono font-medium">
-                MSP & Primavera P6
-              </span>
             </div>
             <input
               type="text"
