@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import type { Task, ProjectSettings } from '../types/project';
-import { formatDate } from './scheduler';
+import { formatDate, isWorkingDay } from './scheduler';
 
 export interface ExportSettings {
   format: 'pdf' | 'png';
@@ -249,9 +249,9 @@ export async function exportProjectDocument(
   let timelineDaysHTML = '';
   datesList.forEach((d) => {
     const dObj = new Date(d + 'T00:00:00');
-    const isWknd = dObj.getDay() === 0 || dObj.getDay() === 6;
+    const isNonWorking = !isWorkingDay(d, settings.calendar);
     timelineDaysHTML += `
-      <div style="width: ${dayWidth}px; flex-shrink: 0; text-align: center; border-right: 1px solid #e2e8f0; background-color: ${isWknd ? '#f1f5f9' : '#ffffff'}; font-size: 10px; font-weight: 600; line-height: 24px; color: ${isWknd ? '#94a3b8' : '#475569'};">
+      <div style="width: ${dayWidth}px; flex-shrink: 0; text-align: center; border-right: 1px solid #cbd5e1; background-color: ${isNonWorking ? '#e2e8f0' : '#ffffff'}; font-size: 10px; font-weight: 600; line-height: 24px; color: ${isNonWorking ? '#64748b' : '#1e293b'};">
         ${dObj.getDate()}
       </div>
     `;
@@ -410,8 +410,8 @@ export async function exportProjectDocument(
           <!-- Vertical Day Lines -->
           <div style="display: flex; position: absolute; inset: 0; pointer-events: none;">
             ${datesList.map(d => {
-              const isWknd = new Date(d + 'T00:00:00').getDay() % 6 === 0;
-              return `<div style="width: ${dayWidth}px; flex-shrink: 0; height: 100%; border-right: 1px solid #f1f5f9; background-color: ${isWknd ? 'rgba(241,245,249,0.7)' : 'transparent'};"></div>`;
+              const isNonWorking = !isWorkingDay(d, settings.calendar);
+              return `<div style="width: ${dayWidth}px; flex-shrink: 0; height: 100%; border-right: 1px solid #e2e8f0; background-color: ${isNonWorking ? '#f1f5f9' : '#ffffff'};"></div>`;
             }).join('')}
           </div>
 

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo } from 'react';
 import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType } from '../types/project';
-import { formatDate, addWorkingDays } from '../engine/scheduler';
+import { formatDate, addWorkingDays, isWorkingDay } from '../engine/scheduler';
 
 interface GanttTimelineProps {
   tasks: Task[];
@@ -383,7 +383,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
         ref={containerRef}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        className="flex-1 overflow-auto relative bg-slate-50"
+        className="flex-1 overflow-auto relative bg-white"
       >
         <div
           style={{ width: `${totalDays * dayWidth}px`, height: `${headerHeight + tasks.length * rowHeight}px` }}
@@ -408,7 +408,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
             <div className="flex h-7">
               {datesList.map((d) => {
                 const dateObj = new Date(d + 'T00:00:00');
-                const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+                const isNonWorking = !isWorkingDay(d, calendar);
                 const isToday = d === todayStr;
                 return (
                   <div
@@ -417,11 +417,11 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     className={`flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-r border-slate-200 ${
                       isToday
                         ? 'bg-indigo-100 text-indigo-900 font-black'
-                        : isWeekend
-                        ? 'bg-slate-200/70 text-slate-500'
+                        : isNonWorking
+                        ? 'bg-slate-200/90 text-slate-500'
                         : 'text-slate-900 bg-white'
                     }`}
-                    title={`${d} (${dateObj.toLocaleDateString(undefined, { weekday: 'short' })})`}
+                    title={`${d} (${dateObj.toLocaleDateString(undefined, { weekday: 'short' })}) - ${isNonWorking ? 'Non-Working' : 'Working'}`}
                   >
                     <span>{dateObj.getDate()}</span>
                   </div>
@@ -433,13 +433,14 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           {/* Grid Background Columns */}
           <div className="absolute top-[56px] left-0 right-0 bottom-0 pointer-events-none flex">
             {datesList.map((d) => {
-              const dateObj = new Date(d + 'T00:00:00');
-              const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+              const isNonWorking = !isWorkingDay(d, calendar);
               return (
                 <div
                   key={`bg-${d}`}
                   style={{ width: `${dayWidth}px` }}
-                  className={`flex-shrink-0 h-full border-r border-slate-200/80 ${isWeekend ? 'bg-slate-100/70' : 'bg-transparent'}`}
+                  className={`flex-shrink-0 h-full border-r border-slate-200 ${
+                    isNonWorking ? 'bg-slate-100' : 'bg-white'
+                  }`}
                 />
               );
             })}
