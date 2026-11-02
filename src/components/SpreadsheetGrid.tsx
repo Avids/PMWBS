@@ -97,6 +97,15 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
       if (editingCell) return;
 
+      // If event originated inside grid container or grid container is focused, onKeyDown handles it (prevent double-jump)
+      const isInsideGrid =
+        gridContainerRef.current &&
+        (document.activeElement === gridContainerRef.current ||
+          gridContainerRef.current.contains(document.activeElement) ||
+          e.target === gridContainerRef.current ||
+          gridContainerRef.current.contains(e.target as Node));
+      if (isInsideGrid) return;
+
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         let currentRowIdx = activeCell?.rowIdx ?? -1;
@@ -225,12 +234,16 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
+      e.stopPropagation();
+      e.nativeEvent?.stopImmediatePropagation?.();
       const nextRow = Math.min(tasks.length - 1, currentRowIdx + 1);
       setActiveCell({ rowIdx: nextRow, colIdx: currentColIdx });
       onSelectTask(tasks[nextRow].id);
       document.getElementById(`grid-row-${tasks[nextRow].id}`)?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      e.stopPropagation();
+      e.nativeEvent?.stopImmediatePropagation?.();
       const prevRow = Math.max(0, currentRowIdx - 1);
       setActiveCell({ rowIdx: prevRow, colIdx: currentColIdx });
       onSelectTask(tasks[prevRow].id);
@@ -300,6 +313,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                   onClick={() => {
                     onSelectTask(task.id);
                     setActiveCell({ rowIdx, colIdx: 1 });
+                    gridContainerRef.current?.focus();
                   }}
                   className={`border-b border-slate-200 cursor-pointer transition-colors ${
                     isSelected
