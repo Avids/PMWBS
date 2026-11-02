@@ -746,7 +746,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           </svg>
 
           {/* Task Bars Layer (OnlineGantt Style) */}
-          <div className="absolute top-[56px] left-0 right-0 z-10">
+          <div className="absolute top-[56px] left-0 right-0 z-20">
             {tasks.map((task, idx) => {
               const startX = dateToX(task.startDate);
               const endX = dateToX(task.endDate) + dayWidth;
@@ -821,9 +821,17 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       />
                       
                       {showTaskLabels && (
-                        <span className={`absolute left-full ml-2 text-xs font-bold ${
-                          isTaskCrit ? (isSiteDrawing ? 'text-[#C62828]' : 'text-red-700') : (isSiteDrawing ? 'text-[#1E293B]' : 'text-slate-900')
-                        } whitespace-nowrap`}>
+                        <span
+                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded shadow-2xs tabular-nums ${
+                            isSiteDrawing
+                              ? isTaskCrit
+                                ? 'text-[#C62828] bg-[#FAFAF8] border border-[#C62828]/50'
+                                : 'text-[#1E293B] bg-[#FAFAF8] border border-[#C9CED2]'
+                              : isTaskCrit
+                              ? 'text-red-700 bg-white border border-red-200 shadow-xs'
+                              : 'text-slate-900 bg-white border border-slate-200/90 shadow-xs'
+                          }`}
+                        >
                           {task.name} ({task.progress}%)
                         </span>
                       )}
@@ -876,9 +884,17 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
                       {/* Milestone Label on the Right Side (Unrotated, aligned with task bars) */}
                       {showTaskLabels && (
-                        <span className={`absolute left-full ml-2 text-xs font-bold ${
-                          isTaskCrit ? (isSiteDrawing ? 'text-[#C62828]' : 'text-red-700') : (isSiteDrawing ? 'text-[#1E293B]' : 'text-slate-900')
-                        } whitespace-nowrap select-none pointer-events-none`}>
+                        <span
+                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-bold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded shadow-2xs tabular-nums ${
+                            isSiteDrawing
+                              ? isTaskCrit
+                                ? 'text-[#C62828] bg-[#FAFAF8] border border-[#C62828]/50'
+                                : 'text-[#1E293B] bg-[#FAFAF8] border border-[#C9CED2]'
+                              : isTaskCrit
+                              ? 'text-red-700 bg-white border border-red-200 shadow-xs'
+                              : 'text-slate-900 bg-white border border-slate-200/90 shadow-xs'
+                          }`}
+                        >
                           {task.name}
                           {task.baselineVarianceDays !== undefined && task.baselineVarianceDays !== 0 && (
                             <span className={`ml-1 text-[11px] font-bold ${task.baselineVarianceDays > 0 ? (isSiteDrawing ? 'text-[#C62828]' : 'text-red-600') : 'text-emerald-600'}`}>
@@ -928,10 +944,22 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
                       {/* Text Label next to bar (High contrast dark or Critical Red) */}
                       {showTaskLabels && (
-                        <span className={`absolute left-full ml-2 text-xs font-semibold ${isTaskCrit ? 'text-red-700 font-bold' : 'text-slate-900'} whitespace-nowrap pointer-events-none`}>
+                        <span
+                          className={`absolute left-full ml-2 top-1/2 -translate-y-1/2 text-xs font-semibold whitespace-nowrap select-none pointer-events-none z-20 px-1.5 py-0.5 rounded shadow-2xs tabular-nums ${
+                            isSiteDrawing
+                              ? isTaskCrit
+                                ? 'text-[#C62828] font-bold bg-[#FAFAF8] border border-[#C62828]/50'
+                                : 'text-[#1E293B] bg-[#FAFAF8] border border-[#C9CED2]'
+                              : isTaskCrit
+                              ? 'text-red-700 font-bold bg-white border border-red-200 shadow-xs'
+                              : 'text-slate-900 bg-white border border-slate-200/90 shadow-xs'
+                          }`}
+                        >
                           {task.name} ({task.progress}%)
                           {task.baselineVarianceDays !== undefined && task.baselineVarianceDays > 0 && (
-                            <span className="ml-1 text-red-600 font-bold">+{task.baselineVarianceDays}d</span>
+                            <span className={`ml-1 font-bold ${isSiteDrawing ? 'text-[#C62828]' : 'text-red-600'}`}>
+                              +{task.baselineVarianceDays}d
+                            </span>
                           )}
                         </span>
                       )}
