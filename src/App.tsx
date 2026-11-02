@@ -469,6 +469,19 @@ export function App() {
   }, [rawTasks, settings.calendar]);
 
   const handleDeleteTask = useCallback((taskId: string) => {
+    const taskToDelete = rawTasks.find(t => t.id === taskId);
+    if (!taskToDelete) return;
+
+    // Check if task is a summary task or has child tasks
+    const hasChildren = rawTasks.some(t => t.parentId === taskId);
+    const confirmMessage = hasChildren
+      ? `Are you sure you want to delete "${taskToDelete.name}" and all of its subtasks?\n\nThis action cannot be undone.`
+      : `Are you sure you want to delete task "${taskToDelete.name}"?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
     setRawTasks(prev => {
       const idsToDelete = new Set<string>([taskId]);
       let added = true;
@@ -481,9 +494,18 @@ export function App() {
           }
         });
       }
-      return prev.filter(t => !idsToDelete.has(t.id));
+
+      // Filter out deleted tasks and clean up any dependencies pointing to deleted tasks
+      return prev
+        .filter(t => !idsToDelete.has(t.id))
+        .map(t => ({
+          ...t,
+          predecessors: (t.predecessors || []).filter(dep => !idsToDelete.has(dep.taskId))
+        }));
     });
-  }, []);
+
+    setSelectedTaskId(prevSelected => (prevSelected === taskId ? null : prevSelected));
+  }, [rawTasks]);
 
   const handleIndentTask = useCallback((taskId: string) => {
     setRawTasks(prev => {
