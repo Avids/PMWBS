@@ -30,7 +30,7 @@ interface GanttTimelineProps {
  * - Critical Path Tasks: Standard Critical Red (#dc2626)
  */
 export function getTaskLevelStyle(task: Task, isCritical: boolean = false) {
-  if (isCritical || task.isCritical) {
+  if (isCritical) {
     return {
       bg: '#dc2626',
       border: '#b91c1c',
