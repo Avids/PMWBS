@@ -1,6 +1,6 @@
 import React from 'react';
-import type { FontSizeOption, ZoomTier, ColorTheme } from '../types/project';
-import { getTheme } from '../theme/themeConfig';
+import type { FontSizeOption, FontFamilyChoice, ZoomTier, ColorTheme } from '../types/project';
+import { getTheme, getFontFamilyCss } from '../theme/themeConfig';
 import {
   Plus,
   Maximize2,
@@ -36,9 +36,11 @@ interface ActionBarProps {
   onUndo?: () => void;
   onRedo?: () => void;
   
-  // Font Size
+  // Font Size & Family
   fontSize: FontSizeOption;
   onChangeFontSize: (size: FontSizeOption) => void;
+  fontFamilyChoice?: FontFamilyChoice;
+  onChangeFontFamily?: (font: FontFamilyChoice) => void;
 
   // Chart Text Labels Toggle
   showTaskLabels: boolean;
@@ -66,6 +68,8 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   isSummarySelected,
   fontSize,
   onChangeFontSize,
+  fontFamilyChoice,
+  onChangeFontFamily,
   showTaskLabels,
   onToggleTaskLabels,
   zoom,
@@ -86,7 +90,8 @@ export const ActionBar: React.FC<ActionBarProps> = ({
       style={{
         backgroundColor: theme.isDark ? theme.surfaceBg : '#FFFFFF',
         borderBottomColor: theme.border,
-        color: theme.textPrimary
+        color: theme.textPrimary,
+        fontFamily: getFontFamilyCss(fontFamilyChoice)
       }}
       className="h-10 px-3 border-b flex items-center justify-between text-xs shadow-2xs select-none z-20 overflow-x-auto no-scrollbar gap-2"
     >
@@ -219,7 +224,35 @@ export const ActionBar: React.FC<ActionBarProps> = ({
       </div>
 
       {/* Center & Right Controls */}
-      <div className="flex items-center space-x-2.5 shrink-0">
+      <div className="flex items-center space-x-2 shrink-0">
+        {/* Font Family Picker */}
+        <div
+          style={{
+            backgroundColor: theme.isDark ? '#1E293B' : '#F1F5F9',
+            borderColor: theme.border
+          }}
+          className="flex items-center space-x-1 border rounded px-1.5 py-0.5"
+          title="Choose Font Family: Segoe UI, Calibri, Verdana, Inter, etc."
+        >
+          <Type className="w-3 h-3 text-slate-400 shrink-0" />
+          <select
+            value={fontFamilyChoice || 'segoe'}
+            onChange={(e) => onChangeFontFamily?.(e.target.value as FontFamilyChoice)}
+            style={{
+              backgroundColor: 'transparent',
+              color: theme.textPrimary
+            }}
+            className="text-[11px] font-semibold outline-none cursor-pointer bg-transparent border-none py-0.5"
+          >
+            <option value="segoe" className="bg-slate-800 text-white">Segoe UI</option>
+            <option value="calibri" className="bg-slate-800 text-white">Calibri</option>
+            <option value="verdana" className="bg-slate-800 text-white">Verdana</option>
+            <option value="inter" className="bg-slate-800 text-white">Inter</option>
+            <option value="barlow" className="bg-slate-800 text-white">Barlow (DIN)</option>
+            <option value="system" className="bg-slate-800 text-white">Arial / System</option>
+          </select>
+        </div>
+
         {/* Font Size Selector: 8pt (small), 10pt (normal), 12pt (large) */}
         <div
           style={{
@@ -228,10 +261,6 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           }}
           className="flex items-center space-x-0.5 border rounded p-0.5"
         >
-          <div className="hidden sm:flex items-center px-1" style={{ color: theme.textSecondary }}>
-            <Type className="w-3 h-3 mr-1 opacity-70" />
-            <span className="text-[10px] font-bold select-none">Font:</span>
-          </div>
           <button
             onClick={() => onChangeFontSize('small')}
             style={fontSize === 'small' ? { backgroundColor: theme.signal, color: '#FFFFFF' } : { color: theme.textPrimary }}

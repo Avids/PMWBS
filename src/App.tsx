@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier, ProjectCalendar } from './types/project';
-import { getTheme } from './theme/themeConfig';
+import { getTheme, getFontFamilyCss } from './theme/themeConfig';
 import { recalculateSchedule, formatDate, addWorkingDays, sanitizeCalendar, detectDependencyCycle } from './engine/scheduler';
 import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML, parseExcelProject } from './engine/importers';
 import { saveProjectWithDialog } from './services/platform';
@@ -32,7 +32,8 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   showBaseline: false,
   showCriticalPath: false,
   showTaskLabels: true,
-  fontSize: 'normal'
+  fontSize: 'normal',
+  fontFamilyChoice: 'segoe'
 };
 
 const INITIAL_TASKS: Task[] = [
@@ -1164,12 +1165,17 @@ export function App() {
     setBaselines(prev => prev.filter(b => b.id !== baselineId));
   };
 
-  const theme = getTheme(settings.colorTheme);
+  const baseTheme = getTheme(settings.colorTheme);
+  const activeFontCss = getFontFamilyCss(settings.fontFamilyChoice);
+  const theme = {
+    ...baseTheme,
+    fontFamily: activeFontCss
+  };
   const isSiteDrawing = theme.id === 'construction';
 
   return (
     <div
-      style={{ backgroundColor: theme.appBg, fontFamily: theme.fontFamily }}
+      style={{ backgroundColor: theme.appBg, fontFamily: activeFontCss }}
       className="flex flex-col h-screen w-screen overflow-hidden p-2 sm:p-3 transition-colors"
     >
       {/* Framed Application Container Floating with Calm Margins/Space Around */}
@@ -1222,6 +1228,8 @@ export function App() {
           onRedo={handleRedo}
           fontSize={settings.fontSize || 'normal'}
           onChangeFontSize={(size) => setSettings(s => ({ ...s, fontSize: size }))}
+          fontFamilyChoice={settings.fontFamilyChoice}
+          onChangeFontFamily={(font) => setSettings(s => ({ ...s, fontFamilyChoice: font }))}
           showTaskLabels={settings.showTaskLabels ?? true}
           onToggleTaskLabels={() => setSettings(s => ({ ...s, showTaskLabels: !(s.showTaskLabels ?? true) }))}
           zoom={zoomTier}
@@ -1257,6 +1265,7 @@ export function App() {
               scrollContainerRef={gridScrollRef}
               onVerticalScroll={handleGridScroll}
               colorTheme={settings.colorTheme}
+              fontFamilyChoice={settings.fontFamilyChoice}
             />
           </div>
 
@@ -1295,6 +1304,7 @@ export function App() {
               scrollContainerRef={timelineScrollRef}
               onVerticalScroll={handleTimelineScroll}
               colorTheme={settings.colorTheme}
+              fontFamilyChoice={settings.fontFamilyChoice}
             />
           </div>
         </div>

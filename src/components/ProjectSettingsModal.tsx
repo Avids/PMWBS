@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import type { ProjectSettings } from '../types/project';
-import { SELECTABLE_THEMES } from '../theme/themeConfig';
-import { Settings, X, Plus, Check } from 'lucide-react';
+import type { ProjectSettings, FontFamilyChoice } from '../types/project';
+import { SELECTABLE_THEMES, FONT_OPTIONS } from '../theme/themeConfig';
+import { Settings, X, Plus, Check, Type } from 'lucide-react';
 
 interface ProjectSettingsModalProps {
   isOpen: boolean;
@@ -192,6 +192,49 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                       <p className="text-[11px] text-slate-500 leading-tight">
                         {theme.description}
                       </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Typography & Font Family Selector */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-800 flex items-center space-x-1.5">
+                <Type className="w-4 h-4 text-indigo-600" />
+                <span>Typography & Font Family</span>
+              </label>
+              <span className="text-[11px] text-slate-500 font-medium">Applied across all grid tables & charts</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              {FONT_OPTIONS.map((font) => {
+                const isSelected = (settings.fontFamilyChoice || 'segoe') === font.id;
+                return (
+                  <div
+                    key={font.id}
+                    onClick={() => onUpdateSettings({ fontFamilyChoice: font.id as FontFamilyChoice })}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900" style={{ fontFamily: font.css }}>
+                        {font.name}
+                      </span>
+                      {isSelected && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                      {font.description}
+                    </p>
+                    <div
+                      className="mt-2 px-2 py-1 bg-white rounded border border-slate-200 text-xs text-slate-700 font-medium truncate"
+                      style={{ fontFamily: font.css }}
+                    >
+                      1.0 Engineering & Design — 13 d
                     </div>
                   </div>
                 );

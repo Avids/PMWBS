@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import type { ProjectSettings, WeightMode } from '../types/project';
-import { getTheme, SELECTABLE_THEMES } from '../theme/themeConfig';
+import { getTheme, SELECTABLE_THEMES, getFontFamilyCss } from '../theme/themeConfig';
 import {
   FilePlus,
   FolderOpen,
@@ -160,7 +160,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <header
-      style={{ backgroundColor: currentTheme.headerBg, borderColor: currentTheme.border, fontFamily: currentTheme.fontFamily }}
+      style={{
+        backgroundColor: currentTheme.headerBg,
+        borderColor: currentTheme.border,
+        fontFamily: getFontFamilyCss(settings.fontFamilyChoice)
+      }}
       className="text-white shadow-xs no-print select-none border-b transition-colors"
     >
       {/* Hidden File Inputs */}
@@ -260,10 +264,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       {/* Ribbon Action Tools */}
       <div
         style={{
-          backgroundColor: currentTheme.headerSubBg === '#FFFFFF' ? '#1E293B' : currentTheme.headerSubBg,
-          borderColor: currentTheme.border
+          backgroundColor: currentTheme.headerBg,
+          borderColor: 'rgba(255, 255, 255, 0.12)'
         }}
-        className="h-10 px-3 flex items-center justify-between text-xs overflow-x-auto no-scrollbar gap-2 transition-colors"
+        className="h-10 px-3 flex items-center justify-between text-xs overflow-x-auto no-scrollbar gap-2 transition-colors border-t"
       >
         <div className="flex items-center space-x-1.5 shrink-0">
           {/* Unified File & Project Dropdown */}
@@ -271,25 +275,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <button
               ref={fileButtonRef}
               onClick={toggleFileMenu}
-              className={`px-2.5 py-1 rounded text-slate-200 hover:bg-slate-700/80 font-medium flex items-center space-x-1 transition-colors ${
-                isFileMenuOpen ? 'bg-slate-700 text-white' : ''
+              className={`px-2.5 py-1 rounded text-white font-medium flex items-center space-x-1.5 transition-colors border border-white/20 ${
+                isFileMenuOpen ? 'bg-white/25 text-white' : 'bg-white/10 hover:bg-white/20'
               }`}
               title="File & Project Management Menu"
             >
-              <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
-              <span>File</span>
-              <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+              <FolderOpen className="w-3.5 h-3.5 text-white/90" />
+              <span className="font-semibold">File</span>
+              <ChevronDown className="w-3 h-3 text-white/80 ml-0.5" />
             </button>
 
             {isFileMenuOpen && (
               <div
                 ref={fileMenuRef}
                 style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }}
-                className={`fixed w-60 border rounded-lg shadow-2xl py-1.5 z-50 text-xs ${
-                  isSiteDrawing
-                    ? 'bg-[#2B353D] border-[#4A5864] text-slate-100'
-                    : 'bg-slate-800 border-slate-700 text-slate-200'
-                }`}
+                className="fixed w-60 border border-slate-700 bg-slate-800 text-slate-100 rounded-lg shadow-2xl py-1.5 z-50 text-xs"
               >
                 {/* Project File Actions */}
                 <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
@@ -300,7 +300,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     setIsFileMenuOpen(false);
                     onNewProject();
                   }}
-                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700/80 text-left transition-colors"
+                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700 text-left transition-colors"
                 >
                   <FilePlus className="w-3.5 h-3.5 text-slate-400" />
                   <span>New Project</span>
@@ -310,7 +310,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     setIsFileMenuOpen(false);
                     fileInputRef.current?.click();
                   }}
-                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700/80 text-left transition-colors"
+                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700 text-left transition-colors"
                 >
                   <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
                   <span>Open (.wbs)</span>
@@ -320,13 +320,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     setIsFileMenuOpen(false);
                     onSaveWBS();
                   }}
-                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700/80 text-left transition-colors"
+                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700 text-left transition-colors"
                 >
                   <Save className={`w-3.5 h-3.5 ${isSiteDrawing ? 'text-[#E8590C]' : 'text-indigo-400'}`} />
                   <span className="font-semibold text-white">Save Project (.wbs)</span>
                 </button>
 
-                <div className="h-px bg-slate-700/80 my-1"></div>
+                <div className="h-px bg-slate-700 my-1"></div>
 
                 {/* Import Options */}
                 <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
@@ -337,7 +337,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     setIsFileMenuOpen(false);
                     mspFileInputRef.current?.click();
                   }}
-                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700/80 text-left transition-colors"
+                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700 text-left transition-colors"
                 >
                   <UploadCloud className="w-3.5 h-3.5 text-slate-400" />
                   <span>Microsoft Project (.xml, .mpp)</span>
@@ -347,13 +347,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     setIsFileMenuOpen(false);
                     excelFileInputRef.current?.click();
                   }}
-                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700/80 text-left transition-colors"
+                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700 text-left transition-colors"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-slate-400" />
                   <span>Excel / CSV (.xlsx, .csv)</span>
                 </button>
 
-                <div className="h-px bg-slate-700/80 my-1"></div>
+                <div className="h-px bg-slate-700 my-1"></div>
 
                 {/* Export Options */}
                 <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
@@ -364,7 +364,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     setIsFileMenuOpen(false);
                     onExportExcel();
                   }}
-                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700/80 text-left transition-colors"
+                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700 text-left transition-colors"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-slate-400" />
                   <span>Export to Excel (.xlsx)</span>
@@ -374,7 +374,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     setIsFileMenuOpen(false);
                     onOpenExportModal();
                   }}
-                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700/80 text-left transition-colors"
+                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700 text-left transition-colors"
                 >
                   <FileDown className="w-3.5 h-3.5 text-slate-400" />
                   <span>Export PDF / PNG Image...</span>
@@ -383,29 +383,26 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             )}
           </div>
 
-          {/* Standalone 1-Click Primary Save Button (Safety orange in Site Drawing, Indigo in Classic) */}
+          {/* Standalone 1-Click Primary Save Button */}
           <button
             onClick={onSaveWBS}
-            className={`px-3 py-1 rounded font-semibold flex items-center space-x-1.5 transition-colors shadow-xs ${
-              isSiteDrawing
-                ? 'bg-[#E8590C] hover:bg-[#D04D09] text-white'
-                : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-            }`}
+            style={{ backgroundColor: currentTheme.signal }}
+            className="px-3 py-1 rounded font-bold flex items-center space-x-1.5 text-white transition-all shadow-xs hover:brightness-110 active:scale-95"
             title="Save Project as Native .wbs File (Ctrl+S)"
           >
-            <Save className="w-3.5 h-3.5 text-white/90" />
+            <Save className="w-3.5 h-3.5 text-white" />
             <span>Save</span>
           </button>
 
-          <div className="h-4 w-px bg-slate-700 mx-1"></div>
+          <div className="h-4 w-px bg-white/20 mx-1"></div>
 
           {/* Baseline Actions */}
           <button
             onClick={onOpenBaselineModal}
-            className="px-2.5 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/80 font-medium flex items-center space-x-1.5 transition-colors"
+            className="px-2.5 py-1 rounded text-white/90 hover:text-white hover:bg-white/10 font-medium flex items-center space-x-1.5 transition-colors border border-white/15 bg-white/5"
             title="Manage Baseline Snapshots"
           >
-            <BookmarkCheck className="w-3.5 h-3.5 text-slate-400" />
+            <BookmarkCheck className="w-3.5 h-3.5 text-white/80" />
             <span>Baselines...</span>
           </button>
 
@@ -414,59 +411,51 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             onClick={() => onUpdateSettings({ showBaseline: !settings.showBaseline })}
             className={`px-2.5 py-1 text-[11px] font-semibold rounded flex items-center space-x-1.5 border transition-all ${
               settings.showBaseline
-                ? isSiteDrawing
-                  ? 'bg-[#9BA5AD]/25 border-[#9BA5AD] text-slate-100 shadow-2xs'
-                  : 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-2xs'
-                : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700/60'
+                ? 'bg-amber-500/25 border-amber-400/90 text-amber-200 shadow-2xs'
+                : 'bg-black/25 border-white/20 text-white/80 hover:text-white hover:bg-white/10'
             }`}
             title="Toggle Baseline Bars on Gantt Chart"
           >
             <BookmarkCheck className={`w-3.5 h-3.5 ${
-              settings.showBaseline
-                ? isSiteDrawing ? 'text-slate-200' : 'text-amber-400'
-                : 'text-slate-500'
+              settings.showBaseline ? 'text-amber-300' : 'text-white/60'
             }`} />
             <span>
-              Baseline: <strong className={
-                settings.showBaseline
-                  ? isSiteDrawing ? 'text-slate-100' : 'text-amber-300'
-                  : 'text-slate-400'
-              }>{settings.showBaseline ? 'ON' : 'OFF'}</strong>
+              Baseline: <strong className={settings.showBaseline ? 'text-amber-200' : 'text-white/95'}>
+                {settings.showBaseline ? 'ON' : 'OFF'}
+              </strong>
             </span>
           </button>
 
-          <div className="h-4 w-px bg-slate-700 mx-1"></div>
+          <div className="h-4 w-px bg-white/20 mx-1"></div>
 
-          {/* Critical Path Toggle (Red #C62828 in Site Drawing) */}
+          {/* Critical Path Toggle */}
           <button
             onClick={() => onUpdateSettings({ showCriticalPath: !settings.showCriticalPath })}
             className={`px-2.5 py-1 text-[11px] font-semibold rounded flex items-center space-x-1.5 border transition-all ${
               settings.showCriticalPath
-                ? isSiteDrawing
-                  ? 'bg-[#C62828]/25 border-[#C62828] text-rose-200 shadow-2xs'
-                  : 'bg-rose-500/20 border-rose-500/50 text-rose-300 shadow-2xs'
-                : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700/60'
+                ? 'bg-rose-500/30 border-rose-400/90 text-rose-200 shadow-2xs'
+                : 'bg-black/25 border-white/20 text-white/80 hover:text-white hover:bg-white/10'
             }`}
             title="Highlight Critical Path (tasks and dependencies with zero float)"
           >
-            <Flame className={`w-3.5 h-3.5 ${settings.showCriticalPath ? (isSiteDrawing ? 'text-[#C62828]' : 'text-rose-400') : 'text-slate-500'}`} />
+            <Flame className={`w-3.5 h-3.5 ${settings.showCriticalPath ? 'text-rose-400' : 'text-white/60'}`} />
             <span>
-              Critical Path: <strong className={settings.showCriticalPath ? (isSiteDrawing ? 'text-rose-200' : 'text-rose-300') : 'text-slate-400'}>
+              Critical Path: <strong className={settings.showCriticalPath ? 'text-rose-200' : 'text-white/95'}>
                 {settings.showCriticalPath ? 'ON' : 'OFF'}
               </strong>
             </span>
           </button>
 
-          <div className="h-4 w-px bg-slate-700 mx-1"></div>
+          <div className="h-4 w-px bg-white/20 mx-1"></div>
 
           {/* Activity Weight Mode Picker */}
-          <div className="flex items-center space-x-1.5 bg-black/25 px-2 py-0.5 rounded border border-slate-700/80 text-slate-300">
-            <Scale className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-[11px] text-slate-400 font-medium">Weight:</span>
+          <div className="flex items-center space-x-1.5 bg-black/30 px-2.5 py-0.5 rounded border border-white/20 text-white">
+            <Scale className="w-3.5 h-3.5 text-white/70" />
+            <span className="text-[11px] text-white/70 font-medium">Weight:</span>
             <select
               value={settings.weightMode}
               onChange={(e) => onUpdateSettings({ weightMode: e.target.value as WeightMode })}
-              className="bg-transparent text-slate-200 text-xs outline-none cursor-pointer font-medium"
+              className="bg-transparent text-white text-xs outline-none cursor-pointer font-medium"
             >
               <option value="duration" className="bg-slate-800 text-white">Time (Duration)</option>
               <option value="manhour" className="bg-slate-800 text-white">Man-Hour</option>
@@ -482,20 +471,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <button
               ref={themeButtonRef}
               onClick={toggleThemeMenu}
-              className={`px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 transition-colors border ${
+              className={`px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 transition-colors border border-white/20 ${
                 isThemeMenuOpen
-                  ? 'bg-slate-700 text-white border-slate-600'
-                  : 'border-slate-700/80 text-slate-200 hover:text-white hover:bg-slate-700/80'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-black/20 text-white/90 hover:text-white hover:bg-white/10'
               }`}
               title={`Active Palette: ${currentTheme.name}. Click to change palette.`}
             >
               <div className="flex space-x-0.5 items-center mr-0.5">
                 {currentTheme.swatches.slice(0, 3).map((c, i) => (
-                  <span key={i} className="w-2 h-2 rounded-full border border-black/20" style={{ backgroundColor: c }} />
+                  <span key={i} className="w-2 h-2 rounded-full border border-black/30" style={{ backgroundColor: c }} />
                 ))}
               </div>
               <span className="hidden sm:inline">Theme: <strong>{currentTheme.name}</strong></span>
-              <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+              <ChevronDown className="w-3 h-3 text-white/70 ml-0.5" />
             </button>
 
             {isThemeMenuOpen && (
@@ -553,10 +542,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
           <button
             onClick={onOpenSettingsModal}
-            className="px-2.5 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/80 font-medium flex items-center space-x-1.5 transition-colors"
-            title="Project Calendar & Scheduling Settings"
+            className="px-2.5 py-1 rounded text-white/90 hover:text-white hover:bg-white/10 font-medium flex items-center space-x-1.5 transition-colors border border-white/20 bg-black/20"
+            title="Project Calendar, Weight & Typography Settings"
           >
-            <Settings className="w-3.5 h-3.5 text-slate-400" />
+            <Settings className="w-3.5 h-3.5 text-white/80" />
             <span className="hidden sm:inline">Settings</span>
           </button>
         </div>

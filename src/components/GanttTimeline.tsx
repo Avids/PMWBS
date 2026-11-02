@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
-import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType, ColorTheme } from '../types/project';
+import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType, ColorTheme, FontFamilyChoice } from '../types/project';
 import { formatDate, addWorkingDays, isWorkingDay } from '../engine/scheduler';
 import { getTheme } from '../theme/themeConfig';
 import { FileText } from 'lucide-react';
@@ -25,6 +25,7 @@ interface GanttTimelineProps {
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   onVerticalScroll?: (scrollTop: number) => void;
   colorTheme?: ColorTheme;
+  fontFamilyChoice?: FontFamilyChoice;
 }
 
 /**
@@ -83,11 +84,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   dayWidth,
   scrollContainerRef,
   onVerticalScroll,
-  colorTheme = 'classic'
+  colorTheme = 'classic',
+  fontFamilyChoice
 }) => {
   const internalContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = scrollContainerRef || internalContainerRef;
-  const theme = getTheme(colorTheme);
+  const theme = getTheme(colorTheme, fontFamilyChoice);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragType, setDragType] = useState<'move' | 'resize' | null>(null);
   const [dragStartX, setDragStartX] = useState<number>(0);

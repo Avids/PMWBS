@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Task, WeightMode, FontSizeOption, ColorTheme } from '../types/project';
+import type { Task, WeightMode, FontSizeOption, ColorTheme, FontFamilyChoice } from '../types/project';
 import { getTheme } from '../theme/themeConfig';
 import { Flag, GitCommit, GripVertical, FileText } from 'lucide-react';
 import { parsePredecessors } from '../engine/scheduler';
@@ -23,6 +23,7 @@ interface SpreadsheetGridProps {
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   onVerticalScroll?: (scrollTop: number) => void;
   colorTheme?: ColorTheme;
+  fontFamilyChoice?: FontFamilyChoice;
 }
 
 type ColumnField = 
@@ -81,7 +82,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   fontSize = 'normal',
   scrollContainerRef,
   onVerticalScroll,
-  colorTheme = 'classic'
+  colorTheme = 'classic',
+  fontFamilyChoice
 }) => {
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
   const [editingCell, setEditingCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
@@ -90,7 +92,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = scrollContainerRef || internalScrollRef;
-  const theme = getTheme(colorTheme);
+  const theme = getTheme(colorTheme, fontFamilyChoice);
 
   // Keep activeCell synchronized with selectedTaskId
   useEffect(() => {

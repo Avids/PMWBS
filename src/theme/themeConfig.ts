@@ -1,4 +1,56 @@
-import type { ColorTheme } from '../types/project';
+import type { ColorTheme, FontFamilyChoice } from '../types/project';
+
+export interface FontOption {
+  id: FontFamilyChoice;
+  name: string;
+  css: string;
+  description: string;
+}
+
+export const FONT_OPTIONS: FontOption[] = [
+  {
+    id: 'segoe',
+    name: 'Segoe UI',
+    css: "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif",
+    description: 'Crisp, modern, high-legibility Microsoft standard'
+  },
+  {
+    id: 'calibri',
+    name: 'Calibri',
+    css: "Calibri, Candara, 'Segoe UI', Optima, Arial, sans-serif",
+    description: 'Warm, corporate executive standard'
+  },
+  {
+    id: 'verdana',
+    name: 'Verdana',
+    css: "Verdana, Geneva, 'DejaVu Sans', sans-serif",
+    description: 'Renowned high readability with generous apertures for tables'
+  },
+  {
+    id: 'inter',
+    name: 'Inter',
+    css: "Inter, system-ui, -apple-system, sans-serif",
+    description: 'Modern tech & SaaS standard'
+  },
+  {
+    id: 'barlow',
+    name: 'Barlow (Technical)',
+    css: "'Barlow Semi Condensed', 'Barlow', -apple-system, sans-serif",
+    description: 'DIN-style technical site signage'
+  },
+  {
+    id: 'system',
+    name: 'Arial / System',
+    css: "Arial, system-ui, -apple-system, sans-serif",
+    description: 'Classic system sans-serif'
+  }
+];
+
+export function getFontFamilyCss(choice?: FontFamilyChoice): string {
+  if (!choice) return "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif";
+  const found = FONT_OPTIONS.find((f) => f.id === choice);
+  return found ? found.css : "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif";
+}
 
 export interface ThemeDefinition {
   id: ColorTheme;
@@ -83,8 +135,8 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     id: 'construction',
     name: 'Construction & Engineering',
     subtitle: 'Industrial / Site Drawing',
-    description: 'Rugged concrete grays, structural blue-grey bars, safety orange signals, and Barlow technical typography.',
-    fontFamily: "'Barlow Semi Condensed', 'Barlow', -apple-system, sans-serif",
+    description: 'Rugged concrete grays, structural blue-grey bars, safety orange signals, and crisp engineering typography.',
+    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif",
     appBg: '#F4F5F6',
     surfaceBg: '#FAFAF8',
     headerBg: '#2F3E46',
@@ -160,7 +212,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     name: 'Industrial Steel & Amber',
     subtitle: 'Modern Construction & Field Safety',
     description: 'Dark graphite header, industrial steel summary bars, sky blue tasks, and construction amber alerts.',
-    fontFamily: "'Barlow Semi Condensed', 'Barlow', -apple-system, sans-serif",
+    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif",
     appBg: '#F8FAFC',
     surfaceBg: '#FFFFFF',
     headerBg: '#0F172A',
@@ -275,8 +327,8 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     id: 'site-drawing',
     name: 'Construction & Engineering',
     subtitle: 'Industrial / Site Drawing',
-    description: 'Rugged concrete grays, structural blue-grey bars, safety orange signals, and Barlow technical typography.',
-    fontFamily: "'Barlow Semi Condensed', 'Barlow', -apple-system, sans-serif",
+    description: 'Rugged concrete grays, structural blue-grey bars, safety orange signals, and crisp engineering typography.',
+    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif",
     appBg: '#F4F5F6',
     surfaceBg: '#FAFAF8',
     headerBg: '#2F3E46',
@@ -319,11 +371,21 @@ export const SELECTABLE_THEMES: ThemeDefinition[] = [
   THEMES['dark-mode'],
 ];
 
-export function getTheme(themeId?: string): ThemeDefinition {
-  if (themeId === 'classic') return THEMES['modern-enterprise'];
-  if (themeId === 'site-drawing') return THEMES['construction'];
-  if (themeId && themeId in THEMES) {
-    return THEMES[themeId as ColorTheme];
+export function getTheme(themeId?: string, fontChoice?: FontFamilyChoice): ThemeDefinition {
+  let theme: ThemeDefinition;
+  if (themeId === 'classic') theme = THEMES['modern-enterprise'];
+  else if (themeId === 'site-drawing') theme = THEMES['construction'];
+  else if (themeId && themeId in THEMES) {
+    theme = THEMES[themeId as ColorTheme];
+  } else {
+    theme = THEMES['construction'];
   }
-  return THEMES['construction'];
+
+  if (fontChoice) {
+    return {
+      ...theme,
+      fontFamily: getFontFamilyCss(fontChoice)
+    };
+  }
+  return theme;
 }
