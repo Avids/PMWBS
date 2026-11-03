@@ -538,7 +538,7 @@ export async function exportProjectDocument(
           const progFill = isCrit ? 'rgba(0,0,0,0.3)' : theme.taskProgressFill;
 
           taskBarsHTML += `
-            <div style="position: absolute; left: ${startX}px; top: ${topY + 3}px; width: ${barWidth}px; height: 14px; background-color: ${barColor}; border-radius: 3px; border: 1px solid ${borderColor}; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+            <div style="position: absolute; left: ${startX}px; top: ${topY + 5}px; width: ${barWidth}px; height: 10px; background-color: ${barColor}; border-radius: 2px; border: 1px solid ${borderColor}; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
               <div style="width: ${t.progress}%; height: 100%; background-color: ${progFill};"></div>
             </div>
           `;

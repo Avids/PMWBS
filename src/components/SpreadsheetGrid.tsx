@@ -537,8 +537,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       : rowIdx % 2 === 0
                       ? theme.surfaceBg
                       : theme.rowAltBg,
-                    borderLeftColor: isSelected ? theme.signal : undefined,
-                    borderLeftWidth: isSelected ? '4px' : undefined
+                    boxShadow: isSelected ? `inset 4px 0 0 ${theme.signal}` : undefined
                   }}
                   onClick={() => {
                     onSelectTask(task.id);

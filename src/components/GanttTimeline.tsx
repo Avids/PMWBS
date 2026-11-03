@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
 import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType, ColorTheme, FontFamilyChoice } from '../types/project';
 import { formatDate, addWorkingDays, isWorkingDay } from '../engine/scheduler';
 import { getTheme } from '../theme/themeConfig';
@@ -111,7 +111,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
   // Height sizing derived from selected font size
   const rowHeight = fontSize === 'small' ? 30 : fontSize === 'large' ? 44 : 36;
-  const barHeight = fontSize === 'small' ? 12 : fontSize === 'large' ? 18 : 15;
+  const barHeight = fontSize === 'small' ? 8 : fontSize === 'large' ? 13 : 10;
   const headerHeight = 56;
 
   // Virtualizer for high-performance timeline rendering (supports 10,000+ tasks at 60 FPS)
@@ -278,13 +278,24 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     return spans;
   }, [datesList, dayWidth, zoom]);
 
-  // Convert date string to X coordinate
-  const dateToX = (dateStr: string): number => {
+  // Day-cell alignment map: ensures each bar starts at the exact beginning of day cell and ends at the exact end
+  const dateIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    datesList.forEach((d, idx) => map.set(d, idx));
+    return map;
+  }, [datesList]);
+
+  // Convert date string to X coordinate (exact beginning pixel of the day cell)
+  const dateToX = useCallback((dateStr: string): number => {
     if (!dateStr) return 0;
-    const t = new Date(dateStr + 'T00:00:00').getTime();
-    const diffDays = (t - minDateTime) / (1000 * 3600 * 24);
+    const cleanDate = dateStr.split('T')[0].split(' ')[0];
+    if (dateIndexMap.has(cleanDate)) {
+      return dateIndexMap.get(cleanDate)! * dayWidth;
+    }
+    const t = new Date(cleanDate + 'T00:00:00').getTime();
+    const diffDays = Math.round((t - minDateTime) / (1000 * 3600 * 24));
     return Math.max(0, diffDays * dayWidth);
-  };
+  }, [dateIndexMap, dayWidth, minDateTime]);
 
   // Canvas Panning & Dragging event handlers
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
@@ -758,8 +769,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     boxSizing: 'border-box',
                     borderBottomColor: theme.border,
                     backgroundColor: isSelected ? theme.rowSelectedBg : undefined,
-                    borderLeftColor: isSelected ? theme.signal : undefined,
-                    borderLeftWidth: isSelected ? '4px' : undefined
+                    boxShadow: isSelected ? `inset 4px 0 0 ${theme.signal}` : undefined
                   }}
                   onClick={() => {
                     if (panStateRef.current?.hasMoved) return;
