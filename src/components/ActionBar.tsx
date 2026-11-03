@@ -30,6 +30,7 @@ interface ActionBarProps {
   onOpenTaskInfo?: () => void;
   onDeleteTask: () => void;
   selectedTaskId: string | null;
+  selectedCount?: number;
   isSummarySelected: boolean;
   canUndo?: boolean;
   canRedo?: boolean;
@@ -65,6 +66,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   onOpenTaskInfo,
   onDeleteTask,
   selectedTaskId,
+  selectedCount = 1,
   isSummarySelected,
   fontSize,
   onChangeFontSize,
@@ -164,23 +166,23 @@ export const ActionBar: React.FC<ActionBarProps> = ({
         <button
           onClick={onIndentTask}
           disabled={!selectedTaskId}
-          title="Indent Task (Alt+Right)"
+          title={selectedCount > 1 ? `Indent ${selectedCount} Tasks (Alt+Right)` : "Indent Task (Alt+Right)"}
           style={{ color: theme.textPrimary }}
           className={`h-7 px-2 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none`}
         >
           <ArrowRight className="w-3.5 h-3.5" style={{ color: theme.isDark ? '#818CF8' : '#4F46E5' }} />
-          <span className="hidden md:inline font-medium">Indent</span>
+          <span className="hidden md:inline font-medium">{selectedCount > 1 ? `Indent (${selectedCount})` : "Indent"}</span>
         </button>
 
         <button
           onClick={onOutdentTask}
           disabled={!selectedTaskId}
-          title="Outdent Task (Alt+Left)"
+          title={selectedCount > 1 ? `Outdent ${selectedCount} Tasks (Alt+Left)` : "Outdent Task (Alt+Left)"}
           style={{ color: theme.textPrimary }}
           className={`h-7 px-2 ${hoverBtnClass} rounded transition-colors flex items-center space-x-1 disabled:opacity-30 disabled:pointer-events-none`}
         >
           <ArrowLeft className="w-3.5 h-3.5" style={{ color: theme.isDark ? '#818CF8' : '#4F46E5' }} />
-          <span className="hidden md:inline font-medium">Outdent</span>
+          <span className="hidden md:inline font-medium">{selectedCount > 1 ? `Outdent (${selectedCount})` : "Outdent"}</span>
         </button>
 
         <div className="h-4 w-px mx-0.5" style={{ backgroundColor: theme.border }}></div>

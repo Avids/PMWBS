@@ -340,7 +340,19 @@ export function App() {
     return [];
   });
 
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(rawTasks[0]?.id || null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>(() => rawTasks[0] ? [rawTasks[0].id] : []);
+  const selectedTaskId = selectedTaskIds[0] || null;
+  const setSelectedTaskId = useCallback((idOrUpdater: string | null | ((prev: string | null) => string | null)) => {
+    if (typeof idOrUpdater === 'function') {
+      setSelectedTaskIds(prev => {
+        const currentFirst = prev[0] || null;
+        const next = idOrUpdater(currentFirst);
+        return next ? [next] : [];
+      });
+    } else {
+      setSelectedTaskIds(idOrUpdater ? [idOrUpdater] : []);
+    }
+  }, []);
   const [splitterWidth, setSplitterWidth] = useState<number>(640);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState<boolean>(false);
 
@@ -357,6 +369,32 @@ export function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isTaskInfoModalOpen, setIsTaskInfoModalOpen] = useState(false);
   const [taskInfoModalTask, setTaskInfoModalTask] = useState<Task | null>(null);
+
+  // Task Selection Handler with Shift (Range) & Ctrl/Cmd (Toggle) Multi-Select
+  const handleSelectTask = useCallback((taskId: string, modifiers?: { isShift?: boolean; isCtrl?: boolean }) => {
+    if (modifiers?.isCtrl) {
+      setSelectedTaskIds(prev => {
+        if (prev.includes(taskId)) {
+          return prev.length > 1 ? prev.filter(id => id !== taskId) : prev;
+        } else {
+          return [...prev, taskId];
+        }
+      });
+    } else if (modifiers?.isShift) {
+      setSelectedTaskIds(prev => {
+        const anchorId = prev[0] || taskId;
+        const anchorIdx = rawTasks.findIndex(t => t.id === anchorId);
+        const targetIdx = rawTasks.findIndex(t => t.id === taskId);
+        if (anchorIdx === -1 || targetIdx === -1) return [taskId];
+
+        const start = Math.min(anchorIdx, targetIdx);
+        const end = Math.max(anchorIdx, targetIdx);
+        return rawTasks.slice(start, end + 1).map(t => t.id);
+      });
+    } else {
+      setSelectedTaskIds([taskId]);
+    }
+  }, [rawTasks]);
 
   const handleOpenTaskInfo = useCallback((task: Task) => {
     setTaskInfoModalTask(task);
@@ -715,8 +753,21 @@ export function App() {
         parentId = copy[startRowIdx].parentId;
       }
 
-      matrix.forEach((rowValues, rIdx) => {
-        const targetRowIdx = startRowIdx + rIdx;
+      let targetRows = matrix;
+      let targetRowIndices: number[] = [];
+
+      if (matrix.length === 1 && matrix[0].length === 1 && selectedTaskIds.length > 1) {
+        targetRowIndices = selectedTaskIds
+          .map(id => copy.findIndex(t => t.id === id))
+          .filter(idx => idx >= 0)
+          .sort((a, b) => a - b);
+        targetRows = targetRowIndices.map(() => matrix[0]);
+      } else {
+        targetRowIndices = matrix.map((_, rIdx) => startRowIdx + rIdx);
+      }
+
+      targetRows.forEach((rowValues, rIdx) => {
+        const targetRowIdx = targetRowIndices[rIdx];
         const updates: Partial<Task> = {};
 
         rowValues.forEach((cellRaw, cOffset) => {
@@ -825,6 +876,63 @@ export function App() {
     });
   }, [rawTasks, handleUpdateTask, settings.calendar]);
 
+  const handleDeleteTasks = useCallback((taskIds: string[]) => {
+    if (!taskIds || taskIds.length === 0) return;
+    const idsToDelete = new Set<string>(taskIds);
+    const findDescendants = (parentId: string) => {
+      rawTasks.filter(t => t.parentId === parentId).forEach(child => {
+        idsToDelete.add(child.id);
+        findDescendants(child.id);
+      });
+    };
+    taskIds.forEach(id => findDescendants(id));
+
+    updateRawTasks(prev => {
+      return prev
+        .filter(t => !idsToDelete.has(t.id))
+        .map(t => ({
+          ...t,
+          predecessors: (t.predecessors || []).filter(dep => !idsToDelete.has(dep.taskId))
+        }));
+    });
+
+    setSelectedTaskIds(prev => prev.filter(id => !idsToDelete.has(id)));
+  }, [rawTasks, updateRawTasks]);
+
+  const handleIndentTasks = useCallback((taskIds: string[]) => {
+    if (!taskIds || taskIds.length === 0) return;
+    updateRawTasks(prev => {
+      let currentList = [...prev];
+      const idSet = new Set(taskIds);
+      const orderedIds = currentList.filter(t => idSet.has(t.id)).map(t => t.id);
+
+      for (const id of orderedIds) {
+        const newParentId = computeIndentParentId(currentList, id);
+        if (newParentId !== undefined) {
+          currentList = currentList.map(t => (t.id === id ? { ...t, parentId: newParentId } : t));
+        }
+      }
+      return currentList;
+    });
+  }, [updateRawTasks]);
+
+  const handleOutdentTasks = useCallback((taskIds: string[]) => {
+    if (!taskIds || taskIds.length === 0) return;
+    updateRawTasks(prev => {
+      let currentList = [...prev];
+      const idSet = new Set(taskIds);
+      const orderedIds = currentList.filter(t => idSet.has(t.id)).map(t => t.id);
+
+      for (const id of orderedIds) {
+        const newParentId = computeOutdentParentId(currentList, id);
+        if (newParentId !== undefined) {
+          currentList = currentList.map(t => (t.id === id ? { ...t, parentId: newParentId } : t));
+        }
+      }
+      return currentList;
+    });
+  }, [updateRawTasks]);
+
   const handleDeleteTask = useCallback((taskId: string) => {
     const taskToDelete = rawTasks.find(t => t.id === taskId);
     if (!taskToDelete) return;
@@ -903,19 +1011,19 @@ export function App() {
       } else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'Right')) {
         if (selectedTaskId) {
           e.preventDefault();
-          handleIndentTask(selectedTaskId);
+          handleIndentTasks(selectedTaskIds);
         }
       } else if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'Left')) {
         if (selectedTaskId) {
           e.preventDefault();
-          handleOutdentTask(selectedTaskId);
+          handleOutdentTasks(selectedTaskIds);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, selectedTaskId, handleIndentTask, handleOutdentTask]);
+  }, [handleUndo, handleRedo, selectedTaskId, handleIndentTasks, handleOutdentTasks, selectedTaskIds]);
 
   const handleAddDependency = useCallback((fromTaskId: string, toTaskId: string, type: TaskDependency['type'] = 'FS') => {
     if (fromTaskId === toTaskId) {
@@ -1334,8 +1442,8 @@ export function App() {
           onAddTask={() => handleAddTask(selectedTaskId || undefined)}
           onExpandAll={handleExpandAll}
           onCollapseAll={handleCollapseAll}
-          onIndentTask={() => selectedTaskId && handleIndentTask(selectedTaskId)}
-          onOutdentTask={() => selectedTaskId && handleOutdentTask(selectedTaskId)}
+          onIndentTask={() => selectedTaskIds.length > 0 && handleIndentTasks(selectedTaskIds)}
+          onOutdentTask={() => selectedTaskIds.length > 0 && handleOutdentTasks(selectedTaskIds)}
           onOpenRelationships={() => {
             const t = tasks.find(x => x.id === selectedTaskId);
             if (t && !t.isSummary) handleOpenPredecessorModal(t);
@@ -1344,8 +1452,9 @@ export function App() {
             const t = tasks.find(x => x.id === selectedTaskId);
             if (t) handleOpenTaskInfo(t);
           }}
-          onDeleteTask={() => selectedTaskId && handleDeleteTask(selectedTaskId)}
+          onDeleteTask={() => selectedTaskIds.length > 0 && handleDeleteTasks(selectedTaskIds)}
           selectedTaskId={selectedTaskId}
+          selectedCount={selectedTaskIds.length}
           isSummarySelected={!!tasks.find(x => x.id === selectedTaskId)?.isSummary}
           canUndo={canUndo}
           canRedo={canRedo}
@@ -1375,12 +1484,13 @@ export function App() {
               tasks={visibleTasks}
               allTasks={tasks}
               selectedTaskId={selectedTaskId}
-              onSelectTask={setSelectedTaskId}
+              onSelectTask={handleSelectTask}
+              selectedTaskIds={selectedTaskIds}
               onUpdateTask={handleUpdateTask}
               onAddTask={handleAddTask}
               onDeleteTask={handleDeleteTask}
-              onIndentTask={handleIndentTask}
-              onOutdentTask={handleOutdentTask}
+              onIndentTask={(id) => selectedTaskIds.includes(id) && selectedTaskIds.length > 1 ? handleIndentTasks(selectedTaskIds) : handleIndentTask(id)}
+              onOutdentTask={(id) => selectedTaskIds.includes(id) && selectedTaskIds.length > 1 ? handleOutdentTasks(selectedTaskIds) : handleOutdentTask(id)}
               onOpenPredecessorModal={handleOpenPredecessorModal}
               onOpenTaskInfo={handleOpenTaskInfo}
               onContextMenu={handleOpenContextMenu}
@@ -1420,6 +1530,7 @@ export function App() {
               onAddDependency={handleAddDependency}
               onSelectTask={setSelectedTaskId}
               selectedTaskId={selectedTaskId}
+              selectedTaskIds={selectedTaskIds}
               onOpenPredecessorModal={handleOpenPredecessorModal}
               onOpenTaskInfo={handleOpenTaskInfo}
               onContextMenu={handleOpenContextMenu}

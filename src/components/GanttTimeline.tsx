@@ -14,8 +14,9 @@ interface GanttTimelineProps {
   showTaskLabels?: boolean;
   onUpdateTask: (taskId: string, updates: Partial<Task>, recordHistory?: boolean) => void;
   onAddDependency: (fromTaskId: string, toTaskId: string, type: DependencyType) => void;
-  onSelectTask: (taskId: string) => void;
+  onSelectTask: (taskId: string, modifiers?: { isShift?: boolean; isCtrl?: boolean }) => void;
   selectedTaskId: string | null;
+  selectedTaskIds?: string[];
   onOpenPredecessorModal?: (task: Task) => void;
   onOpenTaskInfo?: (task: Task) => void;
   onContextMenu?: (e: React.MouseEvent, task: Task) => void;
@@ -76,6 +77,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   onAddDependency,
   onSelectTask,
   selectedTaskId,
+  selectedTaskIds,
   onOpenPredecessorModal,
   onOpenTaskInfo,
   onContextMenu,
@@ -735,7 +737,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
               const endX = dateToX(task.endDate) + dayWidth;
               const barWidth = Math.max(dayWidth, endX - startX);
               const topY = idx * rowHeight;
-              const isSelected = selectedTaskId === task.id;
+              const isSelected = selectedTaskIds ? selectedTaskIds.includes(task.id) : selectedTaskId === task.id;
 
               const hasBaseline = showBaseline && task.baselineStartDate && task.baselineEndDate;
               const bStartX = hasBaseline ? dateToX(task.baselineStartDate!) : 0;

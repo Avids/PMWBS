@@ -486,4 +486,32 @@ describe('6. WBS Hierarchy Indent & Outdent Calculations', () => {
     const newParentId = computeOutdentParentId(sampleHierarchy, 't-2');
     expect(newParentId).toBeNull();
   });
+
+  it('indents multiple selected tasks together', () => {
+    // Select both t-5 and t-6 (both currently at depth 1 under t-1)
+    const selected = ['t-5', 't-6'];
+    let currentList = [...sampleHierarchy];
+    for (const id of selected) {
+      const newParentId = computeIndentParentId(currentList, id);
+      expect(newParentId).toBe('t-2');
+      currentList = currentList.map(t => t.id === id ? { ...t, parentId: newParentId ?? null } : t);
+    }
+    const scheduled = recalculateSchedule(currentList, standardCalendar);
+    expect(scheduled.find(t => t.id === 't-5')!.wbsCode).toBe('1.1.3');
+    expect(scheduled.find(t => t.id === 't-6')!.wbsCode).toBe('1.1.4');
+  });
+
+  it('outdents multiple selected tasks together', () => {
+    // Outdent both t-3 and t-4 from t-2 up to t-1
+    const selected = ['t-3', 't-4'];
+    let currentList = [...sampleHierarchy];
+    for (const id of selected) {
+      const newParentId = computeOutdentParentId(currentList, id);
+      expect(newParentId).toBe('t-1');
+      currentList = currentList.map(t => t.id === id ? { ...t, parentId: newParentId ?? null } : t);
+    }
+    const scheduled = recalculateSchedule(currentList, standardCalendar);
+    expect(scheduled.find(t => t.id === 't-3')!.parentId).toBe('t-1');
+    expect(scheduled.find(t => t.id === 't-4')!.parentId).toBe('t-1');
+  });
 });

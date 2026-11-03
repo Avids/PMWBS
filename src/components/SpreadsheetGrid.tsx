@@ -2,14 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { Task, WeightMode, FontSizeOption, ColorTheme, FontFamilyChoice } from '../types/project';
 import { getTheme } from '../theme/themeConfig';
 import { Flag, GitCommit, GripVertical, FileText } from 'lucide-react';
-import { parsePredecessors } from '../engine/scheduler';
+import { parsePredecessors, formatPredecessors } from '../engine/scheduler';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface SpreadsheetGridProps {
   tasks: Task[];
   allTasks: Task[];
   selectedTaskId: string | null;
-  onSelectTask: (taskId: string) => void;
+  selectedTaskIds?: string[];
+  onSelectTask: (taskId: string, modifiers?: { isShift?: boolean; isCtrl?: boolean }) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onAddTask: (afterTaskId?: string) => void;
   onDeleteTask: (taskId: string) => void;
@@ -71,6 +72,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   tasks,
   allTasks,
   selectedTaskId,
+  selectedTaskIds,
   onSelectTask,
   onUpdateTask,
   onAddTask,
@@ -225,13 +227,42 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
           currentRowIdx = 0;
         }
         if (currentRowIdx === -1) return;
+    // Ctrl+C / Cmd+C: Copy active cell value to clipboard
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !editingCell) {
+      if (activeCell) {
+        const task = tasks[activeCell.rowIdx];
+        const col = COLUMNS[activeCell.colIdx];
+        if (task && col) {
+          const textToCopy = getCellValueAsString(task, col.field);
+          navigator.clipboard?.writeText(textToCopy).catch(() => {});
+        }
+      }
+    }
 
-        if (e.key === 'ArrowDown') {
+    // Shift+ArrowDown: Expand selection downwards
+    if (e.shiftKey && e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextRow = Math.min(tasks.length - 1, currentRowIdx + 1);
+      setActiveCell({ rowIdx: nextRow, colIdx: currentColIdx });
+      onSelectTask(tasks[nextRow].id, { isShift: true });
+      document.getElementById(`grid-row-${tasks[nextRow].id}`)?.scrollIntoView({ block: 'nearest' });
+      return;
+    } else if (e.shiftKey && e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevRow = Math.max(0, currentRowIdx - 1);
+      setActiveCell({ rowIdx: prevRow, colIdx: currentColIdx });
+      onSelectTask(tasks[prevRow].id, { isShift: true });
+      document.getElementById(`grid-row-${tasks[prevRow].id}`)?.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+
+
+        if (e.key === 'ArrowDown' && !e.shiftKey) {
           const nextRow = Math.min(tasks.length - 1, currentRowIdx + 1);
           setActiveCell({ rowIdx: nextRow, colIdx: currentColIdx });
           onSelectTask(tasks[nextRow].id);
           document.getElementById(`grid-row-${tasks[nextRow].id}`)?.scrollIntoView({ block: 'nearest' });
-        } else if (e.key === 'ArrowUp') {
+        } else if (e.key === 'ArrowUp' && !e.shiftKey) {
           const prevRow = Math.max(0, currentRowIdx - 1);
           setActiveCell({ rowIdx: prevRow, colIdx: currentColIdx });
           onSelectTask(tasks[prevRow].id);
@@ -356,6 +387,61 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     }
   };
 
+  // Format cell value to plain text for copy-paste operations
+  const getCellValueAsString = (task: Task, field: ColumnField): string => {
+    switch (field) {
+      case 'wbs':
+        return task.wbsCode;
+      case 'name':
+        return task.name;
+      case 'duration':
+        return String(task.duration);
+      case 'startDate':
+        return task.startDate;
+      case 'endDate':
+        return task.endDate;
+      case 'progress':
+        return `${task.progress}%`;
+      case 'weight':
+        return task.weight !== undefined ? `${task.weight}%` : '';
+      case 'predecessors':
+        return task.predecessorText || (allTasks ? formatPredecessors(task.predecessors, allTasks) : '');
+      case 'totalFloat':
+        return task.totalFloat !== undefined ? `${task.totalFloat}d` : '';
+      case 'plannedManHours':
+        return String(task.plannedManHours || 0);
+      case 'actualManHours':
+        return String(task.actualManHours || 0);
+      case 'remainingManHours':
+        return String(task.remainingManHours || 0);
+      case 'earnedManHours':
+        return String(task.earnedManHours || 0);
+      case 'baselineStart':
+        return task.baselineStartDate || '';
+      case 'baselineEnd':
+        return task.baselineEndDate || '';
+      case 'variance':
+        return task.baselineVarianceDays !== undefined ? `${task.baselineVarianceDays}d` : '';
+      case 'notes':
+        return task.notes || '';
+      default:
+        return '';
+    }
+  };
+
+  // Clipboard Copy Handler for Active Cell
+  const handleCopy = (e: React.ClipboardEvent) => {
+    if (editingCell) return;
+    if (!activeCell) return;
+    const task = tasks[activeCell.rowIdx];
+    const col = COLUMNS[activeCell.colIdx];
+    if (!task || !col) return;
+
+    const textToCopy = getCellValueAsString(task, col.field);
+    e.preventDefault();
+    e.clipboardData.setData('text/plain', textToCopy);
+  };
+
   // Clipboard Paste Handler (Supports copying columns/rows from Excel/Google Sheets)
   const handlePaste = (e: React.ClipboardEvent) => {
     // If user is currently editing inside an active input, let native text input paste work
@@ -388,6 +474,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       ref={gridContainerRef}
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      onCopy={handleCopy}
       onPaste={handlePaste}
       style={{ backgroundColor: theme.surfaceBg, fontFamily: theme.fontFamily }}
       className="flex flex-col h-full select-none overflow-hidden focus:outline-none"
@@ -432,7 +519,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
               const task = tasks[virtualRow.index];
               const rowIdx = virtualRow.index;
               if (!task) return null;
-              const isSelected = selectedTaskId === task.id;
+              const isSelected = selectedTaskIds ? selectedTaskIds.includes(task.id) : selectedTaskId === task.id;
               const depth = (task.wbsCode.match(/\./g) || []).length;
 
               return (
@@ -476,6 +563,12 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       color: theme.textSecondary
                     }}
                     className="px-1 text-center border-r select-none cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectTask(task.id, { isShift: e.shiftKey, isCtrl: e.ctrlKey || e.metaKey });
+                      setActiveCell((prev) => ({ rowIdx, colIdx: prev?.colIdx ?? 1 }));
+                      gridContainerRef.current?.focus();
+                    }}
                     title="Double-click to view Task Information"
                     onDoubleClick={(e) => {
                       e.stopPropagation();
