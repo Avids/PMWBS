@@ -13,7 +13,8 @@ import {
   UploadCloud,
   Flame,
   ChevronDown,
-  Check
+  Check,
+  Info
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -28,6 +29,7 @@ interface ToolbarProps {
   onOpenExportModal: () => void;
   onOpenBaselineModal: () => void;
   onOpenSettingsModal: () => void;
+  onOpenProjectInfoModal: () => void;
   totalTasks: number;
   overallProgress: number;
   totalPlannedMH: number;
@@ -47,6 +49,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onOpenExportModal,
   onOpenBaselineModal,
   onOpenSettingsModal,
+  onOpenProjectInfoModal,
   totalTasks,
   overallProgress,
   totalPlannedMH,
@@ -203,17 +206,31 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <div className="min-w-0">
             <div className="flex items-center space-x-2">
               <span className="font-bold text-xs sm:text-sm tracking-wide text-white truncate">PathMaster</span>
-              <span className="text-[10px] font-semibold tracking-wider px-1.5 py-0.2 bg-black/30 text-slate-200 rounded border border-white/10">
-                {currentTheme.name}
-              </span>
+              <button
+                type="button"
+                onClick={onOpenProjectInfoModal}
+                className="text-[10px] font-semibold px-2 py-0.5 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded border border-white/15 flex items-center space-x-1 transition-colors cursor-pointer"
+                title="Open Project Information (Name, Number, Company, Address)"
+              >
+                <Info className="w-3 h-3 text-cyan-300" />
+                <span>Project Info</span>
+              </button>
             </div>
-            <input
-              type="text"
-              value={settings.name}
-              onChange={(e) => onUpdateSettings({ name: e.target.value })}
-              className="text-[11px] sm:text-xs text-slate-200 bg-transparent hover:bg-black/20 focus:bg-black/30 px-1 py-0.5 rounded outline-none border border-transparent focus:border-slate-500 transition-colors w-36 sm:w-56 md:w-72 font-semibold truncate"
-              placeholder="Project Name..."
-            />
+            <div className="flex items-center space-x-1.5 mt-0.5">
+              <input
+                type="text"
+                value={settings.name}
+                onChange={(e) => onUpdateSettings({ name: e.target.value })}
+                className="text-[11px] sm:text-xs text-slate-200 bg-transparent hover:bg-black/20 focus:bg-black/30 px-1 py-0.5 rounded outline-none border border-transparent focus:border-slate-500 transition-colors w-36 sm:w-56 md:w-72 font-semibold truncate"
+                placeholder="Project Name..."
+                title="Project Name (Click to edit or open Project Info)"
+              />
+              {settings.projectNumber && (
+                <span className="text-[10px] font-mono text-slate-300 bg-black/30 px-1.5 py-0.2 rounded border border-white/10 hidden sm:inline" title="Project Number">
+                  #{settings.projectNumber}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -295,6 +312,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                   Project
                 </div>
+                <button
+                  onClick={() => {
+                    setIsFileMenuOpen(false);
+                    onOpenProjectInfoModal();
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700 text-left transition-colors"
+                >
+                  <Info className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Project Information...</span>
+                </button>
                 <button
                   onClick={() => {
                     setIsFileMenuOpen(false);
@@ -540,6 +567,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             )}
           </div>
 
+          <button
+            onClick={onOpenProjectInfoModal}
+            className="px-2.5 py-1 rounded text-white/90 hover:text-white hover:bg-white/10 font-medium flex items-center space-x-1.5 transition-colors border border-white/20 bg-black/20"
+            title="Project Information (Name, Number, Company, Address)"
+          >
+            <Info className="w-3.5 h-3.5 text-cyan-300" />
+            <span className="hidden sm:inline">Project Info</span>
+          </button>
           <button
             onClick={onOpenSettingsModal}
             className="px-2.5 py-1 rounded text-white/90 hover:text-white hover:bg-white/10 font-medium flex items-center space-x-1.5 transition-colors border border-white/20 bg-black/20"

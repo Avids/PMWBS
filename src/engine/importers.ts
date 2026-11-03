@@ -91,6 +91,9 @@ export function exportToExcel(tasks: Task[], settings: ProjectSettings, filename
 
   const calData = [
     { 'Setting': 'Project Name', 'Value': settings.name },
+    { 'Setting': 'Project Number', 'Value': settings.projectNumber || '' },
+    { 'Setting': 'Company / Client', 'Value': settings.company || '' },
+    { 'Setting': 'Project Address', 'Value': settings.projectAddress || '' },
     { 'Setting': 'Project Author', 'Value': settings.author || '' },
     { 'Setting': 'Start Date', 'Value': settings.startDate },
     { 'Setting': 'Currency Symbol', 'Value': settings.currency || '$' },

@@ -96,7 +96,10 @@ export interface ProjectCalendar {
 export interface ProjectSettings {
   name: string;
   author: string;
+  projectNumber?: string;
   company?: string;
+  projectAddress?: string;
+  notes?: string;
   startDate: string;
   weightMode: WeightMode;        // Default project weight mode: 'equal' | 'duration' | 'manhour'
   calendar: ProjectCalendar;

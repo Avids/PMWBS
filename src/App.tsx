@@ -11,6 +11,7 @@ import { SpreadsheetGrid } from './components/SpreadsheetGrid';
 import { GanttTimeline } from './components/GanttTimeline';
 import { BaselineModal } from './components/BaselineModal';
 import { ProjectSettingsModal } from './components/ProjectSettingsModal';
+import { ProjectInfoModal } from './components/ProjectInfoModal';
 import { PredecessorModal } from './components/PredecessorModal';
 import { ExportModal } from './components/ExportModal';
 import { TaskInformationModal } from './components/TaskInformationModal';
@@ -23,7 +24,10 @@ const DEFAULT_CALENDAR: ProjectCalendar = {
 };
 
 const DEFAULT_SETTINGS: ProjectSettings = {
-  name: 'New Commercial Facility Project',
+  name: 'PROJECT EQUINIX TR06-2',
+  projectNumber: 'TR06-2',
+  company: 'Equinix Infrastructure Corp',
+  projectAddress: '500 Data Center Way, Ashburn, VA 20147',
   author: 'Lead Project Scheduler',
   startDate: formatDate(new Date()),
   weightMode: 'duration',
@@ -347,6 +351,7 @@ export function App() {
   // Modals state
   const [isBaselineModalOpen, setIsBaselineModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isProjectInfoModalOpen, setIsProjectInfoModalOpen] = useState(false);
   const [isPredecessorModalOpen, setIsPredecessorModalOpen] = useState(false);
   const [predecessorModalTask, setPredecessorModalTask] = useState<Task | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -1316,6 +1321,7 @@ export function App() {
           onOpenExportModal={() => setIsExportModalOpen(true)}
           onOpenBaselineModal={() => setIsBaselineModalOpen(true)}
           onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+          onOpenProjectInfoModal={() => setIsProjectInfoModalOpen(true)}
           totalTasks={tasks.length}
           overallProgress={overallProgress}
           totalPlannedMH={totalPlannedMH}
@@ -1512,6 +1518,18 @@ export function App() {
         onSaveBaseline={handleSaveBaseline}
         onRestoreBaseline={handleRestoreBaseline}
         onDeleteBaseline={handleDeleteBaseline}
+      />
+
+      <ProjectInfoModal
+        isOpen={isProjectInfoModalOpen}
+        onClose={() => setIsProjectInfoModalOpen(false)}
+        settings={settings}
+        onUpdateSettings={handleUpdateSettings}
+        totalTasks={tasks.length}
+        overallProgress={overallProgress}
+        totalPlannedMH={totalPlannedMH}
+        totalActualMH={totalActualMH}
+        finishDate={finishDate}
       />
 
       <ProjectSettingsModal

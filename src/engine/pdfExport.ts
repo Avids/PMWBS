@@ -403,11 +403,16 @@ export async function exportProjectDocument(
       headerHTML = `
         <div style="border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
-            <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; letter-spacing: -0.2px;">${settings.name}</h1>
+            <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px;">
+              <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; letter-spacing: -0.2px;">${settings.name}</h1>
+              ${settings.projectNumber ? `<span style="font-size: 13px; font-weight: 600; color: #64748b; font-family: monospace;">(#${settings.projectNumber})</span>` : ''}
+            </div>
             <div style="font-size: 11px; color: #64748b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              ${settings.company ? `<span>Company: <strong style="color: #334155;">${settings.company}</strong></span><span style="margin: 0 8px; color: #cbd5e1;">|</span>` : ''}
               <span>Author: <strong style="color: #334155;">${settings.author || 'Project Scheduler'}</strong></span>
               ${exportConfig.header === 'project_name_date' ? `<span style="margin-left: 16px;">Export Date: <strong style="color: #334155;">${new Date().toLocaleDateString()}</strong></span>` : ''}
               ${exportConfig.taskRangeMode === 'custom' ? `<span style="margin-left: 16px; color: #475569;">Scope: <strong>Task IDs ${exportConfig.taskFromId} – ${exportConfig.taskToId}</strong></span>` : ''}
+              ${settings.projectAddress ? `<div style="font-size: 10px; color: #64748b; margin-top: 2px;">Location: <span style="color: #334155;">${settings.projectAddress}</span></div>` : ''}
             </div>
           </div>
           <div style="text-align: right; font-size: 11px; line-height: 1.5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
