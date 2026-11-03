@@ -306,6 +306,19 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
 
     if (currentRowIdx === -1) return;
 
+    // Alt+Arrow keys MUST be evaluated before plain Arrow keys
+    if (e.altKey && (e.key === 'ArrowRight' || e.key === 'Right')) {
+      e.preventDefault();
+      e.stopPropagation();
+      onIndentTask(tasks[currentRowIdx].id);
+      return;
+    } else if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'Left')) {
+      e.preventDefault();
+      e.stopPropagation();
+      onOutdentTask(tasks[currentRowIdx].id);
+      return;
+    }
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       e.stopPropagation();
@@ -322,11 +335,11 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       setActiveCell({ rowIdx: prevRow, colIdx: currentColIdx });
       onSelectTask(tasks[prevRow].id);
       document.getElementById(`grid-row-${tasks[prevRow].id}`)?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'ArrowRight') {
+    } else if (e.key === 'ArrowRight' && !e.altKey) {
       e.preventDefault();
       const nextCol = Math.min(COLUMNS.length - 1, currentColIdx + 1);
       setActiveCell({ rowIdx: currentRowIdx, colIdx: nextCol });
-    } else if (e.key === 'ArrowLeft') {
+    } else if (e.key === 'ArrowLeft' && !e.altKey) {
       e.preventDefault();
       const prevCol = Math.max(0, currentColIdx - 1);
       setActiveCell({ rowIdx: currentRowIdx, colIdx: prevCol });
@@ -340,12 +353,6 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     } else if (e.key === 'Insert') {
       e.preventDefault();
       onAddTask(tasks[currentRowIdx]?.id);
-    } else if (e.altKey && e.key === 'ArrowRight') {
-      e.preventDefault();
-      onIndentTask(tasks[currentRowIdx].id);
-    } else if (e.altKey && e.key === 'ArrowLeft') {
-      e.preventDefault();
-      onOutdentTask(tasks[currentRowIdx].id);
     }
   };
 

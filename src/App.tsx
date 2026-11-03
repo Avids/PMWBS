@@ -568,29 +568,7 @@ export function App() {
     showToast('Action redone (Ctrl+Y)', 'info');
   }, [showToast]);
 
-  // Global Keyboard listener for Undo (Ctrl+Z) & Redo (Ctrl+Y / Ctrl+Shift+Z)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable) {
-        return;
-      }
 
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        handleUndo();
-      } else if (
-        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
-        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
-      ) {
-        e.preventDefault();
-        handleRedo();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo]);
 
   // Task CRUD operations
   const handleUpdateTask = useCallback((taskId: string, updates: Partial<Task>, recordHistory = true) => {
@@ -895,6 +873,7 @@ export function App() {
     });
   }, [updateRawTasks]);
 
+
   const handleOutdentTask = useCallback((taskId: string) => {
     updateRawTasks(prev => {
       const newParentId = computeOutdentParentId(prev, taskId);
@@ -903,6 +882,40 @@ export function App() {
       return prev.map(t => (t.id === taskId ? { ...t, parentId: newParentId } : t));
     });
   }, [updateRawTasks]);
+
+  // Global Keyboard listener for Undo (Ctrl+Z), Redo (Ctrl+Y / Ctrl+Shift+Z), Indent (Alt+Right), Outdent (Alt+Left)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        handleUndo();
+      } else if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
+      ) {
+        e.preventDefault();
+        handleRedo();
+      } else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'Right')) {
+        if (selectedTaskId) {
+          e.preventDefault();
+          handleIndentTask(selectedTaskId);
+        }
+      } else if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'Left')) {
+        if (selectedTaskId) {
+          e.preventDefault();
+          handleOutdentTask(selectedTaskId);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo, selectedTaskId, handleIndentTask, handleOutdentTask]);
 
   const handleAddDependency = useCallback((fromTaskId: string, toTaskId: string, type: TaskDependency['type'] = 'FS') => {
     if (fromTaskId === toTaskId) {
