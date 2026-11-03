@@ -1456,7 +1456,11 @@ export function App() {
           <div className="flex items-center space-x-4 font-semibold">
             <span style={{ color: theme.textSecondary }} className="font-medium">Legend:</span>
             <div className="flex items-center space-x-1.5">
-              <div className="w-2.5 h-2.5 rounded-xs" style={{ backgroundColor: theme.summaryBar }} />
+              <svg width="14" height="10" viewBox="0 0 14 10" className="shrink-0">
+                <rect x="0" y="0" width="14" height="4" rx="1" fill={theme.summaryBar} />
+                <polygon points="0,4 4,4 2,9" fill={theme.summaryBar} />
+                <polygon points="10,4 14,4 12,9" fill={theme.summaryBar} />
+              </svg>
               <span>Summary</span>
             </div>
             <div className="flex items-center space-x-1.5">

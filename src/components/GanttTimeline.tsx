@@ -109,7 +109,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
   // Height sizing derived from selected font size
   const rowHeight = fontSize === 'small' ? 30 : fontSize === 'large' ? 44 : 36;
-  const barHeight = fontSize === 'small' ? 18 : fontSize === 'large' ? 26 : 22;
+  const barHeight = fontSize === 'small' ? 12 : fontSize === 'large' ? 18 : 15;
   const headerHeight = 56;
 
   // Virtualizer for high-performance timeline rendering (supports 10,000+ tasks at 60 FPS)
@@ -792,21 +792,57 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       style={{
                         left: `${startX}px`,
                         width: `${barWidth}px`,
-                        height: `${barHeight - 2}px`,
-                        backgroundColor: style.bg,
-                        borderColor: style.border
+                        height: '14px'
                       }}
                       onDoubleClick={(e) => {
                         e.stopPropagation();
                         onOpenTaskInfo?.(task);
                       }}
-                      className="absolute border rounded-[4px] flex items-center shadow-xs cursor-pointer group"
+                      className="absolute flex flex-col justify-start cursor-pointer group select-none"
+                      title={`Summary: ${task.name} (${task.duration}d, ${task.progress}%)`}
                     >
-                      {/* Interior Progress fill */}
+                      {/* Top Horizontal Roof Bar */}
                       <div
-                        style={{ width: `${task.progress}%`, backgroundColor: style.progress }}
-                        className="h-full rounded-l-[4px]"
-                      />
+                        style={{
+                          height: '7px',
+                          backgroundColor: style.bg,
+                          borderColor: style.border
+                        }}
+                        className="w-full border rounded-t-[2px] overflow-hidden relative shadow-xs"
+                      >
+                        {/* Interior Progress fill */}
+                        <div
+                          style={{ width: `${task.progress}%`, backgroundColor: style.progress }}
+                          className="h-full rounded-l-[1px]"
+                        />
+                      </div>
+
+                      {/* Left and Right Downward Triangular Bracket End-Caps */}
+                      {(() => {
+                        const triW = Math.min(9, Math.max(4, Math.floor(barWidth / 2)));
+                        return (
+                          <>
+                            <svg
+                              style={{ left: 0, top: '6px' }}
+                              width={triW}
+                              height="7"
+                              viewBox={`0 0 ${triW} 7`}
+                              className="absolute pointer-events-none drop-shadow-xs"
+                            >
+                              <polygon points={`0,0 ${triW},0 ${triW / 2},7`} fill={style.bg} />
+                            </svg>
+                            <svg
+                              style={{ right: 0, top: '6px' }}
+                              width={triW}
+                              height="7"
+                              viewBox={`0 0 ${triW} 7`}
+                              className="absolute pointer-events-none drop-shadow-xs"
+                            >
+                              <polygon points={`0,0 ${triW},0 ${triW / 2},7`} fill={style.bg} />
+                            </svg>
+                          </>
+                        );
+                      })()}
                       
                       {showTaskLabels && (
                         <span
@@ -853,7 +889,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                           backgroundColor: isTaskCrit ? theme.critical : theme.milestone,
                           borderColor: theme.milestoneBorder || '#FFFFFF'
                         }}
-                        className="w-4 h-4 rotate-45 border-2 shadow-md hover:scale-110 transition-transform relative shrink-0"
+                        className="w-3.5 h-3.5 rotate-45 border-2 shadow-md hover:scale-110 transition-transform relative shrink-0"
                       >
                         {/* Milestone Connect Handles on Both Ends */}
                         <div

@@ -503,9 +503,21 @@ export async function exportProjectDocument(
         const topY = localIdx * rowHeight + 5;
 
         if (t.isSummary) {
+          const triW = Math.min(8, Math.max(4, Math.floor(barWidth / 2)));
           taskBarsHTML += `
-            <div style="position: absolute; left: ${startX}px; top: ${topY + 3}px; width: ${barWidth}px; height: 14px; background-color: ${theme.summaryBar}; border-radius: 3px;">
-              <div style="width: ${t.progress}%; height: 100%; background-color: ${theme.summaryBarProgress}; border-radius: 3px;"></div>
+            <div style="position: absolute; left: ${startX}px; top: ${topY + 3}px; width: ${barWidth}px; height: 13px; pointer-events: none;">
+              <!-- Summary Roof Bar -->
+              <div style="position: absolute; left: 0; top: 0; width: 100%; height: 7px; background-color: ${theme.summaryBar}; border-radius: 2px 2px 0 0; overflow: hidden;">
+                <div style="width: ${t.progress}%; height: 100%; background-color: ${theme.summaryBarProgress};"></div>
+              </div>
+              <!-- Left Downward Bracket Triangle -->
+              <svg style="position: absolute; left: 0; top: 7px; overflow: visible;" width="${triW}" height="6" viewBox="0 0 ${triW} 6">
+                <polygon points="0,0 ${triW},0 ${triW / 2},6" fill="${theme.summaryBar}" />
+              </svg>
+              <!-- Right Downward Bracket Triangle -->
+              <svg style="position: absolute; right: 0; top: 7px; overflow: visible;" width="${triW}" height="6" viewBox="0 0 ${triW} 6">
+                <polygon points="0,0 ${triW},0 ${triW / 2},6" fill="${theme.summaryBar}" />
+              </svg>
             </div>
           `;
         } else if (t.isMilestone || t.duration === 0) {
@@ -521,7 +533,7 @@ export async function exportProjectDocument(
           const progFill = isCrit ? 'rgba(0,0,0,0.3)' : theme.taskProgressFill;
 
           taskBarsHTML += `
-            <div style="position: absolute; left: ${startX}px; top: ${topY + 1}px; width: ${barWidth}px; height: 18px; background-color: ${barColor}; border-radius: 3px; border: 1px solid ${borderColor}; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+            <div style="position: absolute; left: ${startX}px; top: ${topY + 3}px; width: ${barWidth}px; height: 14px; background-color: ${barColor}; border-radius: 3px; border: 1px solid ${borderColor}; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
               <div style="width: ${t.progress}%; height: 100%; background-color: ${progFill};"></div>
             </div>
           `;
@@ -606,7 +618,11 @@ export async function exportProjectDocument(
       <div style="display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 10px; color: #334155;">
         <span style="font-weight: 700; color: #0f172a;">Legend:</span>
         <div style="display: flex; align-items: center; gap: 4px;">
-          <div style="width: 10px; height: 10px; background-color: ${theme.summaryBar}; border-radius: 2px;"></div>
+          <svg width="14" height="10" viewBox="0 0 14 10" style="vertical-align: middle;">
+            <rect x="0" y="0" width="14" height="4" rx="1" fill="${theme.summaryBar}" />
+            <polygon points="0,4 4,4 2,9" fill="${theme.summaryBar}" />
+            <polygon points="10,4 14,4 12,9" fill="${theme.summaryBar}" />
+          </svg>
           <span>Summary</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px;">
