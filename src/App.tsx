@@ -1481,7 +1481,7 @@ export function App() {
     setBaselines(prev => prev.filter(b => b.id !== baselineId));
   };
 
-  const baseTheme = getTheme(settings.colorTheme);
+  const baseTheme = getTheme(settings.colorTheme, settings.fontFamilyChoice, settings.customTheme);
   const activeFontCss = getFontFamilyCss(settings.fontFamilyChoice);
   const theme = {
     ...baseTheme,
@@ -1523,6 +1523,7 @@ export function App() {
         {/* OnlineGantt-Style Unified Action & Navigation Bar */}
         <ActionBar
           colorTheme={settings.colorTheme}
+          customTheme={settings.customTheme}
           onAddTask={() => handleAddTask(selectedTaskId || undefined)}
           onExpandAll={handleExpandAll}
           onCollapseAll={handleCollapseAll}
@@ -1588,6 +1589,7 @@ export function App() {
               scrollContainerRef={gridScrollRef}
               onVerticalScroll={handleGridScroll}
               colorTheme={settings.colorTheme}
+              customTheme={settings.customTheme}
               fontFamilyChoice={settings.fontFamilyChoice}
               onPasteRows={handlePasteRows}
               autoFitTrigger={autoFitTrigger}
@@ -1630,6 +1632,7 @@ export function App() {
               scrollContainerRef={timelineScrollRef}
               onVerticalScroll={handleTimelineScroll}
               colorTheme={settings.colorTheme}
+              customTheme={settings.customTheme}
               fontFamilyChoice={settings.fontFamilyChoice}
             />
           </div>

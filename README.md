@@ -155,6 +155,17 @@ PathMaster includes five distinct theme palettes engineered for diverse work env
 | **High-Contrast Data (P6)** | Heavy Planning & Controls | Forest green bars, crimson critical path, crisp black grid lines. |
 | **Industrial Steel & Amber** | Industrial Projects | Dark graphite header, industrial steel summary bars, construction amber alerts. |
 | **Precision Dark Mode** | Night Shift & Trailer Screens | Low-glare obsidian surfaces, high-contrast text, reduced eye strain. |
+| **Custom Palette** | Fully Personalized | User-customized hex colors for task bars, progress fills, summaries, milestones, headers, borders, surfaces, and dark/light contrast. |
+
+### 🎨 Custom Palette Studio & Live Visualizer
+Create your own personalized company or project color palette:
+* **Interactive Live Visualizer**: Preview your customized palette on summary bars, progress bars, milestone diamonds, critical paths, and data grids in real time before applying.
+* **1-Click Base Preset Cloner**: Start from any existing corporate theme (*Modern Enterprise*, *Construction*, *Primavera P6*, *Steel & Amber*, *Dark Mode*) and fine-tune individual colors without building from scratch.
+* **Full Token Customization**:
+  * **Gantt Activities**: Task bars, progress fills, summary phase roofs/brackets, milestone diamonds, critical path/delay flags, today line signal, and baseline bars.
+  * **Surfaces & Interface**: Header ribbon, header text, app canvas background, table/timeline surfaces, and grid borders.
+  * **Theme Contrast Mode**: One-click toggle between Light Mode and Dark Mode contrast optimization.
+* **Full Persistence & Export**: Custom palettes are auto-saved to project `.wbs` files, persisted in LocalStorage, and carried cleanly into high-resolution vector PDF exports.
 
 ### Typography Options
 Switch between enterprise fonts instantly via the **Action Bar Font dropdown** or in **Settings → Appearance & Themes**:

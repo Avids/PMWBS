@@ -500,7 +500,7 @@ export async function exportProjectDocument(
     let dependencyPathsHTML = '';
 
     if (showGantt) {
-      const theme = getTheme(settings.colorTheme);
+      const theme = getTheme(settings.colorTheme, undefined, settings.customTheme);
 
       pageTasks.forEach((t, localIdx) => {
         const startX = dateToX(t.startDate);
@@ -618,7 +618,7 @@ export async function exportProjectDocument(
     ` : '';
 
     // Footer HTML with Schedule Legend
-    const theme = getTheme(settings.colorTheme);
+    const theme = getTheme(settings.colorTheme, undefined, settings.customTheme);
     const legendHTML = `
       <div style="display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 10px; color: #334155;">
         <span style="font-weight: 700; color: #0f172a;">Legend:</span>

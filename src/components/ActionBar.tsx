@@ -1,6 +1,6 @@
 import React from 'react';
 import type { FontSizeOption, FontFamilyChoice, ZoomTier, ColorTheme } from '../types/project';
-import { getTheme, getFontFamilyCss } from '../theme/themeConfig';
+import { getTheme, getFontFamilyCss, type ThemeDefinition } from '../theme/themeConfig';
 import {
   Plus,
   Maximize2,
@@ -22,6 +22,7 @@ import {
 
 interface ActionBarProps {
   colorTheme?: ColorTheme;
+  customTheme?: Partial<ThemeDefinition>;
   onAddTask: () => void;
   onExpandAll: () => void;
   onCollapseAll: () => void;
@@ -61,6 +62,7 @@ interface ActionBarProps {
 
 export const ActionBar: React.FC<ActionBarProps> = ({
   colorTheme,
+  customTheme,
   onAddTask,
   onExpandAll,
   onCollapseAll,
@@ -89,7 +91,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   onUndo,
   onRedo
 }) => {
-  const theme = getTheme(colorTheme);
+  const theme = getTheme(colorTheme, undefined, customTheme);
   const hoverBtnClass = theme.isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100';
 
   return (

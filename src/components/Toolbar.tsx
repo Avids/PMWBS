@@ -70,7 +70,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const themeButtonRef = useRef<HTMLButtonElement>(null);
   const [themeMenuPos, setThemeMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
 
-  const currentTheme = getTheme(settings.colorTheme);
+  const currentTheme = getTheme(settings.colorTheme, undefined, settings.customTheme);
   const isSiteDrawing = currentTheme.id === 'construction';
 
   const toggleFileMenu = () => {
@@ -522,12 +522,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               >
                 <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center justify-between border-b border-slate-800 mb-1">
                   <span>Color Theme Palettes</span>
-                  <span className="text-[10px] text-slate-400 font-normal">5 Profiles</span>
+                  <span className="text-[10px] text-slate-400 font-normal">6 Profiles</span>
                 </div>
                 {SELECTABLE_THEMES.map((theme) => {
                   const isSelected = (settings.colorTheme || 'construction') === theme.id ||
                     (theme.id === 'construction' && settings.colorTheme === 'site-drawing') ||
                     (theme.id === 'modern-enterprise' && settings.colorTheme === 'classic');
+                  const swatches = theme.id === 'custom'
+                    ? (settings.customTheme?.swatches || [
+                        settings.customTheme?.headerBg || theme.swatches[0],
+                        settings.customTheme?.taskBar || theme.swatches[1],
+                        settings.customTheme?.summaryBar || theme.swatches[2],
+                        settings.customTheme?.critical || theme.swatches[3],
+                      ])
+                    : theme.swatches;
                   return (
                     <button
                       key={theme.id}
@@ -541,7 +549,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     >
                       <div className="flex flex-col items-center mt-0.5 space-y-1 shrink-0">
                         <div className="grid grid-cols-2 gap-0.5 p-1 rounded bg-black/40 border border-slate-700">
-                          {theme.swatches.map((color, i) => (
+                          {swatches.map((color, i) => (
                             <div key={i} className="w-2.5 h-2.5 rounded-2xs" style={{ backgroundColor: color }} />
                           ))}
                         </div>
@@ -552,6 +560,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                           <span className={`font-bold truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
                             {theme.name}
                           </span>
+                          {theme.id === 'custom' && (
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsThemeMenuOpen(false);
+                                onOpenSettingsModal();
+                              }}
+                              className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-700/60 cursor-pointer"
+                              title="Customize Custom Palette Colors in Settings"
+                            >
+                              Edit Colors
+                            </span>
+                          )}
                         </div>
                         <span className="text-[10px] text-indigo-400 block font-medium truncate">
                           {theme.subtitle}
@@ -563,6 +584,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     </button>
                   );
                 })}
+                <div className="pt-1.5 mt-1 border-t border-slate-800 px-2">
+                  <button
+                    onClick={() => {
+                      setIsThemeMenuOpen(false);
+                      onOpenSettingsModal();
+                    }}
+                    className="w-full py-1 text-center text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded transition-colors cursor-pointer"
+                  >
+                    🎨 Open Palette Editor & Settings...
+                  </button>
+                </div>
               </div>
             )}
           </div>

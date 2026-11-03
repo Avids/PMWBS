@@ -360,8 +360,49 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     labelHaloBorder: '#C9CED2',
     labelHaloText: '#111827',
     swatches: ['#2F3E46', '#457B9D', '#E8590C', '#E63946']
+  },
+  custom: {
+    id: 'custom',
+    name: 'Custom Palette',
+    subtitle: 'User Personalized Palette',
+    description: 'Customized colors for bars, milestones, headers, borders, and surfaces.',
+    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif",
+    isDark: false,
+    appBg: '#F1F5F9',
+    surfaceBg: '#FFFFFF',
+    headerBg: '#1E293B',
+    headerSubBg: '#FFFFFF',
+    headerText: '#FFFFFF',
+    headerSubText: '#0F172A',
+    border: '#CBD5E1',
+    summaryBar: '#334155',
+    summaryBarBorder: '#1E293B',
+    summaryBarProgress: '#1E293B',
+    taskBar: '#2563EB',
+    taskBarBorder: '#1D4ED8',
+    taskProgressFill: '#1D4ED8',
+    milestone: '#0F172A',
+    milestoneBorder: '#FFFFFF',
+    baseline: '#94A3B8',
+    baselineBorder: '#64748B',
+    signal: '#2563EB',
+    critical: '#DC2626',
+    criticalBorder: '#B91C1C',
+    criticalText: '#DC2626',
+    textPrimary: '#0F172A',
+    textSecondary: '#64748B',
+    rowAltBg: '#F8FAFC',
+    rowHoverBg: '#F1F5F9',
+    rowSelectedBg: 'rgba(37, 99, 235, 0.08)',
+    weekendBg: '#F1F5F9',
+    labelHaloBg: '#FFFFFF',
+    labelHaloBorder: '#CBD5E1',
+    labelHaloText: '#0F172A',
+    swatches: ['#1E293B', '#2563EB', '#334155', '#DC2626']
   }
 };
+
+export const DEFAULT_CUSTOM_THEME: ThemeDefinition = THEMES['custom'];
 
 export const SELECTABLE_THEMES: ThemeDefinition[] = [
   THEMES['modern-enterprise'],
@@ -369,13 +410,53 @@ export const SELECTABLE_THEMES: ThemeDefinition[] = [
   THEMES['primavera'],
   THEMES['steel-amber'],
   THEMES['dark-mode'],
+  DEFAULT_CUSTOM_THEME,
 ];
 
-export function getTheme(themeId?: string, fontChoice?: FontFamilyChoice): ThemeDefinition {
+export function cloneThemeToCustom(presetId: ColorTheme): Partial<ThemeDefinition> {
+  const source = THEMES[presetId] || THEMES['construction'];
+  return {
+    ...source,
+    id: 'custom',
+    name: 'Custom Palette',
+    subtitle: `Customized (${source.name})`,
+    description: `Personalized palette based on ${source.name}.`,
+    swatches: [source.headerBg, source.taskBar, source.summaryBar, source.critical]
+  };
+}
+
+export function getTheme(
+  themeId?: string,
+  fontChoice?: FontFamilyChoice,
+  customTheme?: Partial<ThemeDefinition>
+): ThemeDefinition {
   let theme: ThemeDefinition;
-  if (themeId === 'classic') theme = THEMES['modern-enterprise'];
-  else if (themeId === 'site-drawing') theme = THEMES['construction'];
-  else if (themeId && themeId in THEMES) {
+  if (themeId === 'custom') {
+    theme = {
+      ...DEFAULT_CUSTOM_THEME,
+      ...(customTheme || {}),
+      id: 'custom',
+      swatches: customTheme?.swatches || [
+        customTheme?.headerBg || DEFAULT_CUSTOM_THEME.headerBg,
+        customTheme?.taskBar || DEFAULT_CUSTOM_THEME.taskBar,
+        customTheme?.summaryBar || DEFAULT_CUSTOM_THEME.summaryBar,
+        customTheme?.critical || DEFAULT_CUSTOM_THEME.critical
+      ]
+    };
+
+    // Auto-harmonize derived tokens if dark mode is active and not explicitly overridden
+    if (theme.isDark) {
+      if (!customTheme?.rowAltBg) theme.rowAltBg = '#171F2E';
+      if (!customTheme?.rowHoverBg) theme.rowHoverBg = 'rgba(255, 255, 255, 0.05)';
+      if (!customTheme?.weekendBg) theme.weekendBg = '#1F2937';
+      if (!customTheme?.labelHaloBg) theme.labelHaloBg = theme.surfaceBg;
+      if (!customTheme?.labelHaloText) theme.labelHaloText = theme.textPrimary;
+    }
+  } else if (themeId === 'classic') {
+    theme = THEMES['modern-enterprise'];
+  } else if (themeId === 'site-drawing') {
+    theme = THEMES['construction'];
+  } else if (themeId && themeId in THEMES) {
     theme = THEMES[themeId as ColorTheme];
   } else {
     theme = THEMES['construction'];

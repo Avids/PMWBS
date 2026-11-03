@@ -1,7 +1,7 @@
 import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
 import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType, ColorTheme, FontFamilyChoice } from '../types/project';
 import { formatDate, addWorkingDays, isWorkingDay } from '../engine/scheduler';
-import { getTheme } from '../theme/themeConfig';
+import { getTheme, type ThemeDefinition } from '../theme/themeConfig';
 import { FileText } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -28,13 +28,14 @@ interface GanttTimelineProps {
   onVerticalScroll?: (scrollTop: number) => void;
   colorTheme?: ColorTheme;
   fontFamilyChoice?: FontFamilyChoice;
+  customTheme?: Partial<ThemeDefinition>;
 }
 
 /**
  * Standard, professional WBS-level color palette powered by customizable theme profiles.
  */
-export function getTaskLevelStyle(task: Task, isCritical: boolean = false, colorTheme: ColorTheme = 'construction') {
-  const theme = getTheme(colorTheme);
+export function getTaskLevelStyle(task: Task, isCritical: boolean = false, colorTheme: ColorTheme = 'construction', customTheme?: Partial<ThemeDefinition>) {
+  const theme = getTheme(colorTheme, undefined, customTheme);
 
   if (isCritical) {
     return {
@@ -88,11 +89,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   scrollContainerRef,
   onVerticalScroll,
   colorTheme = 'classic',
-  fontFamilyChoice
+  fontFamilyChoice,
+  customTheme
 }) => {
   const internalContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = scrollContainerRef || internalContainerRef;
-  const theme = getTheme(colorTheme, fontFamilyChoice);
+  const theme = getTheme(colorTheme, fontFamilyChoice, customTheme);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragType, setDragType] = useState<'move' | 'resize' | null>(null);
   const [dragStartX, setDragStartX] = useState<number>(0);
@@ -757,7 +759,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
               const isTaskCrit = !!(showCriticalPath && task.isCritical);
               // Standard WBS-Level style (or Critical Red if Critical Path active)
-              const style = getTaskLevelStyle(task, isTaskCrit, colorTheme);
+              const style = getTaskLevelStyle(task, isTaskCrit, colorTheme, customTheme);
 
               return (
                 <div

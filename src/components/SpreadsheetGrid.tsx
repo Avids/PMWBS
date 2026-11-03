@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { Task, WeightMode, FontSizeOption, ColorTheme, FontFamilyChoice } from '../types/project';
-import { getTheme } from '../theme/themeConfig';
+import { getTheme, type ThemeDefinition } from '../theme/themeConfig';
 import { Flag, GitCommit, GripVertical, FileText, MoveHorizontal, Columns3, RotateCcw } from 'lucide-react';
 import { parsePredecessors, formatPredecessors } from '../engine/scheduler';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -26,6 +26,7 @@ interface SpreadsheetGridProps {
   onVerticalScroll?: (scrollTop: number) => void;
   colorTheme?: ColorTheme;
   fontFamilyChoice?: FontFamilyChoice;
+  customTheme?: Partial<ThemeDefinition>;
   onPasteRows?: (startRowIdx: number, startColIdx: number, matrix: string[][]) => void;
   autoFitTrigger?: number;
 }
@@ -108,6 +109,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   scrollContainerRef,
   onVerticalScroll,
   colorTheme = 'classic',
+  customTheme,
   fontFamilyChoice,
   onPasteRows,
   autoFitTrigger
@@ -119,7 +121,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = scrollContainerRef || internalScrollRef;
-  const theme = getTheme(colorTheme, fontFamilyChoice);
+  const theme = getTheme(colorTheme, fontFamilyChoice, customTheme);
 
   // Column Widths with LocalStorage persistence
   const [columnWidths, setColumnWidths] = useState<Record<ColumnField, number>>(() => {

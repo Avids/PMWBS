@@ -1,3 +1,5 @@
+import type { ThemeDefinition } from '../theme/themeConfig';
+
 export type DependencyType = 'FS' | 'SS' | 'FF' | 'SF';
 
 export interface TaskDependency {
@@ -16,6 +18,7 @@ export type ColorTheme =
   | 'primavera'
   | 'steel-amber'
   | 'dark-mode'
+  | 'custom'
   | 'classic'
   | 'site-drawing';
 
@@ -110,6 +113,7 @@ export interface ProjectSettings {
   fontSize?: FontSizeOption;     // 'small' (8pt), 'normal' (10pt), 'large' (12pt)
   fontFamilyChoice?: FontFamilyChoice; // 'segoe' | 'calibri' | 'verdana' | 'inter' | 'barlow' | 'system'
   colorTheme?: ColorTheme;       // 'classic' | 'site-drawing' (Architectural Site Drawing profile)
+  customTheme?: Partial<ThemeDefinition>; // User's customized color palette
 }
 
 export interface ProjectFile {
