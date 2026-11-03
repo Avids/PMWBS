@@ -544,7 +544,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           {/* Header Tier 1 (Weeks/Months) & Tier 2 (Days) */}
           <div
             style={{ backgroundColor: theme.headerBg, borderBottomColor: theme.border }}
-            className="sticky top-0 z-20 flex flex-col shadow-2xs border-b"
+            className="sticky top-0 z-30 flex flex-col shadow-2xs border-b"
           >
             {/* Tier 1: Weeks or Months */}
             <div
@@ -726,7 +726,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           </svg>
 
           {/* Task Bars Layer (OnlineGantt Style) */}
-          <div className="absolute top-[56px] left-0 right-0 z-20">
+          <div className="absolute top-[56px] left-0 right-0 z-10">
             {virtualRows.map((virtualRow) => {
               const task = tasks[virtualRow.index];
               const idx = virtualRow.index;

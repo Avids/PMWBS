@@ -395,7 +395,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
         <table style={{ tableLayout: 'fixed' }} className={`w-full border-collapse ${textSizeClass}`}>
           <thead
             style={{ backgroundColor: theme.headerBg, borderBottomColor: theme.border }}
-            className="sticky top-0 z-10 shadow-2xs border-b"
+            className="sticky top-0 z-30 shadow-2xs border-b"
           >
             <tr style={{ height: '56px' }}>
               <th
