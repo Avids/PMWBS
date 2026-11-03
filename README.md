@@ -11,7 +11,7 @@
 [![Vitest](https://img.shields.io/badge/Vitest-3.2-FCC72B?style=flat-square&logo=vitest)](https://vitest.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-[Features](#-key-features) · [Theme & Typography](#-professional-theme-suite--typography) · [Quick Start](#-quick-start) · [Keyboard Shortcuts](#-keyboard-shortcuts-msp--excel-style) · [CPM & Lag Syntax](#-cpm-relationships--lag-syntax) · [Activity Weight Engine](#6-activity-weight-calculation-primavera-p6-standard) · [File Formats](#-native-wbs-file-format)
+[Features](#-key-features) · [Theme & Typography](#-professional-theme-suite--typography) · [Quick Start](#-quick-start) · [Keyboard Shortcuts](#-keyboard-shortcuts-msp--excel-style) · [CPM & Lag Syntax](#-cpm-relationships--lag-syntax) · [Activity Weight Engine](#7-activity-weight-calculation-primavera-p6-standard) · [File Formats](#-native-wbs-file-format)
 
 </div>
 
@@ -60,16 +60,22 @@ Built with **React 19, TypeScript, Tailwind CSS v4, and Vite**, PathMaster provi
   * **One-Click ActionBar Button**: Click the **Auto-Fit** button in the top action ribbon.
 * **Automatic LocalStorage Persistence**: Custom column widths persist across sessions and page reloads.
 
-### 4. Direct Clipboard Copy-Paste & Predecessor Linking (`Ctrl+C` / `Ctrl+V`)
-* Copy individual cells, rows, or rectangular blocks of cells and paste directly into PathMaster.
+### 4. Direct Clipboard Copy-Paste from Excel & Sheets (`Ctrl+C` / `Ctrl+V`)
+* **Multi-Column Spreadsheet Pasting**: Copy individual cells, rows, or rectangular blocks from Microsoft Excel or Google Sheets and paste directly into PathMaster.
+* **Automatic Row Expansion**: If pasted data contains more rows than exist in the current project, PathMaster automatically creates and inserts the necessary task rows.
 * **Predecessor Cell Copy/Paste**: Pasting into the Predecessors column automatically parses CPM dependencies (`2FS`, `3SS+2d`, `1.2FF`), checks for circular cycles, verifies self-references, and recalculates the schedule instantly.
 * **Batch Paste into Multiple Tasks**: Select multiple tasks with Shift/Ctrl and paste a cell value into all of them simultaneously.
 
-### 5. Non-Destructive Multi-Level Undo / Redo (`Ctrl+Z` / `Ctrl+Y`)
+### 5. Task Notes Indicator & Instant Tooltip Preview
+* **Visual Memo Indicator**: Tasks with notes display an unobtrusive `📝` note icon directly beside the task name.
+* **Zero-Click Tooltip Preview**: Hovering your cursor over the note icon displays an instant, styled tooltip with the complete note content without having to open the Task Info dialog.
+* **Clean Milestone Formatting**: 0-day milestones display a clean `0 d` duration without redundant text, and the timeline footer legend includes the milestone diamond symbol (`◆`).
+
+### 6. Non-Destructive Multi-Level Undo / Redo (`Ctrl+Z` / `Ctrl+Y`)
 * Up to **50 history snapshots** preserved in memory.
 * Undo/Redo works across all grid edits, timeline drag-and-drop operations, indents/outdents, and task additions or deletions.
 
-### 6. Activity Weight Calculation (Primavera P6 Standard)
+### 7. Activity Weight Calculation (Primavera P6 Standard)
 Choose how individual activities contribute to summary and project progress:
 * **Time-Based (Duration)**: $W_i = \frac{\text{Duration}_i}{\sum \text{Duration}} \times 100$
 * **Man-Hour Based (P6 Standard)**: $W_i = \frac{\text{PlannedMH}_i}{\sum \text{PlannedMH}} \times 100$
@@ -77,18 +83,18 @@ Choose how individual activities contribute to summary and project progress:
 * **Weighted Progress Rollup**: 
   $$\text{Summary Progress} = \sum_{i=1}^N \left(\text{Child Progress}_i \times \frac{W_i}{100}\right)$$
 
-### 7. Man-Hour Tracking & Earned Value Management
+### 8. Man-Hour Tracking & Earned Value Management
 * **Planned Man-Hours (Budget / Estimate)** (defaults to 0 for new tasks)
 * **Actual Man-Hours** (Spent to date)
 * **Remaining Man-Hours** ($\max(0, \text{Planned} - \text{Actual})$)
 * **Earned Man-Hours** ($(\text{Planned Man-Hours} \times \text{Progress}) / 100$)
 
-### 8. Dual-Bar Baseline & Variance Tracking
+### 9. Dual-Bar Baseline & Variance Tracking
 * **Baseline Manager**: Snapshot and freeze multiple project baselines (*Baseline 1*, *Contract Award*, etc.).
 * **Dual-Bar Gantt Rendering**: Compare active schedule bars against underlying baseline bars.
 * **Schedule Slippage Tracking**: Automatic variance calculation ($EndDate - BaselineEndDate$), color-coded red for delays and green for early completion.
 
-### 9. Right-Click Context Menu & Multi-Tab Task Information Dialog
+### 10. Right-Click Context Menu & Multi-Tab Task Information Dialog
 * **Right-Click Context Menu**: Right-click any task in the spreadsheet grid or Gantt timeline to access:
   * ✏️ **Task Information**
   * 🗑️ **Delete Task**
@@ -102,7 +108,7 @@ Choose how individual activities contribute to summary and project progress:
   * **Resources**: Planned Man-Hours, Actual Man-Hours, Remaining, and Earned.
   * **Notes**: Rich task comments and documentation.
 
-### 10. Interactive Drag & Drop Gantt Chart with Day-Cell Snapping
+### 11. Interactive Drag & Drop Gantt Chart with Day-Cell Snapping
 * **Refined Task Bar Thickness**: Slim 10px regular task bars (8px on small zoom, 13px on large zoom) provide a clean, modern aesthetic.
 * **Downward-Bracket Summary Bars**: Summary tasks feature thin 7px roof bars with downward triangular brackets at start and finish dates, clearly distinguishing them from task bars on screen and in print.
 * **Milestone Zero-Duration Diamonds**: 0-day milestones render as crisp diamonds. Linked Finish-to-Start successors start on the exact same date as the milestone (with 0 lag).
@@ -113,13 +119,24 @@ Choose how individual activities contribute to summary and project progress:
 * **Drag Link Handles**: Connect tasks via drag-and-drop handles.
 * **Mouse Panning & Timescale Zooming**: Hold and drag the canvas to pan smoothly across Day, Week, and Month tiers.
 
-### 11. Advanced PDF Export, Project Information & Multi-Format Interoperability
+### 12. Reorganized 3-Tab Settings Modal & Project Information
+* **3-Tab Settings Modal**:
+  * 📅 **Calendar & Work Week**: Configure working days (flexible 4-day, 5-day, or 6-day work weeks), work hours per day, and statutory holiday exceptions with instant addition/removal.
+  * 🎨 **Appearance & Themes**: Select from 5 construction and engineering color palettes and 6 enterprise typography styles with instant live previews.
+  * ⚖️ **Calculations & Weights**: Switch activity weight calculation mode (Duration, Man-Hour, or Equal) and customize the project currency symbol.
+* **Project Information Modal**:
+  * Comprehensive project profile dialog to track Project Name, Project Number (`#`), Company/Client, Jobsite Address, Lead Scheduler/Author, Schedule Target Start Date, and Project Notes alongside real-time task count, total man-hours, and finish date stats.
+
+### 13. Advanced Vector PDF Export & Multi-Format Interoperability
 * **PDF Export Engine**:
   * Standard North American paper sizes prioritized (**Letter**, **11x17 Tabloid**, **Legal**, plus **A4**, **A3**).
   * Timescale grouping options (**Days**, **Weeks**, **Months**).
   * Filter by **Task ID Range** (`From ID` to `To ID`).
   * Option to toggle the Gantt chart on/off for pure tabular reports.
-  * Corporate metadata typography and vector CPM relationship lines.
+  * Vector SVG downward summary brackets (`▼`) for clean, crisp presentation.
+  * Unbroken orthogonal CPM relationship lines with exact-pixel vertex joins.
+  * Streamlined compact export dialog with auto-scrolling dropdowns.
+  * Corporate metadata typography and high-resolution vector printing.
 * **File Compatibility**:
   * **Native `.wbs` File**: Save and load complete project schedules (tasks, baselines, calendars, weights) as JSON files.
   * **Excel Import & Export (`.xlsx`)**: Import schedules directly from Excel spreadsheets or export with hierarchical formatting.
@@ -140,12 +157,13 @@ PathMaster includes five distinct theme palettes engineered for diverse work env
 | **Precision Dark Mode** | Night Shift & Trailer Screens | Low-glare obsidian surfaces, high-contrast text, reduced eye strain. |
 
 ### Typography Options
-Switch between enterprise fonts in **Project Settings → Display & Theme**:
+Switch between enterprise fonts instantly via the **Action Bar Font dropdown** or in **Settings → Appearance & Themes**:
 * **Segoe UI**: Modern Microsoft standard with crisp tabular figures.
 * **Calibri**: Warm, corporate executive standard.
 * **Verdana**: Renowned high readability with generous apertures for dense numbers.
 * **Inter**: Clean tech and SaaS standard.
-* **Barlow**: DIN-style technical engineering aesthetic.
+* **Barlow (DIN)**: DIN-style technical engineering aesthetic.
+* **Arial / System**: Universal sans-serif fallback for consistent cross-platform rendering.
 
 ---
 
@@ -287,14 +305,15 @@ PMWBS/
 │   │   └── themeConfig.ts           # 5 Color themes, typography configs & swatch definitions
 │   ├── components/
 │   │   ├── Toolbar.tsx              # Top ribbon: File menu, Theme switcher, KPI stats
-│   │   ├── ActionBar.tsx            # View controls, Indent/Outdent, Undo/Redo, Zoom tier
-│   │   ├── SpreadsheetGrid.tsx      # Keyboard data grid with Excel paste & WBS tree
-│   │   ├── GanttTimeline.tsx        # Interactive SVG Gantt with drag-and-drop & halo masks
+│   │   ├── ActionBar.tsx            # View controls, Font dropdown & sizes, Zoom tier, Undo/Redo, Auto-fit
+│   │   ├── SpreadsheetGrid.tsx      # Keyboard data grid with Excel paste, virtual scroll & notes tooltips
+│   │   ├── GanttTimeline.tsx        # Interactive SVG Gantt with drag-and-drop, downward summary brackets & halo masks
 │   │   ├── TaskContextMenu.tsx      # Right-click contextual operations menu
 │   │   ├── TaskInformationModal.tsx # 4-tab Task Properties dialog (General, Dep, Res, Notes)
 │   │   ├── PredecessorModal.tsx     # Visual relationship and lag editor (up to 10 dependencies)
 │   │   ├── BaselineModal.tsx        # Project baseline snapshot manager
-│   │   ├── ProjectSettingsModal.tsx # 4-tab Settings (General, Calendar, Weight, Appearance)
+│   │   ├── ProjectInfoModal.tsx     # Project metadata (Name, Number, Company, Address, Author)
+│   │   ├── ProjectSettingsModal.tsx # 3-tab Settings (Calendar & Work Week, Appearance, Calculations)
 │   │   └── ExportModal.tsx          # PDF page setup, timescale & task range export dialog
 │   ├── services/
 │   │   └── platform.ts              # Native desktop / browser file dialog abstractions
