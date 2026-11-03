@@ -413,6 +413,27 @@ describe('5. Predecessor Text Parsing & Serialization', () => {
 
     expect(formatted).toBe('1FS+3d');
   });
+
+  it('correctly resolves WBS codes vs plain row numbers without misinterpreting decimal dots', () => {
+    const taskList: Task[] = [
+      { id: 't-1', wbsCode: '1' } as any,
+      { id: 't-2', wbsCode: '1.1' } as any,
+      { id: 't-3', wbsCode: '1.2' } as any
+    ];
+
+    // '1.2' is a WBS code referencing t-3, NOT row 1
+    const parsedWbs = parsePredecessors('1.2FS', taskList);
+    expect(parsedWbs[0]).toEqual({ taskId: 't-3', type: 'FS', lag: 0 });
+
+    // '2' is a row number referencing t-2
+    const parsedRow = parsePredecessors('2', taskList);
+    expect(parsedRow[0]).toEqual({ taskId: 't-2', type: 'FS', lag: 0 });
+  });
+
+  it('correctly handles empty or dash text when clearing predecessors', () => {
+    expect(parsePredecessors('', [])).toEqual([]);
+    expect(parsePredecessors('-', [])).toEqual([]);
+  });
 });
 
 describe('6. WBS Hierarchy Indent & Outdent Calculations', () => {

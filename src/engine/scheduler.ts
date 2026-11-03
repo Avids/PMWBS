@@ -218,6 +218,8 @@ export function formatPredecessors(deps: TaskDependency[], taskList?: Task[]): s
  */
 export function parsePredecessors(text: string, taskList?: Task[]): TaskDependency[] {
   if (!text || typeof text !== 'string') return [];
+  const trimmed = text.trim();
+  if (trimmed === '' || trimmed === '-' || trimmed === '--') return [];
   const parts = text.split(/[,;]/).map(s => s.trim()).filter(Boolean);
   const result: TaskDependency[] = [];
 
@@ -256,9 +258,11 @@ export function parsePredecessors(text: string, taskList?: Task[]): TaskDependen
     if (rawRef) {
       // Determine actual taskId
       let resolvedId = rawRef;
-      const parsedRowNum = parseInt(rawRef, 10);
-      if (!isNaN(parsedRowNum) && rowToIdMap.has(parsedRowNum)) {
-        resolvedId = rowToIdMap.get(parsedRowNum)!;
+      if (/^\d+$/.test(rawRef)) {
+        const parsedRowNum = parseInt(rawRef, 10);
+        if (rowToIdMap.has(parsedRowNum)) {
+          resolvedId = rowToIdMap.get(parsedRowNum)!;
+        }
       } else if (!idSet.has(rawRef) && taskList) {
         // Check if rawRef matches wbsCode
         const matchedWBS = taskList.find(t => t.wbsCode === rawRef);

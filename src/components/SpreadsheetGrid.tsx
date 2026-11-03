@@ -154,7 +154,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     else if (col.field === 'predecessors') {
       updates.predecessorText = editValue;
       // Resolve against allTasks for valid references
-      updates.predecessors = parsePredecessors(editValue, allTasks);
+      updates.predecessors = parsePredecessors(editValue, allTasks).filter(d => d.taskId !== task.id);
     } else if (col.field === 'plannedManHours') updates.plannedManHours = Math.max(0, parseFloat(editValue) || 0);
     else if (col.field === 'actualManHours') updates.actualManHours = Math.max(0, parseFloat(editValue) || 0);
     else if (col.field === 'notes') updates.notes = editValue;
@@ -178,7 +178,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     else if (col.field === 'startDate') val = task.startDate;
     else if (col.field === 'endDate') val = task.endDate;
     else if (col.field === 'progress') val = String(task.progress);
-    else if (col.field === 'predecessors') val = task.predecessorText || '';
+    else if (col.field === 'predecessors') val = task.predecessorText || (allTasks ? formatPredecessors(task.predecessors, allTasks) : '');
     else if (col.field === 'plannedManHours') val = String(task.plannedManHours || 0);
     else if (col.field === 'actualManHours') val = String(task.actualManHours || 0);
     else if (col.field === 'notes') val = task.notes || '';
@@ -227,18 +227,6 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
           currentRowIdx = 0;
         }
         if (currentRowIdx === -1) return;
-    // Ctrl+C / Cmd+C: Copy active cell value to clipboard
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !editingCell) {
-      if (activeCell) {
-        const task = tasks[activeCell.rowIdx];
-        const col = COLUMNS[activeCell.colIdx];
-        if (task && col) {
-          const textToCopy = getCellValueAsString(task, col.field);
-          navigator.clipboard?.writeText(textToCopy).catch(() => {});
-        }
-      }
-    }
-
     // Shift+ArrowDown: Expand selection downwards
     if (e.shiftKey && e.key === 'ArrowDown') {
       e.preventDefault();
@@ -384,6 +372,13 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     } else if (e.key === 'Insert') {
       e.preventDefault();
       onAddTask(tasks[currentRowIdx]?.id);
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !editingCell) {
+      const task = tasks[currentRowIdx];
+      const col = COLUMNS[currentColIdx];
+      if (task && col) {
+        const textToCopy = getCellValueAsString(task, col.field);
+        navigator.clipboard?.writeText(textToCopy).catch(() => {});
+      }
     }
   };
 
@@ -432,9 +427,11 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   // Clipboard Copy Handler for Active Cell
   const handleCopy = (e: React.ClipboardEvent) => {
     if (editingCell) return;
-    if (!activeCell) return;
-    const task = tasks[activeCell.rowIdx];
-    const col = COLUMNS[activeCell.colIdx];
+    const rowIdx = activeCell?.rowIdx ?? (selectedTaskId ? Math.max(0, tasks.findIndex((t) => t.id === selectedTaskId)) : -1);
+    const colIdx = activeCell?.colIdx ?? 1;
+    if (rowIdx < 0 || rowIdx >= tasks.length) return;
+    const task = tasks[rowIdx];
+    const col = COLUMNS[colIdx];
     if (!task || !col) return;
 
     const textToCopy = getCellValueAsString(task, col.field);
@@ -577,7 +574,10 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                   >
                     <div className="flex items-center justify-center space-x-0.5" style={{ color: theme.textSecondary }}>
                       <GripVertical className="w-3 h-3 opacity-60" />
-                      <span className="font-mono font-bold text-[11px]">{rowIdx + 1}</span>
+                      {(() => {
+                        const fullRowIndex = allTasks ? (allTasks.findIndex(t => t.id === task.id) + 1 || rowIdx + 1) : rowIdx + 1;
+                        return <span className="font-mono font-bold text-[11px]">{fullRowIndex}</span>;
+                      })()}
                     </div>
                   </td>
 

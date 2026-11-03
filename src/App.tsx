@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier, ProjectCalendar } from './types/project';
 import { getTheme, getFontFamilyCss } from './theme/themeConfig';
-import { recalculateSchedule, formatDate, addWorkingDays, sanitizeCalendar, detectDependencyCycle, computeIndentParentId, computeOutdentParentId } from './engine/scheduler';
+import { recalculateSchedule, formatDate, addWorkingDays, sanitizeCalendar, detectDependencyCycle, computeIndentParentId, computeOutdentParentId, parsePredecessors } from './engine/scheduler';
 import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML, parseExcelProject } from './engine/importers';
 import { saveProjectWithDialog } from './services/platform';
 import { CheckCircle2, AlertTriangle, CircleAlert, Info, X, Flag, FileText } from 'lucide-react';
@@ -720,7 +720,7 @@ export function App() {
     setSelectedTaskId(newId);
   }, [rawTasks, updateRawTasks]);
 
-  // Direct Clipboard Paste Handler (Excel / Google Sheets / CSV)
+  // Direct Clipboard Paste Handler (Cell, Row, Multi-row paste)
   const handlePasteRows = useCallback((startRowIdx: number, startColIdx: number, matrix: string[][]) => {
     if (!matrix || matrix.length === 0) return;
 
@@ -745,17 +745,16 @@ export function App() {
     ];
 
     const today = formatDate(new Date());
+    let pastedCount = 0;
+    let cycleWarning: string | null = null;
 
     updateRawTasks(prev => {
       const copy = [...prev];
-      let parentId: string | null = null;
-      if (startRowIdx >= 0 && startRowIdx < copy.length) {
-        parentId = copy[startRowIdx].parentId;
-      }
 
       let targetRows = matrix;
       let targetRowIndices: number[] = [];
 
+      // Case 1: Single cell pasted into multiple selected rows
       if (matrix.length === 1 && matrix[0].length === 1 && selectedTaskIds.length > 1) {
         targetRowIndices = selectedTaskIds
           .map(id => copy.findIndex(t => t.id === id))
@@ -763,24 +762,65 @@ export function App() {
           .sort((a, b) => a - b);
         targetRows = targetRowIndices.map(() => matrix[0]);
       } else {
-        targetRowIndices = matrix.map((_, rIdx) => startRowIdx + rIdx);
+        // Map visible row index to raw task index
+        targetRows = matrix;
+        targetRowIndices = matrix.map((_, rIdx) => {
+          const vIdx = startRowIdx + rIdx;
+          if (vIdx >= 0 && vIdx < visibleTasks.length) {
+            const vTask = visibleTasks[vIdx];
+            const rawIdx = copy.findIndex(t => t.id === vTask.id);
+            if (rawIdx >= 0) return rawIdx;
+          }
+          return startRowIdx + rIdx;
+        });
+      }
+
+      let parentId: string | null = null;
+      if (targetRowIndices.length > 0 && targetRowIndices[0] >= 0 && targetRowIndices[0] < copy.length) {
+        parentId = copy[targetRowIndices[0]].parentId;
       }
 
       targetRows.forEach((rowValues, rIdx) => {
         const targetRowIdx = targetRowIndices[rIdx];
+        const isExisting = targetRowIdx >= 0 && targetRowIdx < copy.length;
+        const currentTask = isExisting ? copy[targetRowIdx] : null;
+
         const updates: Partial<Task> = {};
 
         rowValues.forEach((cellRaw, cOffset) => {
           const colField = columnFields[startColIdx + cOffset];
           if (!colField) return;
           const trimmed = cellRaw.trim();
-          if (!trimmed && colField !== 'notes') return;
+
+          // Readonly columns cannot be modified via paste
+          if (
+            colField === 'wbs' ||
+            colField === 'weight' ||
+            colField === 'totalFloat' ||
+            colField === 'remainingManHours' ||
+            colField === 'earnedManHours' ||
+            colField === 'baselineStart' ||
+            colField === 'baselineEnd' ||
+            colField === 'variance'
+          ) {
+            return;
+          }
+
+          // Summary tasks cannot have duration, dates, progress, predecessors, or man-hours overwritten
+          if (currentTask?.isSummary && colField !== 'name' && colField !== 'notes') {
+            return;
+          }
+
+          if (!trimmed && colField !== 'notes' && colField !== 'predecessors') return;
 
           if (colField === 'name') {
             if (trimmed) updates.name = trimmed;
           } else if (colField === 'duration') {
             const num = parseFloat(trimmed.replace(/[^\d.]/g, ''));
-            if (!isNaN(num) && num >= 0) updates.duration = num;
+            if (!isNaN(num) && num >= 0) {
+              updates.duration = num;
+              updates.isMilestone = num === 0;
+            }
           } else if (colField === 'startDate') {
             if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
               updates.startDate = trimmed;
@@ -806,7 +846,32 @@ export function App() {
               updates.progress = Math.min(100, Math.max(0, p));
             }
           } else if (colField === 'predecessors') {
-            updates.predecessorText = trimmed;
+            if (!currentTask || !currentTask.isSummary) {
+              if (!trimmed || trimmed === '-') {
+                updates.predecessors = [];
+                updates.predecessorText = '';
+              } else {
+                const parsed = parsePredecessors(trimmed, tasks.length > 0 ? tasks : copy);
+                const currentId = currentTask?.id;
+                const valid = parsed.filter(d => !currentId || d.taskId !== currentId);
+
+                if (currentId) {
+                  const cycleCheck = detectDependencyCycle(copy, {
+                    taskId: currentId,
+                    newPredecessors: valid
+                  });
+                  if (cycleCheck.hasCycle) {
+                    cycleWarning = cycleCheck.message;
+                  } else {
+                    updates.predecessors = valid;
+                    updates.predecessorText = trimmed;
+                  }
+                } else {
+                  updates.predecessors = valid;
+                  updates.predecessorText = trimmed;
+                }
+              }
+            }
           } else if (colField === 'plannedManHours') {
             const mh = parseFloat(trimmed.replace(/[^\d.]/g, ''));
             if (!isNaN(mh) && mh >= 0) updates.plannedManHours = mh;
@@ -818,7 +883,11 @@ export function App() {
           }
         });
 
-        if (targetRowIdx < copy.length) {
+        if (Object.keys(updates).length > 0) {
+          pastedCount++;
+        }
+
+        if (isExisting) {
           copy[targetRowIdx] = { ...copy[targetRowIdx], ...updates };
         } else {
           const newId = `t-${Date.now().toString(36)}-${rIdx}`;
@@ -835,7 +904,7 @@ export function App() {
             endDate: updates.endDate ?? addWorkingDays(startDate, duration, settings.calendar),
             duration,
             progress: updates.progress ?? 0,
-            predecessors: [],
+            predecessors: updates.predecessors || [],
             predecessorText: updates.predecessorText,
             plannedManHours: updates.plannedManHours ?? 0,
             actualManHours: updates.actualManHours ?? 0,
@@ -850,8 +919,22 @@ export function App() {
       return copy;
     }, true);
 
-    showToast(`Successfully pasted ${matrix.length} row(s) from Excel`, 'success', 'Excel Paste');
-  }, [settings.calendar, showToast, updateRawTasks]);
+    if (cycleWarning) {
+      showToast(cycleWarning, 'warning', 'Circular Relationship Blocked');
+    }
+
+    if (pastedCount > 0) {
+      if (matrix.length === 1 && matrix[0].length === 1) {
+        if (selectedTaskIds.length > 1) {
+          showToast(`Pasted cell into ${pastedCount} tasks`, 'success', 'Paste');
+        } else {
+          showToast('Cell pasted successfully', 'success', 'Paste');
+        }
+      } else {
+        showToast(`Successfully pasted ${matrix.length} row(s)`, 'success', 'Paste');
+      }
+    }
+  }, [settings.calendar, showToast, updateRawTasks, visibleTasks, tasks, selectedTaskIds]);
 
   const handleClearDependencies = useCallback((taskId: string) => {
     updateRawTasks(prev => prev.map(t => {
