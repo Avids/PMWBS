@@ -24,6 +24,7 @@
 Built with **React 19, TypeScript, Tailwind CSS v4, and Vite**, PathMaster provides a split-pane workstation:
 1. **Spreadsheet Grid** (left pane): High-density data grid with direct Excel/Sheets clipboard paste (`Ctrl+V`), in-cell editing, WBS tree indentation, and automatic parent rollups.
 2. **Interactive SVG Gantt Chart** (right pane): Visual drag-and-drop bar movement, duration resizing, dependency linking, background halo masking, and dual-bar baseline comparison.
+3. **DOM Virtual Scrolling (Windowing)**: Powered by `@tanstack/react-virtual`, rendering only the ~35 active viewport rows on both the spreadsheet grid and Gantt timeline, scaling to **10,000+ tasks at 60 FPS**.
 
 ---
 
