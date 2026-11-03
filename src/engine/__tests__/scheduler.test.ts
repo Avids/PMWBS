@@ -515,3 +515,105 @@ describe('6. WBS Hierarchy Indent & Outdent Calculations', () => {
     expect(scheduled.find(t => t.id === 't-4')!.parentId).toBe('t-1');
   });
 });
+
+describe('7. Milestone Zero-Duration Predecessor Scheduling', () => {
+  it('schedules an FS successor on the exact same date as a milestone predecessor when lag is 0', () => {
+    const tasks: Task[] = [
+      {
+        id: 'm-1',
+        name: 'Project Start Milestone',
+        wbsCode: '1.1',
+        parentId: null,
+        isSummary: false,
+        isMilestone: true,
+        startDate: '2026-11-02',
+        endDate: '2026-11-02',
+        duration: 0,
+        progress: 100,
+        predecessors: []
+      } as any,
+      {
+        id: 'm-2',
+        name: 'IFC Drawings Milestone',
+        wbsCode: '1.2',
+        parentId: null,
+        isSummary: false,
+        isMilestone: true,
+        startDate: '2026-11-05', // Initially different date
+        endDate: '2026-11-05',
+        duration: 0,
+        progress: 0,
+        predecessors: [{ taskId: 'm-1', type: 'FS', lag: 0 }]
+      } as any,
+      {
+        id: 't-1',
+        name: 'Design Work Activity',
+        wbsCode: '1.3',
+        parentId: null,
+        isSummary: false,
+        isMilestone: false,
+        startDate: '2026-11-05',
+        endDate: '2026-11-12',
+        duration: 5,
+        progress: 0,
+        predecessors: [{ taskId: 'm-1', type: 'FS', lag: 0 }]
+      } as any
+    ];
+
+    const scheduled = recalculateSchedule(tasks, standardCalendar);
+
+    const m1 = scheduled.find(t => t.id === 'm-1')!;
+    const m2 = scheduled.find(t => t.id === 'm-2')!;
+    const t1 = scheduled.find(t => t.id === 't-1')!;
+
+    // Milestone 1 is on 2026-11-02
+    expect(m1.startDate).toBe('2026-11-02');
+    expect(m1.endDate).toBe('2026-11-02');
+
+    // Milestone 2 linked via FS (0 lag) starts on the exact SAME date 2026-11-02
+    expect(m2.startDate).toBe('2026-11-02');
+    expect(m2.endDate).toBe('2026-11-02');
+
+    // 5-day Activity linked via FS (0 lag) also starts on 2026-11-02 and finishes 5 working days later (2026-11-06)
+    expect(t1.startDate).toBe('2026-11-02');
+    expect(t1.endDate).toBe('2026-11-06');
+  });
+
+  it('respects lag when successor is linked to a milestone via FS with positive lag', () => {
+    const tasks: Task[] = [
+      {
+        id: 'm-1',
+        name: 'Notice to Proceed',
+        wbsCode: '1.1',
+        parentId: null,
+        isSummary: false,
+        isMilestone: true,
+        startDate: '2026-11-02',
+        endDate: '2026-11-02',
+        duration: 0,
+        progress: 100,
+        predecessors: []
+      } as any,
+      {
+        id: 't-1',
+        name: 'Mobilization (+2d Lag)',
+        wbsCode: '1.2',
+        parentId: null,
+        isSummary: false,
+        isMilestone: false,
+        startDate: '2026-11-02',
+        endDate: '2026-11-06',
+        duration: 3,
+        progress: 0,
+        predecessors: [{ taskId: 'm-1', type: 'FS', lag: 2 }]
+      } as any
+    ];
+
+    const scheduled = recalculateSchedule(tasks, standardCalendar);
+    const t1 = scheduled.find(t => t.id === 't-1')!;
+
+    // 2 working days after 2026-11-02 (Mon) is 2026-11-04 (Wed)
+    expect(t1.startDate).toBe('2026-11-04');
+    expect(t1.endDate).toBe('2026-11-06');
+  });
+});

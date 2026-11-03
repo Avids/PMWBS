@@ -497,7 +497,7 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
       // Summary tasks dates are computed from their children in the bottom-up step
       if (task.isSummary) return;
 
-      let minStart = task.startDate;
+      let minStart = '';
 
       if (task.predecessors && task.predecessors.length > 0) {
         task.predecessors.forEach(dep => {
@@ -507,10 +507,13 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
           let targetStart = '';
 
           if (dep.type === 'FS') {
-            // Finish-to-Start: Base start is the next working day after predecessor ends
-            const nextWorkingDay = getNextWorkingDay(pred.endDate, calendar);
-            // Apply lag: dep.lag is gap in days (e.g. +5d gap)
-            targetStart = addWorkingDaysOffset(nextWorkingDay, dep.lag, calendar);
+            // Finish-to-Start:
+            // For milestones (duration === 0 or isMilestone), they occupy 0 working days (a point in time).
+            // Therefore, any linked task starts on the SAME date as the milestone unless there is a defined lag.
+            // For tasks with duration > 0, base start is the next working day after the predecessor ends.
+            const isPredMilestone = pred.isMilestone || pred.duration === 0;
+            const baseDate = isPredMilestone ? pred.endDate : getNextWorkingDay(pred.endDate, calendar);
+            targetStart = addWorkingDaysOffset(baseDate, dep.lag, calendar);
           } else if (dep.type === 'SS') {
             // Start-to-Start: Base start is the predecessor start date + lag
             targetStart = addWorkingDaysOffset(pred.startDate, dep.lag, calendar);
@@ -518,19 +521,24 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
             // Finish-to-Finish: Task finishes when predecessor finishes + lag
             const targetFinish = addWorkingDaysOffset(pred.endDate, dep.lag, calendar);
             // Deduct duration to find required start date
-            targetStart = addWorkingDaysOffset(targetFinish, -Math.max(0, task.duration - 1), calendar);
+            targetStart = (task.isMilestone || task.duration === 0)
+              ? targetFinish
+              : addWorkingDaysOffset(targetFinish, -Math.max(0, task.duration - 1), calendar);
           } else if (dep.type === 'SF') {
             // Start-to-Finish: Task finishes when predecessor starts + lag
             const targetFinish = addWorkingDaysOffset(pred.startDate, dep.lag, calendar);
-            targetStart = addWorkingDaysOffset(targetFinish, -Math.max(0, task.duration - 1), calendar);
+            targetStart = (task.isMilestone || task.duration === 0)
+              ? targetFinish
+              : addWorkingDaysOffset(targetFinish, -Math.max(0, task.duration - 1), calendar);
           }
 
-          if (targetStart && targetStart > minStart) {
+          if (targetStart && (!minStart || targetStart > minStart)) {
             minStart = targetStart;
           }
         });
       }
 
+      if (!minStart) minStart = task.startDate;
       if (minStart !== task.startDate) {
         task.startDate = minStart;
         if (task.isMilestone || task.duration === 0) {
@@ -685,7 +693,8 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
         if (rel.type === 'FS') {
           // succ.lateStart is when successor must start
           const requiredFinish = addWorkingDaysOffset(succ.lateStart, -rel.lag, calendar);
-          constraintLF = getPrevWorkingDay(requiredFinish, calendar);
+          const isTaskMilestone = task.isMilestone || task.duration === 0;
+          constraintLF = isTaskMilestone ? requiredFinish : getPrevWorkingDay(requiredFinish, calendar);
         } else if (rel.type === 'SS') {
           // succ.lateStart >= pred.lateStart + lag => pred.lateStart <= succ.lateStart - lag
           const requiredLS = addWorkingDaysOffset(succ.lateStart, -rel.lag, calendar);
