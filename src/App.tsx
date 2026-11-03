@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Task, ProjectSettings, ProjectFile, BaselineData, TaskDependency, ZoomTier, ProjectCalendar } from './types/project';
 import { getTheme, getFontFamilyCss } from './theme/themeConfig';
-import { recalculateSchedule, formatDate, addWorkingDays, sanitizeCalendar, detectDependencyCycle } from './engine/scheduler';
+import { recalculateSchedule, formatDate, addWorkingDays, sanitizeCalendar, detectDependencyCycle, computeIndentParentId, computeOutdentParentId } from './engine/scheduler';
 import { loadNativeWBSFile, exportToExcel, parseMicrosoftProjectXML, parseExcelProject } from './engine/importers';
 import { saveProjectWithDialog } from './services/platform';
 import { CheckCircle2, AlertTriangle, CircleAlert, Info, X, Flag, FileText } from 'lucide-react';
@@ -888,33 +888,19 @@ export function App() {
 
   const handleIndentTask = useCallback((taskId: string) => {
     updateRawTasks(prev => {
-      const idx = prev.findIndex(t => t.id === taskId);
-      if (idx <= 0) return prev;
+      const newParentId = computeIndentParentId(prev, taskId);
+      if (newParentId === undefined) return prev;
 
-      const prevTask = prev[idx - 1];
-      return prev.map((t, i) => {
-        if (i === idx) {
-          return { ...t, parentId: prevTask.id };
-        }
-        return t;
-      });
+      return prev.map(t => (t.id === taskId ? { ...t, parentId: newParentId } : t));
     });
   }, [updateRawTasks]);
 
   const handleOutdentTask = useCallback((taskId: string) => {
     updateRawTasks(prev => {
-      const current = prev.find(t => t.id === taskId);
-      if (!current || !current.parentId) return prev;
+      const newParentId = computeOutdentParentId(prev, taskId);
+      if (newParentId === undefined) return prev;
 
-      const parentTask = prev.find(t => t.id === current.parentId);
-      const grandParentId = parentTask ? parentTask.parentId : null;
-
-      return prev.map(t => {
-        if (t.id === taskId) {
-          return { ...t, parentId: grandParentId };
-        }
-        return t;
-      });
+      return prev.map(t => (t.id === taskId ? { ...t, parentId: newParentId } : t));
     });
   }, [updateRawTasks]);
 

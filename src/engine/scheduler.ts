@@ -773,3 +773,85 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
 
   return cloned;
 }
+
+/**
+ * Calculates the depth of a task within the WBS parent-child tree.
+ * Root tasks (parentId = null) have depth 0.
+ */
+export function getTaskDepth(task: Task, taskMap: Map<string, Task>): number {
+  let depth = 0;
+  let curr = task;
+  const visited = new Set<string>([task.id]);
+  while (curr.parentId && taskMap.has(curr.parentId)) {
+    const parent = taskMap.get(curr.parentId)!;
+    if (visited.has(parent.id)) break;
+    visited.add(parent.id);
+    depth++;
+    curr = parent;
+  }
+  return depth;
+}
+
+/**
+ * Computes the new parentId when a task is indented.
+ * Standard Gantt/WBS rules (MSP / Primavera P6):
+ * - A task moves 1 level deeper (+1 depth).
+ * - Cannot indent if task is at index 0 or already the first child of the preceding task.
+ * - If preceding task has the same depth, new parent is preceding task.
+ * - If preceding task is in a deeper sub-tree, find preceding task's ancestor at current task's depth.
+ *   The current task becomes a child of that ancestor (incrementing depth by exactly 1 without skipping levels).
+ * Returns undefined if indentation cannot be performed.
+ */
+export function computeIndentParentId(tasks: Task[], taskId: string): string | null | undefined {
+  const idx = tasks.findIndex(t => t.id === taskId);
+  if (idx <= 0) return undefined;
+
+  const taskMap = new Map<string, Task>();
+  tasks.forEach(t => taskMap.set(t.id, t));
+
+  const current = tasks[idx];
+  const prevTask = tasks[idx - 1];
+
+  // If prevTask is already the parent of current, current is the first child and cannot be indented further
+  if (current.parentId === prevTask.id) {
+    return undefined;
+  }
+
+  const currentDepth = getTaskDepth(current, taskMap);
+  const prevDepth = getTaskDepth(prevTask, taskMap);
+
+  if (prevDepth === currentDepth) {
+    // Sibling: indent directly under the preceding task
+    return prevTask.id;
+  } else if (prevDepth > currentDepth) {
+    // Preceding task is deeper in a sub-tree:
+    // Move up the parent chain to find the ancestor at currentDepth
+    let ancestor: Task | undefined = prevTask;
+    while (ancestor && getTaskDepth(ancestor, taskMap) > currentDepth) {
+      ancestor = ancestor.parentId ? taskMap.get(ancestor.parentId) : undefined;
+    }
+    if (ancestor) {
+      return ancestor.id;
+    }
+    return prevTask.id;
+  }
+
+  return undefined;
+}
+
+/**
+ * Computes the new parentId when a task is outdented.
+ * Outdents a task to its grandparent (1 level shallower).
+ * If parent is root, the task becomes a root task (parentId = null).
+ * Returns undefined if task cannot be outdented (already at root level).
+ */
+export function computeOutdentParentId(tasks: Task[], taskId: string): string | null | undefined {
+  const taskMap = new Map<string, Task>();
+  tasks.forEach(t => taskMap.set(t.id, t));
+
+  const current = taskMap.get(taskId);
+  if (!current || !current.parentId) return undefined;
+
+  const parent = taskMap.get(current.parentId);
+  return parent ? (parent.parentId || null) : null;
+}

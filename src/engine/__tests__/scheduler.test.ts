@@ -9,7 +9,10 @@ import {
   parsePredecessors,
   formatPredecessors,
   detectDependencyCycle,
-  recalculateSchedule
+  recalculateSchedule,
+  computeIndentParentId,
+  computeOutdentParentId,
+  getTaskDepth
 } from '../scheduler';
 import type { Task, ProjectCalendar } from '../../types/project';
 
@@ -409,5 +412,78 @@ describe('5. Predecessor Text Parsing & Serialization', () => {
     ], taskList);
 
     expect(formatted).toBe('1FS+3d');
+  });
+});
+
+describe('6. WBS Hierarchy Indent & Outdent Calculations', () => {
+  const sampleHierarchy: Task[] = [
+    { id: 't-1', name: 'Root CSI', parentId: null, wbsCode: '1', startDate: '2026-11-02', duration: 5 } as any,
+    { id: 't-2', name: 'Distribution', parentId: 't-1', wbsCode: '1.1', startDate: '2026-11-02', duration: 5 } as any,
+    { id: 't-3', name: 'Switchgear & Panels', parentId: 't-2', wbsCode: '1.1.1', startDate: '2026-11-02', duration: 5 } as any,
+    { id: 't-4', name: 'Feeders', parentId: 't-2', wbsCode: '1.1.2', startDate: '2026-11-02', duration: 5 } as any,
+    { id: 't-5', name: 'Electrical Grounding', parentId: 't-1', wbsCode: '1.2', startDate: '2026-11-02', duration: 5 } as any,
+    { id: 't-6', name: 'Generator System', parentId: 't-1', wbsCode: '1.3', startDate: '2026-11-02', duration: 5 } as any
+  ];
+
+  it('correctly calculates task depth in the hierarchy tree', () => {
+    const taskMap = new Map<string, Task>();
+    sampleHierarchy.forEach(t => taskMap.set(t.id, t));
+
+    expect(getTaskDepth(sampleHierarchy[0], taskMap)).toBe(0); // Root (1)
+    expect(getTaskDepth(sampleHierarchy[1], taskMap)).toBe(1); // 1.1
+    expect(getTaskDepth(sampleHierarchy[2], taskMap)).toBe(2); // 1.1.1
+    expect(getTaskDepth(sampleHierarchy[3], taskMap)).toBe(2); // 1.1.2
+    expect(getTaskDepth(sampleHierarchy[4], taskMap)).toBe(1); // 1.2
+  });
+
+  it('indents task #5 into summary task #2 without turning task #4 into a summary', () => {
+    // When indenting t-5 (currently under t-1 at depth 1, preceded by t-4 at depth 2):
+    // It should join t-2 as 1.1.3, NOT become a subtask of t-4
+    const newParentId = computeIndentParentId(sampleHierarchy, 't-5');
+    expect(newParentId).toBe('t-2');
+
+    // Simulate update in schedule
+    const updated = sampleHierarchy.map(t => t.id === 't-5' ? { ...t, parentId: newParentId ?? null } : t);
+    const scheduled = recalculateSchedule(updated, standardCalendar);
+
+    const task2 = scheduled.find(t => t.id === 't-2')!;
+    const task4 = scheduled.find(t => t.id === 't-4')!;
+    const task5 = scheduled.find(t => t.id === 't-5')!;
+    const task6 = scheduled.find(t => t.id === 't-6')!;
+
+    expect(task2.wbsCode).toBe('1.1');
+    expect(task2.isSummary).toBe(true);
+
+    expect(task4.wbsCode).toBe('1.1.2');
+    expect(task4.isSummary).toBe(false); // Task 4 must NOT become a summary!
+
+    expect(task5.wbsCode).toBe('1.1.3'); // Task 5 becomes subtask 1.1.3 under Task 2!
+    expect(task5.isSummary).toBe(false);
+
+    expect(task6.wbsCode).toBe('1.2'); // Following sibling adjusts to 1.2
+  });
+
+  it('indents peer siblings directly under the preceding task when depths are equal', () => {
+    // Both t-3 and t-4 are at depth 2 (parent: t-2). Indenting t-4 puts it under t-3
+    const newParentId = computeIndentParentId(sampleHierarchy, 't-4');
+    expect(newParentId).toBe('t-3');
+  });
+
+  it('prevents indenting the first child of a summary task', () => {
+    // t-2 is the first child of t-1. Preceding task is t-1 (its current parent)
+    const newParentId = computeIndentParentId(sampleHierarchy, 't-2');
+    expect(newParentId).toBeUndefined();
+  });
+
+  it('outdents a task to its grandparent', () => {
+    // Outdenting t-3 (parent: t-2, grandparent: t-1) should set parentId to t-1
+    const newParentId = computeOutdentParentId(sampleHierarchy, 't-3');
+    expect(newParentId).toBe('t-1');
+  });
+
+  it('outdents a task under root to null (root level)', () => {
+    // Outdenting t-2 (parent: t-1, grandparent: null) should set parentId to null
+    const newParentId = computeOutdentParentId(sampleHierarchy, 't-2');
+    expect(newParentId).toBeNull();
   });
 });

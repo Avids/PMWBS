@@ -78,6 +78,18 @@ export const TaskInformationModal: React.FC<TaskInformationModalProps> = ({
     return detectDependencyCycle(allTasks, { taskId: task.id, newPredecessors: dependencies });
   }, [allTasks, task, dependencies]);
 
+  // Close on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !task) return null;
 
   // Find task index (1-based row ID)
