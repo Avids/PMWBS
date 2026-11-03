@@ -371,6 +371,8 @@ export function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isTaskInfoModalOpen, setIsTaskInfoModalOpen] = useState(false);
   const [taskInfoModalTask, setTaskInfoModalTask] = useState<Task | null>(null);
+  const [taskInfoInitialTab, setTaskInfoInitialTab] = useState<'general' | 'dependency' | 'resources' | 'notes'>('general');
+  const [copiedTasks, setCopiedTasks] = useState<Task[]>([]);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
   // Task Selection Handler with Shift (Range) & Ctrl/Cmd (Toggle) Multi-Select
@@ -399,8 +401,9 @@ export function App() {
     }
   }, [rawTasks]);
 
-  const handleOpenTaskInfo = useCallback((task: Task) => {
+  const handleOpenTaskInfo = useCallback((task: Task, initialTab: 'general' | 'dependency' | 'resources' | 'notes' = 'general') => {
     setTaskInfoModalTask(task);
+    setTaskInfoInitialTab(initialTab);
     setIsTaskInfoModalOpen(true);
   }, []);
 
@@ -628,6 +631,94 @@ export function App() {
 
     updateRawTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t), recordHistory);
   }, [rawTasks, updateRawTasks, showToast]);
+
+  const handleCopyTasks = useCallback((targetTask?: Task) => {
+    const targetIds = targetTask ? [targetTask.id] : (selectedTaskIds.length > 0 ? selectedTaskIds : (selectedTaskId ? [selectedTaskId] : []));
+    if (targetIds.length === 0) return;
+    const targetTasks = rawTasks.filter(t => targetIds.includes(t.id));
+    if (targetTasks.length === 0) return;
+
+    setCopiedTasks(targetTasks);
+
+    try {
+      const tsvRows = targetTasks.map(t => [
+        t.wbsCode,
+        t.name,
+        `${t.duration}d`,
+        t.startDate,
+        t.endDate,
+        `${t.progress || 0}%`,
+        (t.predecessors || []).map(p => `${p.taskId}${p.type !== 'FS' ? p.type : ''}${p.lag ? (p.lag > 0 ? `+${p.lag}d` : `${p.lag}d`) : ''}`).join(', '),
+        t.assignedTo || '',
+        (t.notes || '').replace(/\r?\n/g, ' ')
+      ].join('\t')).join('\n');
+      navigator.clipboard?.writeText(tsvRows).catch(() => {});
+    } catch {
+      // ignore
+    }
+
+    showToast(`Copied ${targetTasks.length} activity${targetTasks.length > 1 ? 'ies' : ''} to clipboard`, 'info', 'Clipboard');
+  }, [selectedTaskIds, selectedTaskId, rawTasks, showToast]);
+
+  const handlePasteTasks = useCallback(() => {
+    if (copiedTasks.length === 0) {
+      showToast('Clipboard is empty. Copy activities first (Ctrl+C).', 'warning', 'Paste');
+      return;
+    }
+
+    const insertAfterId = selectedTaskId || (rawTasks.length > 0 ? rawTasks[rawTasks.length - 1].id : undefined);
+    const targetIdx = insertAfterId ? rawTasks.findIndex(t => t.id === insertAfterId) : rawTasks.length - 1;
+    const currentTask = insertAfterId ? rawTasks.find(t => t.id === insertAfterId) : null;
+    const parentId = currentTask ? currentTask.parentId : null;
+
+    const newTasksToInsert: Task[] = copiedTasks.map((t, idx) => ({
+      ...t,
+      id: `t-${Date.now().toString(36)}-${idx}-${Math.random().toString(36).slice(2, 5)}`,
+      name: copiedTasks.length === 1 && !t.name.includes('(Copy)') ? `${t.name} (Copy)` : t.name,
+      parentId,
+      predecessors: []
+    }));
+
+    updateRawTasks(prev => {
+      const next = [...prev];
+      const actualIdx = targetIdx >= 0 ? targetIdx + 1 : next.length;
+      next.splice(actualIdx, 0, ...newTasksToInsert);
+      return next;
+    }, true);
+
+    setSelectedTaskIds(newTasksToInsert.map(t => t.id));
+    showToast(`Pasted ${newTasksToInsert.length} activity${newTasksToInsert.length > 1 ? 'ies' : ''}`, 'success', 'Pasted');
+  }, [copiedTasks, selectedTaskId, rawTasks, updateRawTasks, showToast]);
+
+  const handleBatchUpdateProgress = useCallback((newProgress: number) => {
+    const targetIds = new Set(selectedTaskIds);
+    if (targetIds.size === 0 && selectedTaskId) {
+      targetIds.add(selectedTaskId);
+    }
+    if (targetIds.size === 0) return;
+
+    let updatedCount = 0;
+    updateRawTasks(prev => {
+      return prev.map(t => {
+        if (targetIds.has(t.id) && !t.isSummary) {
+          updatedCount++;
+          return {
+            ...t,
+            progress: newProgress,
+            earnedManHours: Math.round(((t.plannedManHours || 0) * newProgress) / 100)
+          };
+        }
+        return t;
+      });
+    }, true);
+
+    if (updatedCount > 0) {
+      showToast(`Updated progress to ${newProgress}% for ${updatedCount} activity${updatedCount > 1 ? 'ies' : ''}`, 'success', 'Progress Updated');
+    } else {
+      showToast('Summary activities calculate progress automatically from subtasks', 'info', 'Summary Task');
+    }
+  }, [selectedTaskIds, selectedTaskId, updateRawTasks, showToast]);
+
 
   const handleAddTask = useCallback((afterTaskId?: string, asChild?: boolean) => {
     const newId = `t-${Date.now().toString(36)}`;
@@ -1104,12 +1195,18 @@ export function App() {
           e.preventDefault();
           handleOutdentTasks(selectedTaskIds);
         }
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        handleCopyTasks();
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'v' || e.key === 'V')) {
+        e.preventDefault();
+        handlePasteTasks();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, selectedTaskId, handleIndentTasks, handleOutdentTasks, selectedTaskIds]);
+  }, [handleUndo, handleRedo, selectedTaskId, handleIndentTasks, handleOutdentTasks, selectedTaskIds, handleCopyTasks, handlePasteTasks]);
 
   const handleAddDependency = useCallback((fromTaskId: string, toTaskId: string, type: TaskDependency['type'] = 'FS') => {
     if (fromTaskId === toTaskId) {
@@ -1543,12 +1640,25 @@ export function App() {
           }}
           onOpenTaskInfo={() => {
             const t = tasks.find(x => x.id === selectedTaskId);
-            if (t) handleOpenTaskInfo(t);
+            if (t) handleOpenTaskInfo(t, 'general');
           }}
+          onOpenNotes={() => {
+            const t = tasks.find(x => x.id === selectedTaskId);
+            if (t) handleOpenTaskInfo(t, 'notes');
+          }}
+          onOpenResources={() => {
+            const t = tasks.find(x => x.id === selectedTaskId);
+            if (t) handleOpenTaskInfo(t, 'resources');
+          }}
+          onCopy={() => handleCopyTasks()}
+          onPaste={handlePasteTasks}
+          canPaste={copiedTasks.length > 0}
           onDeleteTask={() => selectedTaskIds.length > 0 && handleDeleteTasks(selectedTaskIds)}
           selectedTaskId={selectedTaskId}
           selectedCount={selectedTaskIds.length}
           isSummarySelected={!!tasks.find(x => x.id === selectedTaskId)?.isSummary}
+          selectedTaskProgress={tasks.find(x => x.id === selectedTaskId)?.progress}
+          onUpdateProgress={handleBatchUpdateProgress}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={handleUndo}
@@ -1773,6 +1883,7 @@ export function App() {
           allTasks={tasks}
           calendar={settings.calendar}
           onSaveTask={handleUpdateTask}
+          initialTab={taskInfoInitialTab}
         />
       )}
 
@@ -1794,14 +1905,15 @@ export function App() {
         y={contextMenu.y}
         task={contextMenu.task}
         onClose={handleCloseContextMenu}
-        onOpenTaskInfo={(task) => {
-          setTaskInfoModalTask(task);
-          setIsTaskInfoModalOpen(true);
-        }}
+        onOpenTaskInfo={handleOpenTaskInfo}
         onDeleteTask={handleDeleteTask}
         onAddTaskBelow={(afterId) => handleAddTask(afterId, false)}
         onAddSubtask={handleAddSubtask}
         onDuplicateTask={handleDuplicateTask}
+        onCopyTask={(task) => handleCopyTasks(task)}
+        onPasteTask={handlePasteTasks}
+        canPaste={copiedTasks.length > 0}
+        onUpdateProgress={handleBatchUpdateProgress}
         onClearDependencies={handleClearDependencies}
         onOpenPredecessors={(task) => {
           setPredecessorModalTask(task);

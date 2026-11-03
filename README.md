@@ -94,14 +94,27 @@ Choose how individual activities contribute to summary and project progress:
 * **Dual-Bar Gantt Rendering**: Compare active schedule bars against underlying baseline bars.
 * **Schedule Slippage Tracking**: Automatic variance calculation ($EndDate - BaselineEndDate$), color-coded red for delays and green for early completion.
 
-### 10. Right-Click Context Menu & Multi-Tab Task Information Dialog
-* **Right-Click Context Menu**: Right-click any task in the spreadsheet grid or Gantt timeline to access:
-  * ✏️ **Task Information**
-  * 🗑️ **Delete Task**
-  * ➕ **Add Task** (Add Task Below / Add Subtask Child)
+### 10. MSP Quick Progress Update & Two-Tier Ribbon Toolbar
+* **Microsoft Project (MSP) Quick Progress Controls**: Instantly set activity progress to `0%`, `25%`, `50%`, `75%`, or `100%` directly from the top ribbon or right-click context menu.
+  * Features authentic MSP-style horizontal mini-taskbar graphics with progressive black fill lines and percentage labels.
+  * Fully supports single or multi-selected activities in a single click with automated earned man-hour recalculations and parent summary progress rollups.
+  * Active progress percentage is highlighted with an illuminated badge.
+* **Two-Tier Ribbon Toolbar**:
+  * **Tier 1 (Task Operations & Shortcuts)**: Add Activity, Copy (`Ctrl+C`), Paste (`Ctrl+V`), Undo (`Ctrl+Z`), Redo (`Ctrl+Y`), Indent (`Alt+Right`), Outdent (`Alt+Left`), Expand All, Collapse All, Task Info dialog, direct **Notes** shortcut, direct **Resources** shortcut, Predecessors / Relationships dialog, and Delete.
+  * **Tier 2 (Progress, Formatting & Timeline)**: MSP Quick Progress buttons (`0%`, `25%`, `50%`, `75%`, `100%`), Font Family selector, Font Size pills (`8pt`, `10pt`, `12pt`), Task Labels toggle (`ON`/`OFF`), Auto-Fit Columns, and Timeline Zoom (`In`, `Out`, `Fit`, `Days`, `Weeks`, `Months`).
+
+### 11. Right-Click Context Menu & Multi-Tab Task Information Dialog
+* **Right-Click Context Menu**: Right-click any activity in the spreadsheet grid or Gantt timeline to access:
+  * 📊 **Quick Progress Buttons**: One-click pills for `0%`, `25%`, `50%`, `75%`, and `100%`.
+  * ✏️ **Task Information** (Opens General tab)
+  * 📝 **Task Notes...** (Directly opens Notes documentation tab)
+  * 👥 **Resources & Man-Hours...** (Directly opens Resources tab)
+  * 📋 **Copy Task** (`Ctrl+C`) & **Paste Task Below** (`Ctrl+V`)
   * 📋 **Duplicate Task** (duplicates task with `(Copy)` suffix, planned MH, and dependencies)
-  * 🔗 **Delete Dependency** (Clears predecessor relationships)
+  * ➕ **Add Activity** (Below / Subtask Child)
+  * 🔗 **Dependencies** (Edit Relationships / Remove All Links)
   * 🔄 **Convert** (Toggle between 0d Milestone and Normal Task)
+  * 🗑️ **Delete Activity**
 * **Task Information Modal**: Double-click on WBS / row # / Gantt bars to open a 4-tab dialog:
   * **General**: Name, ID, Start, End, Duration, Progress %, Color Picker.
   * **Dependency**: Predecessors, Types (FS, SS, FF, SF), and Lag.

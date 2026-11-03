@@ -5,12 +5,16 @@ import {
   Trash2,
   Plus,
   Copy,
+  ClipboardPaste,
   ChevronRight,
   Flag,
   FileSpreadsheet,
   Unlink,
-  GitCommit
+  GitCommit,
+  FileText,
+  Users
 } from 'lucide-react';
+import { MSPProgressIcon } from './ActionBar';
 
 interface TaskContextMenuProps {
   isOpen: boolean;
@@ -18,15 +22,21 @@ interface TaskContextMenuProps {
   y: number;
   task: Task | null;
   onClose: () => void;
-  onOpenTaskInfo: (task: Task) => void;
+  onOpenTaskInfo: (task: Task, initialTab?: 'general' | 'dependency' | 'resources' | 'notes') => void;
   onDeleteTask: (taskId: string) => void;
   onAddTaskBelow: (afterTaskId: string) => void;
   onAddSubtask: (parentTaskId: string) => void;
   onDuplicateTask: (taskId: string) => void;
+  onCopyTask?: (task: Task) => void;
+  onPasteTask?: () => void;
+  canPaste?: boolean;
+  onUpdateProgress?: (progress: number) => void;
   onClearDependencies?: (taskId: string) => void;
   onOpenPredecessors?: (task: Task) => void;
   onToggleMilestone?: (taskId: string) => void;
 }
+
+const PROGRESS_STEPS: Array<0 | 25 | 50 | 75 | 100> = [0, 25, 50, 75, 100];
 
 export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
   isOpen,
@@ -39,6 +49,10 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
   onAddTaskBelow,
   onAddSubtask,
   onDuplicateTask,
+  onCopyTask,
+  onPasteTask,
+  canPaste = true,
+  onUpdateProgress,
   onClearDependencies,
   onOpenPredecessors,
   onToggleMilestone
@@ -66,8 +80,8 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
   if (!isOpen || !task) return null;
 
   // Viewport boundary clamping
-  const menuWidth = 190;
-  const menuHeight = 240;
+  const menuWidth = 210;
+  const menuHeight = 360;
   const posX = Math.min(x, window.innerWidth - menuWidth - 10);
   const posY = Math.min(y, window.innerHeight - menuHeight - 10);
 
@@ -75,12 +89,54 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
     <div
       ref={menuRef}
       style={{ left: `${Math.max(10, posX)}px`, top: `${Math.max(10, posY)}px` }}
-      className="fixed z-50 bg-white rounded-lg shadow-2xl border border-slate-200 py-1.5 min-w-[190px] text-xs font-sans text-slate-800 select-none animate-in fade-in zoom-in-95 duration-100"
+      className="fixed z-50 bg-white rounded-lg shadow-2xl border border-slate-200 py-1.5 min-w-[210px] text-xs font-sans text-slate-800 select-none animate-in fade-in zoom-in-95 duration-100"
     >
-      {/* 1. Task Information */}
+      {/* 1. Quick Progress Row (MSP Style 0, 25, 50, 75, 100%) */}
+      <div className="px-3 py-1.5 border-b border-slate-100 bg-slate-50/70">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            Quick Progress
+          </span>
+          <span className="text-[10px] font-semibold text-blue-600">
+            {task.isSummary ? 'Auto (Rollup)' : `${task.progress || 0}%`}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-1">
+          {PROGRESS_STEPS.map((pct) => {
+            const isCurrent = !task.isSummary && task.progress === pct;
+            return (
+              <button
+                key={pct}
+                disabled={task.isSummary}
+                onClick={() => {
+                  onUpdateProgress?.(pct);
+                  onClose();
+                }}
+                title={
+                  task.isSummary
+                    ? 'Summary progress is calculated automatically'
+                    : `Set progress to ${pct}%`
+                }
+                className={`flex-1 flex flex-col items-center justify-center py-1 px-0.5 rounded border transition-all ${
+                  isCurrent
+                    ? 'border-blue-500 bg-blue-50 font-bold'
+                    : 'border-slate-200 bg-white hover:bg-slate-100'
+                } disabled:opacity-30 disabled:pointer-events-none`}
+              >
+                <MSPProgressIcon progress={pct} barColor="#3B82F6" fillLineColor="#0F172A" width={18} height={7} />
+                <span className="text-[9px] font-medium text-slate-700 mt-0.5 leading-none">
+                  {pct}%
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 2. Task Information Modal Shortcuts */}
       <button
         onClick={() => {
-          onOpenTaskInfo(task);
+          onOpenTaskInfo(task, 'general');
           onClose();
         }}
         className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-100 transition-colors text-left font-medium"
@@ -89,21 +145,74 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
         <span>Task Information</span>
       </button>
 
-      {/* 2. Delete Task */}
       <button
         onClick={() => {
-          onDeleteTask(task.id);
+          onOpenTaskInfo(task, 'notes');
           onClose();
         }}
-        className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-red-50 text-red-600 hover:text-red-700 transition-colors text-left font-medium"
+        className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-100 transition-colors text-left font-medium"
       >
-        <Trash2 className="w-3.5 h-3.5 text-red-500" />
-        <span>Delete Task</span>
+        <FileText className="w-3.5 h-3.5 text-amber-600" />
+        <span>Task Notes...</span>
+      </button>
+
+      <button
+        onClick={() => {
+          onOpenTaskInfo(task, 'resources');
+          onClose();
+        }}
+        className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-100 transition-colors text-left font-medium"
+      >
+        <Users className="w-3.5 h-3.5 text-emerald-600" />
+        <span>Resources & Man-Hours...</span>
       </button>
 
       <div className="h-px bg-slate-200 my-1 mx-1.5"></div>
 
-      {/* 3. Add Task (with Submenu) */}
+      {/* 3. Clipboard Actions: Copy & Paste */}
+      <button
+        onClick={() => {
+          if (onCopyTask) onCopyTask(task);
+          onClose();
+        }}
+        className="w-full px-3 py-1.5 flex items-center justify-between hover:bg-slate-100 transition-colors text-left font-medium"
+      >
+        <div className="flex items-center space-x-2.5">
+          <Copy className="w-3.5 h-3.5 text-slate-700" />
+          <span>Copy Task</span>
+        </div>
+        <span className="text-[10px] text-slate-400">Ctrl+C</span>
+      </button>
+
+      <button
+        disabled={!canPaste}
+        onClick={() => {
+          if (onPasteTask) onPasteTask();
+          onClose();
+        }}
+        className="w-full px-3 py-1.5 flex items-center justify-between hover:bg-slate-100 transition-colors text-left font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <div className="flex items-center space-x-2.5">
+          <ClipboardPaste className="w-3.5 h-3.5 text-slate-700" />
+          <span>Paste Task Below</span>
+        </div>
+        <span className="text-[10px] text-slate-400">Ctrl+V</span>
+      </button>
+
+      <button
+        onClick={() => {
+          onDuplicateTask(task.id);
+          onClose();
+        }}
+        className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-100 transition-colors text-left font-medium"
+      >
+        <Copy className="w-3.5 h-3.5 text-slate-500" />
+        <span>Duplicate Task</span>
+      </button>
+
+      <div className="h-px bg-slate-200 my-1 mx-1.5"></div>
+
+      {/* 4. Add Task (with Submenu) */}
       <div
         className="relative"
         onMouseEnter={() => setActiveSubmenu('add')}
@@ -118,7 +227,7 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
         >
           <div className="flex items-center space-x-2.5">
             <Plus className="w-3.5 h-3.5 text-slate-700" />
-            <span>Add Task</span>
+            <span>Add Activity</span>
           </div>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
         </button>
@@ -132,7 +241,7 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
               }}
               className="w-full px-3 py-1.5 flex items-center space-x-2 hover:bg-slate-100 text-left font-medium"
             >
-              <span>Add Task Below</span>
+              <span>Add Activity Below</span>
             </button>
             <button
               onClick={() => {
@@ -147,21 +256,7 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
         )}
       </div>
 
-      {/* 4. Duplicate Task */}
-      <button
-        onClick={() => {
-          onDuplicateTask(task.id);
-          onClose();
-        }}
-        className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-100 transition-colors text-left font-medium"
-      >
-        <Copy className="w-3.5 h-3.5 text-slate-700" />
-        <span>Duplicate Task</span>
-      </button>
-
-      <div className="h-px bg-slate-200 my-1 mx-1.5"></div>
-
-      {/* 5. Delete Dependency (Predecessors) */}
+      {/* 5. Dependencies (Predecessors) */}
       <div
         className="relative"
         onMouseEnter={() => setActiveSubmenu('dependency')}
@@ -208,7 +303,7 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
         )}
       </div>
 
-      {/* 6. Convert (To Milestone / Task) */}
+      {/* 6. Convert (To Milestone / Normal Task) */}
       <div
         className="relative"
         onMouseEnter={() => setActiveSubmenu('convert')}
@@ -251,6 +346,20 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
           </div>
         )}
       </div>
+
+      <div className="h-px bg-slate-200 my-1 mx-1.5"></div>
+
+      {/* 7. Delete Task */}
+      <button
+        onClick={() => {
+          onDeleteTask(task.id);
+          onClose();
+        }}
+        className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-red-50 text-red-600 hover:text-red-700 transition-colors text-left font-medium"
+      >
+        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+        <span>Delete Activity</span>
+      </button>
     </div>
   );
 };

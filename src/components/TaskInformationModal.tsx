@@ -10,6 +10,7 @@ interface TaskInformationModalProps {
   allTasks: Task[];
   calendar: ProjectCalendar;
   onSaveTask: (taskId: string, updates: Partial<Task>) => void;
+  initialTab?: TabKey;
 }
 
 type TabKey = 'general' | 'dependency' | 'resources' | 'notes';
@@ -33,9 +34,10 @@ export const TaskInformationModal: React.FC<TaskInformationModalProps> = ({
   task,
   allTasks,
   calendar,
-  onSaveTask
+  onSaveTask,
+  initialTab = 'general'
 }) => {
-  const [activeTab, setActiveTab] = useState<TabKey>('general');
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
 
   // Form states
   const [name, setName] = useState('');
@@ -69,9 +71,9 @@ export const TaskInformationModal: React.FC<TaskInformationModalProps> = ({
       setCustomWeight(task.customWeight);
       setNotes(task.notes || '');
       setDependencies(task.predecessors ? [...task.predecessors] : []);
-      setActiveTab('general');
+      setActiveTab(initialTab);
     }
-  }, [task]);
+  }, [task, initialTab]);
 
   const cycleCheck = useMemo(() => {
     if (!task) return { hasCycle: false, cycleTaskIds: [], cyclePathFormatted: [], message: '' };
