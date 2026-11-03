@@ -14,6 +14,7 @@ import {
   Scan,
   Type,
   Tag,
+  Columns3,
   Info,
   Undo2,
   Redo2
@@ -47,6 +48,9 @@ interface ActionBarProps {
   showTaskLabels: boolean;
   onToggleTaskLabels: () => void;
 
+  // Auto-fit Columns
+  onAutoFitColumns?: () => void;
+
   // Zoom Controls
   zoom: ZoomTier;
   onChangeZoom: (z: ZoomTier) => void;
@@ -73,6 +77,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   fontFamilyChoice,
   onChangeFontFamily,
   showTaskLabels,
+  onAutoFitColumns,
   onToggleTaskLabels,
   zoom,
   onChangeZoom,
@@ -321,6 +326,23 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           <Tag className="w-3.5 h-3.5" />
           <span>Labels: <strong style={{ color: showTaskLabels ? (theme.isDark ? '#818CF8' : '#3730A3') : theme.textSecondary }}>{showTaskLabels ? 'ON' : 'OFF'}</strong></span>
         </button>
+
+        {/* Auto-Fit Grid Columns */}
+        {onAutoFitColumns && (
+          <button
+            onClick={onAutoFitColumns}
+            style={{
+              borderColor: theme.border,
+              backgroundColor: theme.isDark ? '#1E293B' : '#FFFFFF',
+              color: theme.textSecondary
+            }}
+            className={`h-7 px-2.5 text-[11px] font-semibold rounded flex items-center space-x-1.5 border transition-all ${hoverBtnClass}`}
+            title="Auto-Fit Grid Columns to Content Width"
+          >
+            <Columns3 className="w-3.5 h-3.5" style={{ color: theme.signal }} />
+            <span>Auto-Fit</span>
+          </button>
+        )}
 
         <div className="h-4 w-px" style={{ backgroundColor: theme.border }}></div>
 

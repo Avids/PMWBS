@@ -354,6 +354,7 @@ export function App() {
     }
   }, []);
   const [splitterWidth, setSplitterWidth] = useState<number>(640);
+  const [autoFitTrigger, setAutoFitTrigger] = useState<number>(0);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState<boolean>(false);
 
   // Zoom & DayWidth state
@@ -1549,6 +1550,10 @@ export function App() {
           onChangeFontFamily={(font) => setSettings(s => ({ ...s, fontFamilyChoice: font }))}
           showTaskLabels={settings.showTaskLabels ?? true}
           onToggleTaskLabels={() => setSettings(s => ({ ...s, showTaskLabels: !(s.showTaskLabels ?? true) }))}
+          onAutoFitColumns={() => {
+            setAutoFitTrigger(c => c + 1);
+            showToast('Columns auto-fitted to content width', 'info', 'Auto-Fit');
+          }}
           zoom={zoomTier}
           onChangeZoom={handleZoomChange}
           onZoomIn={handleZoomIn}
@@ -1585,6 +1590,7 @@ export function App() {
               colorTheme={settings.colorTheme}
               fontFamilyChoice={settings.fontFamilyChoice}
               onPasteRows={handlePasteRows}
+              autoFitTrigger={autoFitTrigger}
             />
           </div>
 

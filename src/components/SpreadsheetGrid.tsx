@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { Task, WeightMode, FontSizeOption, ColorTheme, FontFamilyChoice } from '../types/project';
 import { getTheme } from '../theme/themeConfig';
-import { Flag, GitCommit, GripVertical, FileText } from 'lucide-react';
+import { Flag, GitCommit, GripVertical, FileText, MoveHorizontal, Columns3, RotateCcw } from 'lucide-react';
 import { parsePredecessors, formatPredecessors } from '../engine/scheduler';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -27,6 +27,7 @@ interface SpreadsheetGridProps {
   colorTheme?: ColorTheme;
   fontFamilyChoice?: FontFamilyChoice;
   onPasteRows?: (startRowIdx: number, startColIdx: number, matrix: string[][]) => void;
+  autoFitTrigger?: number;
 }
 
 type ColumnField = 
@@ -48,24 +49,44 @@ type ColumnField =
   | 'variance'
   | 'notes';
 
-const COLUMNS: { field: ColumnField; label: string; width: number; readonly?: boolean }[] = [
-  { field: 'wbs', label: 'WBS', width: 65, readonly: true },
-  { field: 'name', label: 'Task Name', width: 250 },
-  { field: 'duration', label: 'Duration (d)', width: 95 },
-  { field: 'startDate', label: 'Start Date', width: 110 },
-  { field: 'endDate', label: 'End Date', width: 110 },
-  { field: 'progress', label: '% Complete', width: 95 },
-  { field: 'weight', label: 'Weight %', width: 85, readonly: true },
-  { field: 'predecessors', label: 'Predecessors', width: 140 },
-  { field: 'totalFloat', label: 'Total Float', width: 90, readonly: true },
-  { field: 'plannedManHours', label: 'Plan MH', width: 85 },
-  { field: 'actualManHours', label: 'Act MH', width: 85 },
-  { field: 'remainingManHours', label: 'Rem MH', width: 85, readonly: true },
-  { field: 'earnedManHours', label: 'Earn MH', width: 85, readonly: true },
-  { field: 'baselineStart', label: 'Base Start', width: 105, readonly: true },
-  { field: 'baselineEnd', label: 'Base End', width: 105, readonly: true },
-  { field: 'variance', label: 'Variance (d)', width: 95, readonly: true },
-  { field: 'notes', label: 'Notes', width: 160 }
+export const DEFAULT_COLUMN_WIDTHS: Record<ColumnField, number> = {
+  wbs: 70,
+  name: 260,
+  duration: 95,
+  startDate: 110,
+  endDate: 110,
+  progress: 115,
+  weight: 85,
+  predecessors: 140,
+  totalFloat: 90,
+  plannedManHours: 85,
+  actualManHours: 85,
+  remainingManHours: 85,
+  earnedManHours: 85,
+  baselineStart: 105,
+  baselineEnd: 105,
+  variance: 95,
+  notes: 160
+};
+
+export const COLUMNS: { field: ColumnField; label: string; readonly?: boolean }[] = [
+  { field: 'wbs', label: 'WBS', readonly: true },
+  { field: 'name', label: 'Task Name' },
+  { field: 'duration', label: 'Duration (d)' },
+  { field: 'startDate', label: 'Start Date' },
+  { field: 'endDate', label: 'End Date' },
+  { field: 'progress', label: '% Complete' },
+  { field: 'weight', label: 'Weight %', readonly: true },
+  { field: 'predecessors', label: 'Predecessors' },
+  { field: 'totalFloat', label: 'Total Float', readonly: true },
+  { field: 'plannedManHours', label: 'Plan MH' },
+  { field: 'actualManHours', label: 'Act MH' },
+  { field: 'remainingManHours', label: 'Rem MH', readonly: true },
+  { field: 'earnedManHours', label: 'Earn MH', readonly: true },
+  { field: 'baselineStart', label: 'Base Start', readonly: true },
+  { field: 'baselineEnd', label: 'Base End', readonly: true },
+  { field: 'variance', label: 'Variance (d)', readonly: true },
+  { field: 'notes', label: 'Notes' }
 ];
 
 export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
@@ -88,7 +109,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   onVerticalScroll,
   colorTheme = 'classic',
   fontFamilyChoice,
-  onPasteRows
+  onPasteRows,
+  autoFitTrigger
 }) => {
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
   const [editingCell, setEditingCell] = useState<{ rowIdx: number; colIdx: number } | null>(null);
@@ -98,6 +120,215 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = scrollContainerRef || internalScrollRef;
   const theme = getTheme(colorTheme, fontFamilyChoice);
+
+  // Column Widths with LocalStorage persistence
+  const [columnWidths, setColumnWidths] = useState<Record<ColumnField, number>>(() => {
+    try {
+      const saved = localStorage.getItem('pathmaster_grid_column_widths');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
+        }
+      }
+    } catch {}
+    return { ...DEFAULT_COLUMN_WIDTHS };
+  });
+
+  const [resizingField, setResizingField] = useState<ColumnField | null>(null);
+  const [headerContextMenu, setHeaderContextMenu] = useState<{ field: ColumnField; x: number; y: number } | null>(null);
+
+  // Close header context menu on outside click
+  useEffect(() => {
+    if (!headerContextMenu) return;
+    const handleClose = () => setHeaderContextMenu(null);
+    window.addEventListener('click', handleClose);
+    return () => window.removeEventListener('click', handleClose);
+  }, [headerContextMenu]);
+
+  // Total table width including the 42px row index column
+  const totalTableWidth = useMemo(() => {
+    const colsTotal = COLUMNS.reduce((sum, col) => sum + (columnWidths[col.field] || 80), 0);
+    return 42 + colsTotal;
+  }, [columnWidths]);
+
+  // Auto-fit measurement: accurately measures text width for headers and cell contents
+  const calculateAutoFitWidth = useCallback((field: ColumnField): number => {
+    const col = COLUMNS.find((c) => c.field === field);
+    if (!col) return DEFAULT_COLUMN_WIDTHS[field];
+
+    const fontPx = fontSize === 'small' ? 11 : fontSize === 'large' ? 15 : 13;
+    const headerFontPx = fontSize === 'small' ? 11 : fontSize === 'large' ? 14 : 12;
+    const fontFamilyStr = theme.fontFamily || 'Segoe UI, -apple-system, sans-serif';
+
+    let canvas: HTMLCanvasElement | null = null;
+    try {
+      canvas = document.createElement('canvas');
+    } catch {}
+    const ctx = canvas?.getContext('2d');
+
+    const measure = (text: string, font: string): number => {
+      if (ctx) {
+        ctx.font = font;
+        return ctx.measureText(text).width;
+      }
+      return text.length * (fontPx * 0.65);
+    };
+
+    // Header label width
+    let maxContentWidth = measure(col.label, `bold ${headerFontPx}px ${fontFamilyStr}`) + 36;
+
+    const taskFont = `normal ${fontPx}px ${fontFamilyStr}`;
+    const boldTaskFont = `bold ${fontPx}px ${fontFamilyStr}`;
+    const monoFont = `bold ${fontPx}px monospace`;
+
+    for (const t of tasks) {
+      let cellWidth = 0;
+      switch (field) {
+        case 'wbs':
+          cellWidth = measure(t.wbsCode || '', boldTaskFont) + 24;
+          break;
+        case 'name': {
+          const depth = (t.wbsCode.match(/\./g) || []).length;
+          const indent = depth * 18;
+          const iconSpace = t.isSummary ? 22 : t.isMilestone ? 20 : 0;
+          cellWidth = indent + iconSpace + measure(t.name || '', t.isSummary ? boldTaskFont : taskFont) + 28;
+          break;
+        }
+        case 'duration':
+          cellWidth = measure(`${t.duration} d`, boldTaskFont) + 24;
+          break;
+        case 'startDate':
+          cellWidth = measure(t.startDate || '', taskFont) + 24;
+          break;
+        case 'endDate':
+          cellWidth = measure(t.endDate || '', taskFont) + 24;
+          break;
+        case 'progress':
+          cellWidth = measure(`${t.progress}%`, monoFont) + 68 + 24;
+          break;
+        case 'weight':
+          cellWidth = measure(`${t.weight !== undefined ? t.weight : 0}%`, monoFont) + 24;
+          break;
+        case 'predecessors': {
+          const text = t.predecessorText || (allTasks ? formatPredecessors(t.predecessors, allTasks) : '');
+          cellWidth = measure(text || '-', monoFont) + 48;
+          break;
+        }
+        case 'totalFloat':
+          cellWidth = measure(t.totalFloat !== undefined ? `${t.totalFloat}d` : '-', monoFont) + 24;
+          break;
+        case 'plannedManHours':
+          cellWidth = measure(String(t.plannedManHours || 0), taskFont) + 24;
+          break;
+        case 'actualManHours':
+          cellWidth = measure(String(t.actualManHours || 0), taskFont) + 24;
+          break;
+        case 'remainingManHours':
+          cellWidth = measure(String(t.remainingManHours || 0), taskFont) + 24;
+          break;
+        case 'earnedManHours':
+          cellWidth = measure(String(t.earnedManHours || 0), taskFont) + 24;
+          break;
+        case 'baselineStart':
+          cellWidth = measure(t.baselineStartDate || '-', taskFont) + 24;
+          break;
+        case 'baselineEnd':
+          cellWidth = measure(t.baselineEndDate || '-', taskFont) + 24;
+          break;
+        case 'variance':
+          cellWidth = measure(t.baselineVarianceDays !== undefined ? `${t.baselineVarianceDays}d` : '-', monoFont) + 24;
+          break;
+        case 'notes':
+          cellWidth = t.notes ? measure(t.notes, taskFont) + 24 : 110;
+          break;
+      }
+      if (cellWidth > maxContentWidth) {
+        maxContentWidth = cellWidth;
+      }
+    }
+
+    const minAllowed = field === 'wbs' ? 65 : field === 'progress' ? 115 : 70;
+    const maxAllowed = field === 'notes' ? 450 : 650;
+    return Math.min(maxAllowed, Math.max(minAllowed, Math.ceil(maxContentWidth)));
+  }, [COLUMNS, fontSize, theme.fontFamily, tasks, allTasks]);
+
+  const handleAutoFit = useCallback((field: ColumnField) => {
+    const width = calculateAutoFitWidth(field);
+    setColumnWidths((prev) => {
+      const next = { ...prev, [field]: width };
+      try {
+        localStorage.setItem('pathmaster_grid_column_widths', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, [calculateAutoFitWidth]);
+
+  const handleAutoFitAll = useCallback(() => {
+    const next: Record<ColumnField, number> = { ...columnWidths };
+    COLUMNS.forEach((col) => {
+      next[col.field] = calculateAutoFitWidth(col.field);
+    });
+    setColumnWidths(next);
+    try {
+      localStorage.setItem('pathmaster_grid_column_widths', JSON.stringify(next));
+    } catch {}
+  }, [calculateAutoFitWidth, columnWidths]);
+
+  const handleResetColumnWidths = useCallback(() => {
+    setColumnWidths({ ...DEFAULT_COLUMN_WIDTHS });
+    try {
+      localStorage.removeItem('pathmaster_grid_column_widths');
+    } catch {}
+  }, []);
+
+  // React to autoFitTrigger from parent (ActionBar button)
+  useEffect(() => {
+    if (autoFitTrigger && autoFitTrigger > 0) {
+      handleAutoFitAll();
+    }
+  }, [autoFitTrigger, handleAutoFitAll]);
+
+  // Column drag resizing handler
+  const handleResizeStart = (field: ColumnField, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startWidth = columnWidths[field] || DEFAULT_COLUMN_WIDTHS[field];
+    setResizingField(field);
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      moveEvent.preventDefault();
+      const deltaX = moveEvent.clientX - startX;
+      const minW = field === 'wbs' ? 45 : field === 'progress' ? 80 : 50;
+      const newWidth = Math.max(minW, Math.min(1000, startWidth + deltaX));
+      setColumnWidths((prev) => ({
+        ...prev,
+        [field]: Math.round(newWidth)
+      }));
+    };
+
+    const handleMouseUp = () => {
+      setResizingField(null);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      setColumnWidths((current) => {
+        try {
+          localStorage.setItem('pathmaster_grid_column_widths', JSON.stringify(current));
+        } catch {}
+        return current;
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
 
   // Keep activeCell synchronized with selectedTaskId
   useEffect(() => {
@@ -483,25 +714,78 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
         style={{ backgroundColor: theme.surfaceBg }}
         className="flex-1 overflow-auto"
       >
-        <table style={{ tableLayout: 'fixed' }} className={`w-full border-collapse ${textSizeClass}`}>
+        <table style={{ tableLayout: 'fixed', width: `${totalTableWidth}px`, minWidth: '100%' }} className={`border-collapse ${textSizeClass}`}>
+          <colgroup>
+            <col style={{ width: '42px', minWidth: '42px' }} />
+            {COLUMNS.map((col) => (
+              <col
+                key={col.field}
+                style={{
+                  width: `${columnWidths[col.field]}px`,
+                  minWidth: `${columnWidths[col.field]}px`
+                }}
+              />
+            ))}
+          </colgroup>
           <thead
             style={{ backgroundColor: theme.headerBg, borderBottomColor: theme.border }}
             className="sticky top-0 z-30 shadow-2xs border-b"
           >
             <tr style={{ height: '56px' }}>
               <th
-                style={{ height: '56px', backgroundColor: theme.headerBg, borderRightColor: theme.border, color: theme.headerText }}
-                className="w-10 px-1 py-2 text-center font-bold select-none border-r"
+                onDoubleClick={handleAutoFitAll}
+                title="Double-click to Auto-fit All Columns"
+                style={{ height: '56px', width: '42px', minWidth: '42px', maxWidth: '42px', backgroundColor: theme.headerBg, borderRightColor: theme.border, color: theme.headerText }}
+                className="px-1 py-2 text-center font-bold select-none border-r cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
               >
-                #
+                <div className="flex items-center justify-center space-x-0.5">
+                  <span>#</span>
+                </div>
               </th>
               {COLUMNS.map((col) => (
                 <th
                   key={col.field}
-                  style={{ width: `${col.width}px`, height: '56px', backgroundColor: theme.headerBg, borderRightColor: theme.border, color: theme.headerText }}
-                  className={`px-2.5 py-2 text-left font-bold border-r whitespace-nowrap tracking-tight ${headerSizeClass}`}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setHeaderContextMenu({ field: col.field, x: e.clientX, y: e.clientY });
+                  }}
+                  style={{
+                    width: `${columnWidths[col.field]}px`,
+                    minWidth: `${columnWidths[col.field]}px`,
+                    maxWidth: `${columnWidths[col.field]}px`,
+                    height: '56px',
+                    backgroundColor: theme.headerBg,
+                    borderRightColor: theme.border,
+                    color: theme.headerText,
+                    position: 'relative'
+                  }}
+                  className={`px-2.5 py-2 text-left font-bold border-r whitespace-nowrap tracking-tight select-none group ${headerSizeClass}`}
                 >
-                  {col.label}
+                  <div className="flex items-center justify-between pr-2 overflow-hidden">
+                    <span className="truncate" title={col.label}>{col.label}</span>
+                  </div>
+                  {/* Interactive Column Resize Handle */}
+                  <div
+                    onMouseDown={(e) => handleResizeStart(col.field, e)}
+                    onDoubleClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleAutoFit(col.field);
+                    }}
+                    style={{ touchAction: 'none' }}
+                    className={`absolute right-0 top-0 bottom-0 w-3 cursor-col-resize select-none flex items-center justify-center z-20 group/handle ${
+                      resizingField === col.field ? 'bg-sky-500/20' : ''
+                    }`}
+                    title="Drag to resize, double-click to auto-fit"
+                  >
+                    <div
+                      className={`w-0.5 h-full transition-colors ${
+                        resizingField === col.field
+                          ? 'bg-sky-500 w-1'
+                          : 'opacity-0 group-hover/handle:opacity-100 bg-sky-400'
+                      }`}
+                    />
+                  </div>
                 </th>
               ))}
             </tr>
@@ -745,6 +1029,9 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       <td
                         key={col.field}
                         style={{
+                          width: `${columnWidths[col.field]}px`,
+                          minWidth: `${columnWidths[col.field]}px`,
+                          maxWidth: `${columnWidths[col.field]}px`,
                           height: `${rowHeight}px`,
                           maxHeight: `${rowHeight}px`,
                           boxSizing: 'border-box',
@@ -839,6 +1126,55 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Header Context Menu */}
+      {headerContextMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            top: `${headerContextMenu.y}px`,
+            left: `${headerContextMenu.x}px`,
+            backgroundColor: theme.surfaceBg,
+            borderColor: theme.border,
+            color: theme.textPrimary,
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)'
+          }}
+          className="z-50 py-1.5 rounded-lg border text-xs min-w-[200px] backdrop-blur-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              handleAutoFit(headerContextMenu.field);
+              setHeaderContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          >
+            <MoveHorizontal className="w-3.5 h-3.5 text-sky-500" />
+            <span>Auto-Fit "{COLUMNS.find(c => c.field === headerContextMenu.field)?.label}"</span>
+          </button>
+          <button
+            onClick={() => {
+              handleAutoFitAll();
+              setHeaderContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          >
+            <Columns3 className="w-3.5 h-3.5 text-amber-500" />
+            <span>Auto-Fit All Columns</span>
+          </button>
+          <div className="my-1 border-t" style={{ borderColor: theme.border }} />
+          <button
+            onClick={() => {
+              handleResetColumnWidths();
+              setHeaderContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 text-left flex items-center space-x-2 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+            <span>Reset to Default Widths</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
