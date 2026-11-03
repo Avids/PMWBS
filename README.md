@@ -11,7 +11,7 @@
 [![Vitest](https://img.shields.io/badge/Vitest-3.2-FCC72B?style=flat-square&logo=vitest)](https://vitest.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-[Features](#-key-features) · [Theme & Typography](#-professional-theme-suite--typography) · [Quick Start](#-quick-start) · [Keyboard Shortcuts](#-keyboard-shortcuts-msp--excel-style) · [CPM & Lag Syntax](#-cpm-relationships--lag-syntax) · [Activity Weight Engine](#-activity-weight-calculation-primavera-p6) · [File Formats](#-native-wbs-file-format)
+[Features](#-key-features) · [Theme & Typography](#-professional-theme-suite--typography) · [Quick Start](#-quick-start) · [Keyboard Shortcuts](#-keyboard-shortcuts-msp--excel-style) · [CPM & Lag Syntax](#-cpm-relationships--lag-syntax) · [Activity Weight Engine](#6-activity-weight-calculation-primavera-p6-standard) · [File Formats](#-native-wbs-file-format)
 
 </div>
 
@@ -22,9 +22,10 @@
 **PathMaster** is purpose-built for project managers, planners, and project controls engineers who require the scheduling discipline of **Oracle Primavera P6** and **Microsoft Project** without the sluggishness of legacy enterprise software.
 
 Built with **React 19, TypeScript, Tailwind CSS v4, and Vite**, PathMaster provides a split-pane workstation:
-1. **Spreadsheet Grid** (left pane): High-density data grid with direct Excel/Sheets clipboard paste (`Ctrl+V`), in-cell editing, WBS tree indentation, and automatic parent rollups.
-2. **Interactive SVG Gantt Chart** (right pane): Visual drag-and-drop bar movement, duration resizing, dependency linking, background halo masking, and dual-bar baseline comparison.
-3. **DOM Virtual Scrolling (Windowing)**: Powered by `@tanstack/react-virtual`, rendering only the ~35 active viewport rows on both the spreadsheet grid and Gantt timeline, scaling to **10,000+ tasks at 60 FPS**.
+1. **Spreadsheet Grid** (left pane): High-density data grid with adjustable resizable columns, one-click smart auto-fit, direct clipboard copy/paste (`Ctrl+C` / `Ctrl+V`), in-cell editing, multi-task selection, WBS tree indentation, and automatic parent rollups.
+2. **Interactive SVG Gantt Chart** (right pane): Visual drag-and-drop bar movement, duration resizing, dependency linking, background halo masking, slim task bars, downward-bracket summary bars, zero-duration milestone diamonds, and dual-bar baseline comparison.
+3. **Day-Cell Boundary Alignment**: Pixel-perfect grid snapping from the first pixel of the start day to the last pixel of the end day, immune to Daylight Saving Time (DST) or partial hours.
+4. **DOM Virtual Scrolling (Windowing)**: Powered by `@tanstack/react-virtual`, rendering only the active viewport rows on both the spreadsheet grid and Gantt timeline, scaling to **10,000+ tasks at 60 FPS**.
 
 ---
 
@@ -50,15 +51,25 @@ Built with **React 19, TypeScript, Tailwind CSS v4, and Vite**, PathMaster provi
 * **Real-time Cycle Detection Engine**: Detects circular dependency chains (`Task A → Task B → Task A`) before schedule recalculation, preventing deadlocks with warning notifications.
 * **Interactive Dependency Badges**: Click any dependency connection line on the Gantt chart to edit type and lag duration.
 
-### 3. Direct Excel & Google Sheets Clipboard Copy-Paste (`Ctrl+C` / `Ctrl+V`)
-* Copy rows or rectangular blocks of cells directly from **Microsoft Excel** or **Google Sheets** and paste into PathMaster (`Ctrl+V`).
-* Automatically maps columns starting at the selected cell: Task Name, Duration, Start Date, End Date, % Complete, Predecessors, Planned MH, Actual MH, and Notes.
+### 3. Adjustable Resizable Columns & Smart Auto-Fit
+* **Interactive Drag-to-Resize**: Hover and drag column dividers in the header to resize any column to custom widths in real time.
+* **Canvas-Accurate Smart Auto-Fit**: Measures the exact pixel width of header labels and all task data (including WBS hierarchy indentation, milestone badges, summary folder chevrons, and progress bar widgets) using an offscreen canvas.
+  * **Double-Click Divider**: Instantly auto-fits that specific column to its widest content.
+  * **Double-Click Row Header (`#`)**: Auto-fits all columns simultaneously.
+  * **Header Context Menu**: Right-click any column header for quick access to *Auto-fit This Column*, *Auto-fit All Columns*, or *Reset to Default Widths*.
+  * **One-Click ActionBar Button**: Click the **Auto-Fit** button in the top action ribbon.
+* **Automatic LocalStorage Persistence**: Custom column widths persist across sessions and page reloads.
 
-### 4. Non-Destructive Multi-Level Undo / Redo (`Ctrl+Z` / `Ctrl+Y`)
+### 4. Direct Clipboard Copy-Paste & Predecessor Linking (`Ctrl+C` / `Ctrl+V`)
+* Copy individual cells, rows, or rectangular blocks of cells and paste directly into PathMaster.
+* **Predecessor Cell Copy/Paste**: Pasting into the Predecessors column automatically parses CPM dependencies (`2FS`, `3SS+2d`, `1.2FF`), checks for circular cycles, verifies self-references, and recalculates the schedule instantly.
+* **Batch Paste into Multiple Tasks**: Select multiple tasks with Shift/Ctrl and paste a cell value into all of them simultaneously.
+
+### 5. Non-Destructive Multi-Level Undo / Redo (`Ctrl+Z` / `Ctrl+Y`)
 * Up to **50 history snapshots** preserved in memory.
 * Undo/Redo works across all grid edits, timeline drag-and-drop operations, indents/outdents, and task additions or deletions.
 
-### 5. Activity Weight Calculation (Primavera P6 Standard)
+### 6. Activity Weight Calculation (Primavera P6 Standard)
 Choose how individual activities contribute to summary and project progress:
 * **Time-Based (Duration)**: $W_i = \frac{\text{Duration}_i}{\sum \text{Duration}} \times 100$
 * **Man-Hour Based (P6 Standard)**: $W_i = \frac{\text{PlannedMH}_i}{\sum \text{PlannedMH}} \times 100$
@@ -66,18 +77,18 @@ Choose how individual activities contribute to summary and project progress:
 * **Weighted Progress Rollup**: 
   $$\text{Summary Progress} = \sum_{i=1}^N \left(\text{Child Progress}_i \times \frac{W_i}{100}\right)$$
 
-### 6. Man-Hour Tracking & Earned Value Management
+### 7. Man-Hour Tracking & Earned Value Management
 * **Planned Man-Hours (Budget / Estimate)** (defaults to 0 for new tasks)
 * **Actual Man-Hours** (Spent to date)
 * **Remaining Man-Hours** ($\max(0, \text{Planned} - \text{Actual})$)
 * **Earned Man-Hours** ($(\text{Planned Man-Hours} \times \text{Progress}) / 100$)
 
-### 7. Dual-Bar Baseline & Variance Tracking
+### 8. Dual-Bar Baseline & Variance Tracking
 * **Baseline Manager**: Snapshot and freeze multiple project baselines (*Baseline 1*, *Contract Award*, etc.).
 * **Dual-Bar Gantt Rendering**: Compare active schedule bars against underlying baseline bars.
 * **Schedule Slippage Tracking**: Automatic variance calculation ($EndDate - BaselineEndDate$), color-coded red for delays and green for early completion.
 
-### 8. Right-Click Context Menu & Multi-Tab Task Information Dialog
+### 9. Right-Click Context Menu & Multi-Tab Task Information Dialog
 * **Right-Click Context Menu**: Right-click any task in the spreadsheet grid or Gantt timeline to access:
   * ✏️ **Task Information**
   * 🗑️ **Delete Task**
@@ -91,15 +102,18 @@ Choose how individual activities contribute to summary and project progress:
   * **Resources**: Planned Man-Hours, Actual Man-Hours, Remaining, and Earned.
   * **Notes**: Rich task comments and documentation.
 
-### 9. Interactive Drag & Drop Gantt Chart with Halo Masking
+### 10. Interactive Drag & Drop Gantt Chart with Day-Cell Snapping
+* **Refined Task Bar Thickness**: Slim 10px regular task bars (8px on small zoom, 13px on large zoom) provide a clean, modern aesthetic.
+* **Downward-Bracket Summary Bars**: Summary tasks feature thin 7px roof bars with downward triangular brackets at start and finish dates, clearly distinguishing them from task bars on screen and in print.
+* **Milestone Zero-Duration Diamonds**: 0-day milestones render as crisp diamonds. Linked Finish-to-Start successors start on the exact same date as the milestone (with 0 lag).
+* **Exact Day-Cell Boundary Alignment**: Timeline coordinates snap to column-index boundaries from 0px of the start day to the full width of the end day, immune to Daylight Saving Time (DST) or partial allocated hours.
+* **Zero Selection Displacement**: Inset box-shadow highlight ensures selecting rows never causes horizontal jumping or bar displacement.
 * **Collision-Free Label Halo Mask**: Task labels feature dynamic background pill masks preventing overlap with CPM dependency lines.
-* **Drag Task Bars**: Move activities along the timeline with automatic successor date propagation.
-* **Drag Edge Handles**: Resize task duration directly from the chart edges.
-* **Drag Link Handles**: Connect tasks via drag-and-drop connection handles.
-* **Mouse Panning**: Hold and drag the canvas to pan smoothly across months and years.
-* **Timescale Zooming**: Seamless zoom levels across Day, Week, and Month tiers.
+* **Drag Task Bars & Handles**: Move activities along the timeline or drag edges to resize durations.
+* **Drag Link Handles**: Connect tasks via drag-and-drop handles.
+* **Mouse Panning & Timescale Zooming**: Hold and drag the canvas to pan smoothly across Day, Week, and Month tiers.
 
-### 10. Advanced PDF Export & Multi-Format Interoperability
+### 11. Advanced PDF Export, Project Information & Multi-Format Interoperability
 * **PDF Export Engine**:
   * Standard North American paper sizes prioritized (**Letter**, **11x17 Tabloid**, **Legal**, plus **A4**, **A3**).
   * Timescale grouping options (**Days**, **Weeks**, **Months**).
@@ -148,9 +162,13 @@ Switch between enterprise fonts in **Project Settings → Display & Theme**:
 | **Ctrl + Y** / **Ctrl + Shift + Z** | **Redo** action |
 | **Ctrl + V** | **Paste from Clipboard** (supports copying columns/rows from Excel) |
 | **Insert** | Insert a new task below current selection |
-| **Ctrl + Delete** | Delete selected task and all subtasks |
-| **Alt + →** | **Indent** task (make child of previous task) |
-| **Alt + ←** | **Outdent** task (promote task up one hierarchy level) |
+| **Delete** / **Ctrl + Delete** | Delete selected task(s) and their subtasks |
+| **Alt + →** | **Indent** task or multi-selected tasks |
+| **Alt + ←** | **Outdent** task or multi-selected tasks |
+| **Ctrl + C** | Copy active cell value to clipboard |
+| **Escape** | Close modal dialogs / cancel in-cell edit |
+| **Double-Click Divider** | Auto-fit column width to content |
+| **Double-Click `#` Header** | Auto-fit all grid columns |
 
 ---
 
