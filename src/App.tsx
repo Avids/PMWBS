@@ -15,6 +15,7 @@ import { ProjectInfoModal } from './components/ProjectInfoModal';
 import { PredecessorModal } from './components/PredecessorModal';
 import { ExportModal } from './components/ExportModal';
 import { TaskInformationModal } from './components/TaskInformationModal';
+import { HelpModal } from './components/HelpModal';
 import { TaskContextMenu } from './components/TaskContextMenu';
 
 const DEFAULT_CALENDAR: ProjectCalendar = {
@@ -370,6 +371,7 @@ export function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isTaskInfoModalOpen, setIsTaskInfoModalOpen] = useState(false);
   const [taskInfoModalTask, setTaskInfoModalTask] = useState<Task | null>(null);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
   // Task Selection Handler with Shift (Range) & Ctrl/Cmd (Toggle) Multi-Select
   const handleSelectTask = useCallback((taskId: string, modifiers?: { isShift?: boolean; isCtrl?: boolean }) => {
@@ -1274,6 +1276,11 @@ export function App() {
   // Keyboard shortcut Ctrl+S / Cmd+S to save project
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setIsHelpModalOpen(true);
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleSaveWBS();
@@ -1513,6 +1520,7 @@ export function App() {
           onOpenBaselineModal={() => setIsBaselineModalOpen(true)}
           onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
           onOpenProjectInfoModal={() => setIsProjectInfoModalOpen(true)}
+          onOpenHelpModal={() => setIsHelpModalOpen(true)}
           totalTasks={tasks.length}
           overallProgress={overallProgress}
           totalPlannedMH={totalPlannedMH}
@@ -1773,6 +1781,11 @@ export function App() {
         onClose={() => setIsExportModalOpen(false)}
         tasks={tasks}
         settings={settings}
+      />
+
+      <HelpModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
       />
 
       <TaskContextMenu

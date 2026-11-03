@@ -195,6 +195,8 @@ Switch between enterprise fonts instantly via the **Action Bar Font dropdown** o
 | **Alt + →** | **Indent** task or multi-selected tasks |
 | **Alt + ←** | **Outdent** task or multi-selected tasks |
 | **Ctrl + C** | Copy active cell value to clipboard |
+| **Ctrl + S** | Save project as native `.wbs` file |
+| **F1** | Open **Help & Documentation** dialog |
 | **Escape** | Close modal dialogs / cancel in-cell edit |
 | **Double-Click Divider** | Auto-fit column width to content |
 | **Double-Click `#` Header** | Auto-fit all grid columns |
@@ -325,7 +327,8 @@ PMWBS/
 │   │   ├── BaselineModal.tsx        # Project baseline snapshot manager
 │   │   ├── ProjectInfoModal.tsx     # Project metadata (Name, Number, Company, Address, Author)
 │   │   ├── ProjectSettingsModal.tsx # 3-tab Settings (Calendar & Work Week, Appearance, Calculations)
-│   │   └── ExportModal.tsx          # PDF page setup, timescale & task range export dialog
+│   │   ├── ExportModal.tsx          # PDF page setup, timescale & task range export dialog
+│   │   └── HelpModal.tsx            # 8-topic searchable Help & Documentation dialog
 │   ├── services/
 │   │   └── platform.ts              # Native desktop / browser file dialog abstractions
 │   ├── App.tsx                      # Root application state, undo/redo stack & split pane

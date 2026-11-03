@@ -14,6 +14,7 @@ import {
   Flame,
   ChevronDown,
   Check,
+  HelpCircle,
   Info
 } from 'lucide-react';
 
@@ -30,6 +31,7 @@ interface ToolbarProps {
   onOpenBaselineModal: () => void;
   onOpenSettingsModal: () => void;
   onOpenProjectInfoModal: () => void;
+  onOpenHelpModal: () => void;
   totalTasks: number;
   overallProgress: number;
   totalPlannedMH: number;
@@ -50,6 +52,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onOpenBaselineModal,
   onOpenSettingsModal,
   onOpenProjectInfoModal,
+  onOpenHelpModal,
   totalTasks,
   overallProgress,
   totalPlannedMH,
@@ -406,6 +409,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   <FileDown className="w-3.5 h-3.5 text-slate-400" />
                   <span>Export PDF / PNG Image...</span>
                 </button>
+                <div className="pt-1 mt-1 border-t border-slate-700"></div>
+                <button
+                  onClick={() => {
+                    setIsFileMenuOpen(false);
+                    onOpenHelpModal();
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center space-x-2.5 hover:bg-slate-700 text-left transition-colors text-amber-300 hover:text-amber-200 cursor-pointer"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+                  <div className="flex items-center justify-between flex-1">
+                    <span>Help & Documentation</span>
+                    <span className="text-[10px] text-slate-400 font-mono">F1</span>
+                  </div>
+                </button>
               </div>
             )}
           </div>
@@ -614,6 +631,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           >
             <Settings className="w-3.5 h-3.5 text-white/80" />
             <span className="hidden sm:inline">Settings</span>
+          </button>
+          <button
+            onClick={onOpenHelpModal}
+            className="px-2.5 py-1 rounded text-white/90 hover:text-white hover:bg-white/10 font-medium flex items-center space-x-1.5 transition-colors border border-white/20 bg-black/20 cursor-pointer"
+            title="Help & Documentation (F1)"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-amber-300" />
+            <span className="hidden sm:inline">Help</span>
           </button>
         </div>
       </div>
