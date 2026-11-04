@@ -358,9 +358,18 @@ export function App() {
   const [autoFitTrigger, setAutoFitTrigger] = useState<number>(0);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState<boolean>(false);
 
-  // Zoom & DayWidth state
+  // Zoom & DayWidth state (default 18px matching zoomed-out preference, with localStorage persistence)
   const [zoomTier, setZoomTier] = useState<ZoomTier>('day');
-  const [dayWidth, setDayWidth] = useState<number>(36);
+  const [dayWidth, setDayWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('pathmaster_gantt_day_width');
+      if (saved) {
+        const num = parseInt(saved, 10);
+        if (!isNaN(num) && num >= 10 && num <= 100) return num;
+      }
+    } catch {}
+    return 18;
+  });
 
   // Modals state
   const [isBaselineModalOpen, setIsBaselineModalOpen] = useState(false);
@@ -705,7 +714,9 @@ export function App() {
           return {
             ...t,
             progress: newProgress,
-            earnedManHours: Math.round(((t.plannedManHours || 0) * newProgress) / 100)
+            earnedManHours: (t.actualManHours || 0) > (t.plannedManHours || 0)
+              ? (t.plannedManHours || 0) - (t.actualManHours || 0)
+              : Math.round(((t.plannedManHours || 0) * newProgress) / 100)
           };
         }
         return t;
@@ -1252,13 +1263,23 @@ export function App() {
     setRawTasks(prev => prev.map(t => t.isSummary ? { ...t, isCollapsed: true } : t));
   }, []);
 
-  // Zoom controls
+  // Zoom controls (persisting dayWidth to localStorage)
+  const setPersistedDayWidth = useCallback((updater: number | ((prev: number) => number)) => {
+    setDayWidth(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        localStorage.setItem('pathmaster_gantt_day_width', String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
   const handleZoomIn = () => {
-    setDayWidth(prev => Math.min(100, Math.round(prev * 1.25)));
+    setPersistedDayWidth(prev => Math.min(100, Math.round(prev * 1.25)));
   };
 
   const handleZoomOut = () => {
-    setDayWidth(prev => Math.max(10, Math.round(prev * 0.8)));
+    setPersistedDayWidth(prev => Math.max(10, Math.round(prev * 0.8)));
   };
 
   const handleZoomFit = () => {
@@ -1272,15 +1293,15 @@ export function App() {
       });
       const totalDaysCount = Math.max(14, (maxD - minD) / (1000 * 3600 * 24) + 14);
       const fitWidth = Math.max(10, Math.floor(containerW / totalDaysCount));
-      setDayWidth(fitWidth);
+      setPersistedDayWidth(fitWidth);
     }
   };
 
   const handleZoomChange = (tier: ZoomTier) => {
     setZoomTier(tier);
-    if (tier === 'day') setDayWidth(36);
-    else if (tier === 'week') setDayWidth(18);
-    else if (tier === 'month') setDayWidth(6);
+    if (tier === 'day') setPersistedDayWidth(18);
+    else if (tier === 'week') setPersistedDayWidth(10);
+    else if (tier === 'month') setPersistedDayWidth(4);
   };
 
   // Predecessor Modal Handlers

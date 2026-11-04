@@ -469,8 +469,11 @@ export async function exportProjectDocument(
           const val = t.remainingManHours !== undefined ? t.remainingManHours : Math.max(0, (t.plannedManHours || 0) - (t.actualManHours || 0));
           content = `<span style="font-size: 11px; color: #334155; font-family: monospace;">${val}</span>`;
         } else if (col.key === 'earnedManHours') {
-          const val = t.earnedManHours !== undefined ? t.earnedManHours : Math.round(((t.plannedManHours || 0) * (t.progress || 0)) / 100);
-          content = `<span style="font-size: 11px; color: #166534; font-weight: 600; font-family: monospace;">${val}</span>`;
+          const planned = t.plannedManHours || 0;
+          const actual = t.actualManHours || 0;
+          const val = t.earnedManHours !== undefined ? t.earnedManHours : (actual > planned ? planned - actual : Math.round((planned * (t.progress || 0)) / 100));
+          const earnColor = val < 0 ? '#dc2626' : val > 0 ? '#166534' : '#334155';
+          content = `<span style="font-size: 11px; color: ${earnColor}; font-weight: 600; font-family: monospace;">${val}</span>`;
         } else if (col.key === 'baselineStartDate') {
           content = `<span style="font-size: 10px; color: #475569; font-family: monospace;">${t.baselineStartDate || '-'}</span>`;
         } else if (col.key === 'baselineEndDate') {

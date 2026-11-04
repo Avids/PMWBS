@@ -216,18 +216,6 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('appearance')}
-            className={`pb-2.5 px-3 text-xs font-semibold flex items-center space-x-1.5 border-b-2 transition-all shrink-0 cursor-pointer ${
-              activeTab === 'appearance'
-                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-md shadow-2xs'
-                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 rounded-t-md'
-            }`}
-          >
-            <Palette className="w-4 h-4 text-indigo-600" />
-            <span>Appearance & Themes</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('calculations')}
             className={`pb-2.5 px-3 text-xs font-semibold flex items-center space-x-1.5 border-b-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'calculations'
@@ -237,6 +225,18 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
           >
             <Scale className="w-4 h-4 text-indigo-600" />
             <span>Calculations & Weights</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('appearance')}
+            className={`pb-2.5 px-3 text-xs font-semibold flex items-center space-x-1.5 border-b-2 transition-all shrink-0 cursor-pointer ${
+              activeTab === 'appearance'
+                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-md shadow-2xs'
+                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 rounded-t-md'
+            }`}
+          >
+            <Palette className="w-4 h-4 text-indigo-600" />
+            <span>Appearance & Themes</span>
           </button>
         </div>
 
@@ -344,7 +344,88 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: APPEARANCE & THEMES */}
+                    {/* TAB 2: CALCULATIONS & WEIGHTS */}
+          {activeTab === 'calculations' && (
+            <div className="space-y-5">
+              {/* Activity Weight Mode */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-800">Activity Weight Computation Method</label>
+                <div className="space-y-2 text-xs">
+                  <label className={`flex items-start space-x-2.5 p-3 rounded-lg border cursor-pointer transition-all ${
+                    settings.weightMode === 'duration' ? 'border-indigo-500 bg-indigo-50/40' : 'border-slate-200 hover:bg-slate-50'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="weightMode"
+                      value="duration"
+                      checked={settings.weightMode === 'duration'}
+                      onChange={() => onUpdateSettings({ weightMode: 'duration' })}
+                      className="mt-0.5 text-indigo-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900">Time-Based (Duration)</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Activity weights are proportional to working day duration: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-[10px]">Wi = Duration / Total Duration * 100</code>.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className={`flex items-start space-x-2.5 p-3 rounded-lg border cursor-pointer transition-all ${
+                    settings.weightMode === 'manhour' ? 'border-indigo-500 bg-indigo-50/40' : 'border-slate-200 hover:bg-slate-50'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="weightMode"
+                      value="manhour"
+                      checked={settings.weightMode === 'manhour'}
+                      onChange={() => onUpdateSettings({ weightMode: 'manhour' })}
+                      className="mt-0.5 text-indigo-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900">Man-Hour Based (Primavera P6 Standard)</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Activity weights are computed from Planned Man-Hours: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-[10px]">Wi = PlannedMH / Total PlannedMH * 100</code>. If sum is 0, falls back to duration.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className={`flex items-start space-x-2.5 p-3 rounded-lg border cursor-pointer transition-all ${
+                    settings.weightMode === 'equal' ? 'border-indigo-500 bg-indigo-50/40' : 'border-slate-200 hover:bg-slate-50'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="weightMode"
+                      value="equal"
+                      checked={settings.weightMode === 'equal'}
+                      onChange={() => onUpdateSettings({ weightMode: 'equal' })}
+                      className="mt-0.5 text-indigo-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900">Equal Weight</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Every activity in the summary branch has equal weight (1 / N). Ideal for simple milestone or checklist-style schedules.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Currency Symbol */}
+              <div className="space-y-1.5 max-w-xs pt-2 border-t border-slate-200">
+                <label className="text-xs font-bold text-slate-800">Currency Symbol</label>
+                <input
+                  type="text"
+                  value={settings.currency || '$'}
+                  onChange={(e) => onUpdateSettings({ currency: e.target.value })}
+                  placeholder="$"
+                  className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-[10px] text-slate-500">Displayed in cost and financial export fields (e.g. $, €, £, AED).</p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: APPEARANCE & THEMES */}
           {activeTab === 'appearance' && (
             <div className="space-y-6">
               {/* Visual Color Theme Profile */}
@@ -403,10 +484,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                           <span className="text-[10px] font-semibold text-indigo-700 block mb-1">
                             {theme.subtitle}
                           </span>
-                          <p className="text-[11px] text-slate-500 leading-tight">
-                            {theme.description}
-                          </p>
-                        </div>
+                                                  </div>
                         {theme.id === 'custom' && (
                           <div className="mt-2.5 pt-2 border-t border-indigo-200/60 flex items-center justify-between">
                             <span className="text-[10px] text-indigo-700 font-semibold flex items-center space-x-1">
@@ -820,87 +898,6 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                     );
                   })}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: CALCULATIONS & WEIGHTS */}
-          {activeTab === 'calculations' && (
-            <div className="space-y-5">
-              {/* Activity Weight Mode */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-800">Activity Weight Computation Method</label>
-                <div className="space-y-2 text-xs">
-                  <label className={`flex items-start space-x-2.5 p-3 rounded-lg border cursor-pointer transition-all ${
-                    settings.weightMode === 'duration' ? 'border-indigo-500 bg-indigo-50/40' : 'border-slate-200 hover:bg-slate-50'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="weightMode"
-                      value="duration"
-                      checked={settings.weightMode === 'duration'}
-                      onChange={() => onUpdateSettings({ weightMode: 'duration' })}
-                      className="mt-0.5 text-indigo-600"
-                    />
-                    <div>
-                      <span className="font-bold text-slate-900">Time-Based (Duration)</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Activity weights are proportional to working day duration: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-[10px]">Wi = Duration / Total Duration * 100</code>.
-                      </p>
-                    </div>
-                  </label>
-
-                  <label className={`flex items-start space-x-2.5 p-3 rounded-lg border cursor-pointer transition-all ${
-                    settings.weightMode === 'manhour' ? 'border-indigo-500 bg-indigo-50/40' : 'border-slate-200 hover:bg-slate-50'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="weightMode"
-                      value="manhour"
-                      checked={settings.weightMode === 'manhour'}
-                      onChange={() => onUpdateSettings({ weightMode: 'manhour' })}
-                      className="mt-0.5 text-indigo-600"
-                    />
-                    <div>
-                      <span className="font-bold text-slate-900">Man-Hour Based (Primavera P6 Standard)</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Activity weights are computed from Planned Man-Hours: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-[10px]">Wi = PlannedMH / Total PlannedMH * 100</code>. If sum is 0, falls back to duration.
-                      </p>
-                    </div>
-                  </label>
-
-                  <label className={`flex items-start space-x-2.5 p-3 rounded-lg border cursor-pointer transition-all ${
-                    settings.weightMode === 'equal' ? 'border-indigo-500 bg-indigo-50/40' : 'border-slate-200 hover:bg-slate-50'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="weightMode"
-                      value="equal"
-                      checked={settings.weightMode === 'equal'}
-                      onChange={() => onUpdateSettings({ weightMode: 'equal' })}
-                      className="mt-0.5 text-indigo-600"
-                    />
-                    <div>
-                      <span className="font-bold text-slate-900">Equal Weight</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Every activity in the summary branch has equal weight (1 / N). Ideal for simple milestone or checklist-style schedules.
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Currency Symbol */}
-              <div className="space-y-1.5 max-w-xs pt-2 border-t border-slate-200">
-                <label className="text-xs font-bold text-slate-800">Currency Symbol</label>
-                <input
-                  type="text"
-                  value={settings.currency || '$'}
-                  onChange={(e) => onUpdateSettings({ currency: e.target.value })}
-                  placeholder="$"
-                  className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <p className="text-[10px] text-slate-500">Displayed in cost and financial export fields (e.g. $, €, £, AED).</p>
               </div>
             </div>
           )}

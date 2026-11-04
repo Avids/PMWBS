@@ -637,4 +637,70 @@ describe('7. Milestone Zero-Duration Predecessor Scheduling', () => {
     expect(t1.startDate).toBe('2026-11-04');
     expect(t1.endDate).toBe('2026-11-06');
   });
+
+  it('computes negative earned man-hours to reflect man-hour overrun when actual > planned', () => {
+    const tasks: Task[] = [
+      {
+        id: 's-1',
+        name: 'Summary Work Package',
+        wbsCode: '1',
+        parentId: null,
+        isSummary: true,
+        isMilestone: false,
+        startDate: '2026-11-02',
+        endDate: '2026-11-06',
+        duration: 5,
+        progress: 0,
+        predecessors: []
+      } as any,
+      {
+        id: 't-1',
+        name: 'Task with Overrun',
+        wbsCode: '1.1',
+        parentId: 's-1',
+        isSummary: false,
+        isMilestone: false,
+        startDate: '2026-11-02',
+        endDate: '2026-11-06',
+        duration: 5,
+        progress: 100,
+        plannedManHours: 25,
+        actualManHours: 30,
+        remainingManHours: 0,
+        predecessors: []
+      } as any,
+      {
+        id: 't-2',
+        name: 'Task on Track',
+        wbsCode: '1.2',
+        parentId: 's-1',
+        isSummary: false,
+        isMilestone: false,
+        startDate: '2026-11-02',
+        endDate: '2026-11-06',
+        duration: 5,
+        progress: 50,
+        plannedManHours: 40,
+        actualManHours: 20,
+        remainingManHours: 20,
+        predecessors: []
+      } as any
+    ];
+
+    const scheduled = recalculateSchedule(tasks, standardCalendar);
+    const t1 = scheduled.find(t => t.id === 't-1')!;
+    const t2 = scheduled.find(t => t.id === 't-2')!;
+    const s1 = scheduled.find(t => t.id === 's-1')!;
+
+    // t1 overrun: planned (25) - actual (30) = -5
+    expect(t1.earnedManHours).toBe(-5);
+
+    // t2 on track: planned (40) * progress (50%) = 20
+    expect(t2.earnedManHours).toBe(20);
+
+    // Summary task s-1 rolls up child earnedManHours: (-5) + 20 = 15
+    expect(s1.earnedManHours).toBe(15);
+    expect(s1.plannedManHours).toBe(65);
+    expect(s1.actualManHours).toBe(50);
+  });
 });

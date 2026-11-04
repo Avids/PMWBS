@@ -997,7 +997,9 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                     } else if (col.field === 'remainingManHours') {
                       displayVal = <span className="font-mono font-bold tabular-nums" style={{ color: theme.textSecondary }}>{task.remainingManHours || 0}</span>;
                     } else if (col.field === 'earnedManHours') {
-                      displayVal = <span className="font-mono font-bold tabular-nums" style={{ color: '#10B981' }}>{task.earnedManHours || 0}</span>;
+                      const earnVal = task.earnedManHours || 0;
+                      const earnColor = earnVal < 0 ? '#EF4444' : earnVal > 0 ? '#10B981' : theme.textSecondary;
+                      displayVal = <span className="font-mono font-bold tabular-nums" style={{ color: earnColor }}>{earnVal}</span>;
                     } else if (col.field === 'baselineStart') {
                       displayVal = <span className="font-mono tabular-nums" style={{ color: theme.textSecondary }}>{task.baselineStartDate || '-'}</span>;
                     } else if (col.field === 'baselineEnd') {

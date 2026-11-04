@@ -573,8 +573,15 @@ export function recalculateSchedule(tasks: Task[], calendar: ProjectCalendar, de
 
   sortedByDepthDesc.forEach(task => {
     if (!task.isSummary) {
-      task.earnedManHours = ((task.plannedManHours || 0) * (task.progress || 0)) / 100;
-      task.remainingManHours = Math.max(0, (task.plannedManHours || 0) - (task.actualManHours || 0));
+      const planned = task.plannedManHours || 0;
+      const actual = task.actualManHours || 0;
+      if (actual > planned) {
+        // Man-hour overrun: show negative value (e.g. 25 planned - 30 actual = -5 overrun)
+        task.earnedManHours = planned - actual;
+      } else {
+        task.earnedManHours = Math.round((planned * (task.progress || 0)) / 100);
+      }
+      task.remainingManHours = Math.max(0, planned - actual);
       return;
     }
 
