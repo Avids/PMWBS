@@ -209,27 +209,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <div className="min-w-0">
             <div className="flex items-center space-x-2">
               <span className="font-bold text-xs sm:text-sm tracking-wide text-white truncate">PathMaster</span>
-              <button
-                type="button"
-                onClick={onOpenProjectInfoModal}
-                className="text-[10px] font-semibold px-2 py-0.5 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded border border-white/15 flex items-center space-x-1 transition-colors cursor-pointer"
-                title="Open Project Information (Name, Number, Company, Address)"
-              >
-                <Info className="w-3 h-3 text-cyan-300" />
-                <span>Project Info</span>
-              </button>
             </div>
-            <div className="flex items-center space-x-1.5 mt-0.5">
+            <div className="flex items-center space-x-2 mt-0.5">
               <input
                 type="text"
                 value={settings.name}
                 onChange={(e) => onUpdateSettings({ name: e.target.value })}
-                className="text-[11px] sm:text-xs text-slate-200 bg-transparent hover:bg-black/20 focus:bg-black/30 px-1 py-0.5 rounded outline-none border border-transparent focus:border-slate-500 transition-colors w-36 sm:w-56 md:w-72 font-semibold truncate"
+                className="text-xs sm:text-sm text-slate-200 bg-transparent hover:bg-black/20 focus:bg-black/30 px-1 py-0.5 rounded outline-none border border-transparent focus:border-slate-500 transition-colors w-36 sm:w-56 md:w-72 font-semibold truncate"
                 placeholder="Project Name..."
                 title="Project Name (Click to edit or open Project Info)"
               />
               {settings.projectNumber && (
-                <span className="text-[10px] font-mono text-slate-300 bg-black/30 px-1.5 py-0.2 rounded border border-white/10 hidden sm:inline" title="Project Number">
+                <span
+                  className="text-xs sm:text-sm font-bold font-mono text-slate-200 bg-black/40 px-2 py-0.5 rounded border border-white/15 tracking-wide inline-flex items-center"
+                  title="Project Number"
+                >
                   #{settings.projectNumber}
                 </span>
               )}
