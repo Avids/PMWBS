@@ -542,7 +542,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   <span className="text-[10px] text-slate-400 font-normal">6 Profiles</span>
                 </div>
                 {SELECTABLE_THEMES.map((theme) => {
-                  const isSelected = (settings.colorTheme || 'construction') === theme.id ||
+                  const isSelected = (settings.colorTheme || 'steel-amber') === theme.id ||
                     (theme.id === 'construction' && settings.colorTheme === 'site-drawing') ||
                     (theme.id === 'modern-enterprise' && settings.colorTheme === 'classic');
                   const swatches = theme.id === 'custom'
@@ -594,9 +594,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                         <span className="text-[10px] text-indigo-400 block font-medium truncate">
                           {theme.subtitle}
                         </span>
-                        <p className="text-[10px] text-slate-400 line-clamp-2 mt-0.5 leading-snug">
-                          {theme.description}
-                        </p>
                       </div>
                     </button>
                   );

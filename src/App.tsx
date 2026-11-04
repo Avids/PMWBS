@@ -34,6 +34,7 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   weightMode: 'duration',
   calendar: DEFAULT_CALENDAR,
   currency: '$',
+  colorTheme: 'steel-amber',
   showBaseline: false,
   showCriticalPath: false,
   showTaskLabels: true,
@@ -288,6 +289,7 @@ export function App() {
         return {
           ...DEFAULT_SETTINGS,
           ...parsed,
+          colorTheme: parsed.colorTheme || 'steel-amber',
           // Critical path and baseline are OFF by default; user can turn them on
           showBaseline: false,
           showCriticalPath: false,

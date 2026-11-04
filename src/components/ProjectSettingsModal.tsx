@@ -440,7 +440,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {SELECTABLE_THEMES.map((theme) => {
                     const isSelected =
-                      (settings.colorTheme || 'construction') === theme.id ||
+                      (settings.colorTheme || 'steel-amber') === theme.id ||
                       (theme.id === 'construction' && settings.colorTheme === 'site-drawing') ||
                       (theme.id === 'modern-enterprise' && settings.colorTheme === 'classic');
                     

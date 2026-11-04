@@ -405,16 +405,16 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
 export const DEFAULT_CUSTOM_THEME: ThemeDefinition = THEMES['custom'];
 
 export const SELECTABLE_THEMES: ThemeDefinition[] = [
-  THEMES['modern-enterprise'],
-  THEMES['construction'],
-  THEMES['primavera'],
   THEMES['steel-amber'],
+  THEMES['construction'],
+  THEMES['modern-enterprise'],
+  THEMES['primavera'],
   THEMES['dark-mode'],
   DEFAULT_CUSTOM_THEME,
 ];
 
 export function cloneThemeToCustom(presetId: ColorTheme): Partial<ThemeDefinition> {
-  const source = THEMES[presetId] || THEMES['construction'];
+  const source = THEMES[presetId] || THEMES['steel-amber'];
   return {
     ...source,
     id: 'custom',
@@ -459,7 +459,7 @@ export function getTheme(
   } else if (themeId && themeId in THEMES) {
     theme = THEMES[themeId as ColorTheme];
   } else {
-    theme = THEMES['construction'];
+    theme = THEMES['steel-amber'];
   }
 
   if (fontChoice) {

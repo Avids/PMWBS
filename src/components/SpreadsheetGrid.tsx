@@ -108,7 +108,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   fontSize = 'normal',
   scrollContainerRef,
   onVerticalScroll,
-  colorTheme = 'classic',
+  colorTheme = 'steel-amber',
   customTheme,
   fontFamilyChoice,
   onPasteRows,

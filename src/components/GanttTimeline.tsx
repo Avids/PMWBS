@@ -34,7 +34,7 @@ interface GanttTimelineProps {
 /**
  * Standard, professional WBS-level color palette powered by customizable theme profiles.
  */
-export function getTaskLevelStyle(task: Task, isCritical: boolean = false, colorTheme: ColorTheme = 'construction', customTheme?: Partial<ThemeDefinition>) {
+export function getTaskLevelStyle(task: Task, isCritical: boolean = false, colorTheme: ColorTheme = 'steel-amber', customTheme?: Partial<ThemeDefinition>) {
   const theme = getTheme(colorTheme, undefined, customTheme);
 
   if (isCritical) {
@@ -88,7 +88,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   dayWidth,
   scrollContainerRef,
   onVerticalScroll,
-  colorTheme = 'classic',
+  colorTheme = 'steel-amber',
   fontFamilyChoice,
   customTheme
 }) => {
