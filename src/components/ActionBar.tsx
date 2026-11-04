@@ -15,6 +15,8 @@ import {
   Type,
   Tag,
   Columns3,
+  Calendar,
+  LocateFixed,
   Info,
   Undo2,
   Redo2,
@@ -113,6 +115,10 @@ export interface ActionBarProps {
   // Auto-fit Columns
   onAutoFitColumns?: () => void;
 
+  // Chart View Focus Controls
+  onFocusToday?: () => void;
+  onFocusTask?: () => void;
+
   // Zoom Controls
   zoom: ZoomTier;
   onChangeZoom: (z: ZoomTier) => void;
@@ -151,6 +157,8 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   showTaskLabels,
   onAutoFitColumns,
   onToggleTaskLabels,
+  onFocusToday,
+  onFocusTask,
   zoom,
   onChangeZoom,
   onZoomIn,
@@ -533,6 +541,48 @@ export const ActionBar: React.FC<ActionBarProps> = ({
               <span className="hidden sm:inline">Auto-Fit</span>
             </button>
           )}
+
+          <div className="h-3.5 w-px" style={{ backgroundColor: theme.border }}></div>
+
+          {/* Chart View Focus Controls: Today & Current Task */}
+          <div className="flex items-center space-x-1">
+            {onFocusToday && (
+              <button
+                onClick={onFocusToday}
+                style={{
+                  borderColor: theme.border,
+                  backgroundColor: theme.isDark ? '#1E293B' : '#FFFFFF',
+                  color: theme.textPrimary
+                }}
+                className={`h-6 px-2 text-[11px] font-semibold rounded flex items-center space-x-1.5 border transition-all cursor-pointer ${hoverBtnClass}`}
+                title="Focus Chart View to Today (Alt+T) - Scrolls timeline to today's date"
+              >
+                <Calendar className="w-3 h-3" style={{ color: theme.signal }} />
+                <span>Today</span>
+              </button>
+            )}
+
+            {onFocusTask && (
+              <button
+                onClick={onFocusTask}
+                disabled={!selectedTaskId}
+                style={{
+                  borderColor: theme.border,
+                  backgroundColor: theme.isDark ? '#1E293B' : '#FFFFFF',
+                  color: theme.textPrimary
+                }}
+                className={`h-6 px-2 text-[11px] font-semibold rounded flex items-center space-x-1.5 border transition-all cursor-pointer ${hoverBtnClass} disabled:opacity-40 disabled:cursor-not-allowed`}
+                title={
+                  selectedTaskId
+                    ? "Focus Chart View to Current Task (Alt+F or Ctrl+Shift+F5) - Scrolls to selected activity bar and row"
+                    : "Select an activity first to focus on the chart"
+                }
+              >
+                <LocateFixed className="w-3 h-3" style={{ color: theme.signal }} />
+                <span>Task</span>
+              </button>
+            )}
+          </div>
 
           <div className="h-3.5 w-px" style={{ backgroundColor: theme.border }}></div>
 

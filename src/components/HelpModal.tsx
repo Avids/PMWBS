@@ -769,6 +769,16 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                             <td className="px-3.5 py-2 text-slate-400">WBS Structure</td>
                           </tr>
                           <tr>
+                            <td className="px-3.5 py-2 font-mono font-bold text-indigo-700">Alt + T</td>
+                            <td className="px-3.5 py-2"><strong>Focus Today</strong>: scroll Gantt timeline to today's date</td>
+                            <td className="px-3.5 py-2 text-slate-400">Gantt Navigation</td>
+                          </tr>
+                          <tr>
+                            <td className="px-3.5 py-2 font-mono font-bold text-indigo-700">Alt + F (or Ctrl + Shift + F5)</td>
+                            <td className="px-3.5 py-2"><strong>Focus Task</strong>: scroll timeline to selected task bar and row</td>
+                            <td className="px-3.5 py-2 text-slate-400">Gantt Navigation</td>
+                          </tr>
+                          <tr>
                             <td className="px-3.5 py-2 font-mono font-bold text-indigo-700">Insert</td>
                             <td className="px-3.5 py-2">Insert a new task directly below current selection</td>
                             <td className="px-3.5 py-2 text-slate-400">Task Management</td>

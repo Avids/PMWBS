@@ -12,6 +12,7 @@ import {
   Unlink,
   GitCommit,
   FileText,
+  LocateFixed,
   Users
 } from 'lucide-react';
 import { MSPProgressIcon } from './ActionBar';
@@ -34,6 +35,7 @@ interface TaskContextMenuProps {
   onClearDependencies?: (taskId: string) => void;
   onOpenPredecessors?: (task: Task) => void;
   onToggleMilestone?: (taskId: string) => void;
+  onFocusTask?: (task: Task) => void;
 }
 
 const PROGRESS_STEPS: Array<0 | 25 | 50 | 75 | 100> = [0, 25, 50, 75, 100];
@@ -55,7 +57,8 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
   onUpdateProgress,
   onClearDependencies,
   onOpenPredecessors,
-  onToggleMilestone
+  onToggleMilestone,
+  onFocusTask
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeSubmenu, setActiveSubmenu] = useState<'add' | 'dependency' | 'convert' | null>(null);
@@ -144,6 +147,22 @@ export const TaskContextMenu: React.FC<TaskContextMenuProps> = ({
         <Pencil className="w-3.5 h-3.5 text-slate-700" />
         <span>Task Information</span>
       </button>
+
+      {onFocusTask && (
+        <button
+          onClick={() => {
+            onFocusTask(task);
+            onClose();
+          }}
+          className="w-full px-3 py-1.5 flex items-center justify-between hover:bg-slate-100 transition-colors text-left font-medium"
+        >
+          <div className="flex items-center space-x-2.5">
+            <LocateFixed className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Scroll to Task in Gantt</span>
+          </div>
+          <span className="text-[10px] text-slate-400">Alt+F</span>
+        </button>
+      )}
 
       <button
         onClick={() => {

@@ -5,6 +5,11 @@ import { getTheme, type ThemeDefinition } from '../theme/themeConfig';
 import { FileText } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
+export interface GanttTimelineRef {
+  scrollToToday: () => void;
+  scrollToTask: (taskId?: string) => { scrollTop: number; scrollLeft: number } | null;
+}
+
 interface GanttTimelineProps {
   tasks: Task[];
   allTasks?: Task[];
@@ -29,6 +34,7 @@ interface GanttTimelineProps {
   colorTheme?: ColorTheme;
   fontFamilyChoice?: FontFamilyChoice;
   customTheme?: Partial<ThemeDefinition>;
+  timelineApiRef?: React.MutableRefObject<GanttTimelineRef | null>;
 }
 
 /**
@@ -90,6 +96,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   onVerticalScroll,
   colorTheme = 'steel-amber',
   fontFamilyChoice,
+  timelineApiRef,
   customTheme
 }) => {
   const internalContainerRef = useRef<HTMLDivElement>(null);
@@ -142,8 +149,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
       };
     }
 
-    let min = tasks[0].startDate || formatDate(new Date());
-    let max = tasks[0].endDate || formatDate(new Date());
+    const today = formatDate(new Date());
+    let min = tasks[0].startDate || today;
+    let max = tasks[0].endDate || today;
+
+    if (today < min) min = today;
+    if (today > max) max = today;
 
     tasks.forEach((t) => {
       if (t.startDate && t.startDate < min) min = t.startDate;
@@ -298,6 +309,75 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     const diffDays = Math.round((t - minDateTime) / (1000 * 3600 * 24));
     return Math.max(0, diffDays * dayWidth);
   }, [dateIndexMap, dayWidth, minDateTime]);
+
+  // Focus chart view to Today (centers today's vertical indicator in viewport)
+  const scrollToToday = useCallback(() => {
+    if (!containerRef.current) return;
+    const todayStr = formatDate(new Date());
+    const todayX = dateToX(todayStr);
+    const viewportWidth = containerRef.current.clientWidth;
+    const targetScrollLeft = Math.max(0, Math.round(todayX + dayWidth / 2 - viewportWidth / 2));
+    containerRef.current.scrollTo({
+      left: targetScrollLeft,
+      behavior: 'smooth'
+    });
+  }, [containerRef, dateToX, dayWidth]);
+
+  // Focus chart view to current task (horizontal bar + vertical row centering)
+  const scrollToTask = useCallback((taskId?: string) => {
+    if (!containerRef.current) return null;
+    const idToFind = taskId || selectedTaskId;
+    if (!idToFind) return null;
+
+    const taskIndex = tasks.findIndex((t) => t.id === idToFind);
+    const task = tasks[taskIndex];
+    if (!task) return null;
+
+    let targetScrollLeft = containerRef.current.scrollLeft;
+    if (task.startDate) {
+      const startX = dateToX(task.startDate);
+      const endX = (task.endDate ? dateToX(task.endDate) : startX) + dayWidth;
+      const taskWidth = endX - startX;
+      const viewportWidth = containerRef.current.clientWidth;
+
+      if (taskWidth > viewportWidth) {
+        // Wide activity: align start with 40px left padding
+        targetScrollLeft = Math.max(0, Math.round(startX - 40));
+      } else {
+        // Center task bar horizontally
+        targetScrollLeft = Math.max(0, Math.round((startX + endX) / 2 - viewportWidth / 2));
+      }
+    }
+
+    let targetScrollTop = containerRef.current.scrollTop;
+    if (taskIndex >= 0) {
+      const topY = headerHeight + taskIndex * rowHeight;
+      const viewportHeight = containerRef.current.clientHeight;
+      targetScrollTop = Math.max(0, Math.round(topY + rowHeight / 2 - viewportHeight / 2));
+    }
+
+    containerRef.current.scrollTo({
+      left: targetScrollLeft,
+      top: targetScrollTop,
+      behavior: 'smooth'
+    });
+
+    return { scrollTop: targetScrollTop, scrollLeft: targetScrollLeft };
+  }, [containerRef, selectedTaskId, tasks, dateToX, dayWidth, headerHeight, rowHeight]);
+
+  useEffect(() => {
+    if (timelineApiRef) {
+      timelineApiRef.current = {
+        scrollToToday,
+        scrollToTask
+      };
+    }
+    return () => {
+      if (timelineApiRef) {
+        timelineApiRef.current = null;
+      }
+    };
+  }, [timelineApiRef, scrollToToday, scrollToTask]);
 
   // Canvas Panning & Dragging event handlers
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
@@ -645,7 +725,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           </div>
 
           {/* Today Indicator Line */}
-          {todayX > 0 && todayX < totalDays * dayWidth && (
+          {todayX >= 0 && todayX < totalDays * dayWidth && (
             <div
               style={{ left: `${todayX + dayWidth / 2}px`, backgroundColor: theme.signal }}
               className="absolute top-[56px] bottom-0 w-0.5 z-10 pointer-events-none"

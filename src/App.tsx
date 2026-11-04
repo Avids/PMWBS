@@ -8,7 +8,7 @@ import { CheckCircle2, AlertTriangle, CircleAlert, Info, X, Flag, FileText } fro
 import { Toolbar } from './components/Toolbar';
 import { ActionBar } from './components/ActionBar';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
-import { GanttTimeline } from './components/GanttTimeline';
+import { GanttTimeline, type GanttTimelineRef } from './components/GanttTimeline';
 import { BaselineModal } from './components/BaselineModal';
 import { ProjectSettingsModal } from './components/ProjectSettingsModal';
 import { ProjectInfoModal } from './components/ProjectInfoModal';
@@ -522,6 +522,85 @@ export function App() {
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDraggingSplitter]);
+
+  // Synchronized Vertical Scrolling & Timeline View Controls
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const timelineApiRef = useRef<GanttTimelineRef>(null);
+  const isSyncingScroll = useRef(false);
+
+  const handleGridScroll = useCallback((scrollTop: number) => {
+    if (isSyncingScroll.current) return;
+    isSyncingScroll.current = true;
+    if (timelineScrollRef.current) {
+      timelineScrollRef.current.scrollTop = scrollTop;
+    }
+    requestAnimationFrame(() => {
+      isSyncingScroll.current = false;
+    });
+  }, []);
+
+  const handleTimelineScroll = useCallback((scrollTop: number) => {
+    if (isSyncingScroll.current) return;
+    isSyncingScroll.current = true;
+    if (gridScrollRef.current) {
+      gridScrollRef.current.scrollTop = scrollTop;
+    }
+    requestAnimationFrame(() => {
+      isSyncingScroll.current = false;
+    });
+  }, []);
+
+  // Focus chart view to Today
+  const handleFocusToday = useCallback(() => {
+    timelineApiRef.current?.scrollToToday();
+  }, []);
+
+  // Focus chart view to current selected task (uncollapsing ancestors if needed, centering in Gantt & Grid)
+  const handleFocusTask = useCallback((targetTaskOrId?: Task | string) => {
+    const targetId = typeof targetTaskOrId === 'string'
+      ? targetTaskOrId
+      : targetTaskOrId?.id || selectedTaskId;
+
+    if (!targetId) {
+      showToast('Select an activity first to focus on the chart', 'info', 'Focus Task');
+      return;
+    }
+
+    const task = tasks.find(t => t.id === targetId);
+    if (!task) return;
+
+    if (selectedTaskId !== targetId) {
+      handleSelectTask(targetId);
+    }
+
+    // Check if task has any collapsed ancestors and expand them
+    let curr = task.parentId;
+    const taskMap = new Map(tasks.map(t => [t.id, t]));
+    const ancestorsToExpand = new Set<string>();
+    while (curr) {
+      const parent = taskMap.get(curr);
+      if (parent && parent.isCollapsed) {
+        ancestorsToExpand.add(parent.id);
+      }
+      curr = parent ? parent.parentId : null;
+    }
+
+    if (ancestorsToExpand.size > 0) {
+      setRawTasks(prev => prev.map(t => ancestorsToExpand.has(t.id) ? { ...t, isCollapsed: false } : t));
+      setTimeout(() => {
+        const pos = timelineApiRef.current?.scrollToTask(targetId);
+        if (pos && gridScrollRef.current) {
+          gridScrollRef.current.scrollTo({ top: pos.scrollTop, behavior: 'smooth' });
+        }
+      }, 60);
+    } else {
+      const pos = timelineApiRef.current?.scrollToTask(targetId);
+      if (pos && gridScrollRef.current) {
+        gridScrollRef.current.scrollTo({ top: pos.scrollTop, behavior: 'smooth' });
+      }
+    }
+  }, [selectedTaskId, tasks, handleSelectTask, setRawTasks, showToast]);
 
   // Project KPI rollups
   const { overallProgress, totalPlannedMH, totalActualMH, finishDate } = useMemo(() => {
@@ -1210,12 +1289,21 @@ export function App() {
       } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'v' || e.key === 'V')) {
         e.preventDefault();
         handlePasteTasks();
+      } else if (e.altKey && (e.key === 't' || e.key === 'T')) {
+        e.preventDefault();
+        handleFocusToday();
+      } else if (
+        (e.altKey && (e.key === 'f' || e.key === 'F')) ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F5')
+      ) {
+        e.preventDefault();
+        handleFocusTask();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, selectedTaskId, handleIndentTasks, handleOutdentTasks, selectedTaskIds, handleCopyTasks, handlePasteTasks]);
+  }, [handleUndo, handleRedo, selectedTaskId, handleIndentTasks, handleOutdentTasks, selectedTaskIds, handleCopyTasks, handlePasteTasks, handleFocusToday, handleFocusTask]);
 
   const handleAddDependency = useCallback((fromTaskId: string, toTaskId: string, type: TaskDependency['type'] = 'FS') => {
     if (fromTaskId === toTaskId) {
@@ -1533,32 +1621,6 @@ export function App() {
     exportToExcel(tasks, settings, `${settings.name.replace(/\s+/g, '_')}.xlsx`);
   };
 
-  // Synchronized Vertical Scrolling between Spreadsheet Grid & Gantt Timeline
-  const gridScrollRef = useRef<HTMLDivElement>(null);
-  const timelineScrollRef = useRef<HTMLDivElement>(null);
-  const isSyncingScroll = useRef(false);
-
-  const handleGridScroll = useCallback((scrollTop: number) => {
-    if (isSyncingScroll.current) return;
-    isSyncingScroll.current = true;
-    if (timelineScrollRef.current) {
-      timelineScrollRef.current.scrollTop = scrollTop;
-    }
-    requestAnimationFrame(() => {
-      isSyncingScroll.current = false;
-    });
-  }, []);
-
-  const handleTimelineScroll = useCallback((scrollTop: number) => {
-    if (isSyncingScroll.current) return;
-    isSyncingScroll.current = true;
-    if (gridScrollRef.current) {
-      gridScrollRef.current.scrollTop = scrollTop;
-    }
-    requestAnimationFrame(() => {
-      isSyncingScroll.current = false;
-    });
-  }, []);
 
   // Baseline Manager
   const handleSaveBaseline = (name: string) => {
@@ -1700,6 +1762,8 @@ export function App() {
             setAutoFitTrigger(c => c + 1);
             showToast('Columns auto-fitted to content width', 'info', 'Auto-Fit');
           }}
+          onFocusToday={handleFocusToday}
+          onFocusTask={() => handleFocusTask()}
           zoom={zoomTier}
           onChangeZoom={handleZoomChange}
           onZoomIn={handleZoomIn}
@@ -1775,6 +1839,7 @@ export function App() {
               zoom={zoomTier}
               dayWidth={dayWidth}
               scrollContainerRef={timelineScrollRef}
+              timelineApiRef={timelineApiRef}
               onVerticalScroll={handleTimelineScroll}
               colorTheme={settings.colorTheme}
               customTheme={settings.customTheme}
@@ -1947,6 +2012,7 @@ export function App() {
           setIsPredecessorModalOpen(true);
         }}
         onToggleMilestone={handleToggleMilestone}
+        onFocusTask={handleFocusTask}
       />
 
       {/* Floating Save/Status/Warning Toast Notification */}
