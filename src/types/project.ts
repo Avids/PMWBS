@@ -11,6 +11,7 @@ export interface TaskDependency {
 export type WeightMode = 'equal' | 'duration' | 'manhour' | 'manual';
 export type FontSizeOption = 'small' | 'normal' | 'large';
 export type FontFamilyChoice = 'segoe' | 'calibri' | 'verdana' | 'inter' | 'barlow' | 'system'; // 8pt (small), 10pt (normal), 12pt (large)
+export type RelationshipLineThickness = 'thin' | 'normal' | 'thick';
 export type ZoomTier = 'day' | 'week' | 'month';
 export type ColorTheme =
   | 'modern-enterprise'
@@ -113,6 +114,7 @@ export interface ProjectSettings {
   fontSize?: FontSizeOption;     // 'small' (8pt), 'normal' (10pt), 'large' (12pt)
   fontFamilyChoice?: FontFamilyChoice; // 'segoe' | 'calibri' | 'verdana' | 'inter' | 'barlow' | 'system'
   colorTheme?: ColorTheme;       // 'classic' | 'site-drawing' (Architectural Site Drawing profile)
+  relationshipLineThickness?: RelationshipLineThickness; // 'thin' | 'normal' | 'thick'
   customTheme?: Partial<ThemeDefinition>; // User's customized color palette
 }
 

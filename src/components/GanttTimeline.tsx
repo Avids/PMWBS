@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
-import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType, ColorTheme, FontFamilyChoice } from '../types/project';
+import type { Task, ProjectCalendar, FontSizeOption, ZoomTier, DependencyType, ColorTheme, FontFamilyChoice, RelationshipLineThickness } from '../types/project';
 import { formatDate, addWorkingDays, isWorkingDay } from '../engine/scheduler';
 import { getTheme, type ThemeDefinition } from '../theme/themeConfig';
 import { FileText } from 'lucide-react';
@@ -35,6 +35,7 @@ interface GanttTimelineProps {
   fontFamilyChoice?: FontFamilyChoice;
   customTheme?: Partial<ThemeDefinition>;
   timelineApiRef?: React.MutableRefObject<GanttTimelineRef | null>;
+  relationshipLineThickness?: RelationshipLineThickness;
 }
 
 /**
@@ -98,7 +99,8 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   colorTheme = 'steel-amber',
   fontFamilyChoice,
   timelineApiRef,
-  customTheme
+  customTheme,
+  relationshipLineThickness = 'normal'
 }) => {
   const internalContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = scrollContainerRef || internalContainerRef;
@@ -752,28 +754,39 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
           {/* SVG Layer for Dependency Lines (High Contrast Electric Blue) */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
-            <defs>
-              <marker
-                id="arrowhead-blue"
-                markerWidth="6"
-                markerHeight="5"
-                refX="5"
-                refY="2.5"
-                orient="auto"
-              >
-                <polygon points="0 0, 6 2.5, 0 5" fill={theme.relationshipLine || '#0284c7'} />
-              </marker>
-              <marker
-                id="arrowhead-critical"
-                markerWidth="6"
-                markerHeight="5"
-                refX="5"
-                refY="2.5"
-                orient="auto"
-              >
-                <polygon points="0 0, 6 2.5, 0 5" fill={theme.critical || '#ef4444'} />
-              </marker>
-            </defs>
+            {(() => {
+              const effectiveThickness = relationshipLineThickness || customTheme?.relationshipLineThickness || 'normal';
+              const markerMetrics = effectiveThickness === 'thin'
+                ? { width: 4.5, height: 4, refX: 4, refY: 2, points: '0 0, 4.5 2, 0 4' }
+                : effectiveThickness === 'thick'
+                ? { width: 8, height: 7, refX: 7, refY: 3.5, points: '0 0, 8 3.5, 0 7' }
+                : { width: 6, height: 5, refX: 5, refY: 2.5, points: '0 0, 6 2.5, 0 5' };
+
+              return (
+                <defs>
+                  <marker
+                    id="arrowhead-blue"
+                    markerWidth={markerMetrics.width}
+                    markerHeight={markerMetrics.height}
+                    refX={markerMetrics.refX}
+                    refY={markerMetrics.refY}
+                    orient="auto"
+                  >
+                    <polygon points={markerMetrics.points} fill={theme.relationshipLine || '#0284c7'} />
+                  </marker>
+                  <marker
+                    id="arrowhead-critical"
+                    markerWidth={markerMetrics.width}
+                    markerHeight={markerMetrics.height}
+                    refX={markerMetrics.refX}
+                    refY={markerMetrics.refY}
+                    orient="auto"
+                  >
+                    <polygon points={markerMetrics.points} fill={theme.critical || '#ef4444'} />
+                  </marker>
+                </defs>
+              );
+            })()}
             {visibleDependencyLines.map((line) => {
               const lineColor = line.isCritical ? (theme.critical || '#ef4444') : (theme.relationshipLine || '#0284c7');
               return (
@@ -782,7 +795,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     d={line.d}
                     fill="none"
                     stroke={lineColor}
-                    strokeWidth={line.isCritical ? 1.75 : 1.25}
+                    strokeWidth={line.isCritical ? ((relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thin' ? 1.25 : (relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thick' ? 3.0 : 1.75) : ((relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thin' ? 0.75 : (relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thick' ? 2.25 : 1.25)}
                     markerEnd={line.isCritical ? 'url(#arrowhead-critical)' : 'url(#arrowhead-blue)'}
                     className="opacity-90 group-hover:opacity-100 transition-all"
                     onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
@@ -828,7 +841,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                   x2={mousePos.x}
                   y2={mousePos.y}
                   stroke={theme.relationshipLine || '#0284c7'}
-                  strokeWidth="1.5"
+                  strokeWidth={(relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thin' ? 1.0 : (relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thick' ? 2.25 : 1.5}
                   strokeDasharray="4 4"
                 />
               );

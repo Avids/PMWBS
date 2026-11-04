@@ -598,22 +598,31 @@ export async function exportProjectDocument(
           const isCritical = !!(settings.showCriticalPath && sourceTask.isCritical && t.isCritical);
           const stroke = isCritical ? (theme.critical || '#dc2626') : (theme.relationshipLine || '#0284c7');
           const marker = isCritical ? 'url(#export-arrowhead-crit)' : 'url(#export-arrowhead)';
+          const lineThickness = settings.relationshipLineThickness || settings.customTheme?.relationshipLineThickness || 'normal';
+          const strokeWidth = lineThickness === 'thin' ? (isCritical ? '1.25' : '0.75') : lineThickness === 'thick' ? (isCritical ? '3.0' : '2.25') : (isCritical ? '1.75' : '1.25');
 
           dependencyPathsHTML += `
-            <path d="${path}" fill="none" stroke="${stroke}" stroke-width="1.25" marker-end="${marker}" />
+            <path d="${path}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" marker-end="${marker}" />
           `;
         });
       });
     }
 
+    const lineThickness = settings.relationshipLineThickness || settings.customTheme?.relationshipLineThickness || 'normal';
+    const markerMetrics = lineThickness === 'thin'
+      ? { width: 4.5, height: 4, refX: 4, refY: 2, points: '0 0, 4.5 2, 0 4' }
+      : lineThickness === 'thick'
+      ? { width: 8, height: 7, refX: 7, refY: 3.5, points: '0 0, 8 3.5, 0 7' }
+      : { width: 6, height: 5, refX: 5, refY: 2.5, points: '0 0, 6 2.5, 0 5' };
+
     const svgLayerHTML = showGantt ? `
       <svg style="position: absolute; inset: 0; width: ${timelineWidth}px; height: ${pageTasks.length * rowHeight}px; pointer-events: none; z-index: 5;">
         <defs>
-          <marker id="export-arrowhead" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
-            <polygon points="0 0, 6 2.5, 0 5" fill="${theme.relationshipLine || '#0284c7'}" />
+          <marker id="export-arrowhead" markerWidth="${markerMetrics.width}" markerHeight="${markerMetrics.height}" refX="${markerMetrics.refX}" refY="${markerMetrics.refY}" orient="auto">
+            <polygon points="${markerMetrics.points}" fill="${theme.relationshipLine || '#0284c7'}" />
           </marker>
-          <marker id="export-arrowhead-crit" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
-            <polygon points="0 0, 6 2.5, 0 5" fill="${theme.critical || '#dc2626'}" />
+          <marker id="export-arrowhead-crit" markerWidth="${markerMetrics.width}" markerHeight="${markerMetrics.height}" refX="${markerMetrics.refX}" refY="${markerMetrics.refY}" orient="auto">
+            <polygon points="${markerMetrics.points}" fill="${theme.critical || '#dc2626'}" />
           </marker>
         </defs>
         ${dependencyPathsHTML}

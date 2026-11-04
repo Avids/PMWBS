@@ -39,7 +39,8 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   showCriticalPath: false,
   showTaskLabels: true,
   fontSize: 'normal',
-  fontFamilyChoice: 'segoe'
+  fontFamilyChoice: 'segoe',
+  relationshipLineThickness: 'normal'
 };
 
 const INITIAL_TASKS: Task[] = [
@@ -1886,6 +1887,7 @@ export function App() {
               colorTheme={settings.colorTheme}
               customTheme={settings.customTheme}
               fontFamilyChoice={settings.fontFamilyChoice}
+              relationshipLineThickness={settings.relationshipLineThickness || settings.customTheme?.relationshipLineThickness || 'normal'}
             />
           </div>
         </div>

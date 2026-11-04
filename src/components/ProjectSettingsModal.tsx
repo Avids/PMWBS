@@ -785,12 +785,55 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                           value={customTheme.baseline || '#94A3B8'}
                           onChange={(v) => handleUpdateCustomColor('baseline', v)}
                         />
-                        <ColorPickerRow
-                          label="Relationship Lines"
-                          description="Dependency arrows and link lines"
-                          value={customTheme.relationshipLine || '#0284C7'}
-                          onChange={(v) => handleUpdateCustomColor('relationshipLine', v)}
-                        />
+                        <div className="p-2 rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition-colors space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="min-w-0 pr-2">
+                              <span className="text-xs font-semibold text-slate-800 block truncate">Relationship Lines</span>
+                              <span className="text-[10px] text-slate-400 block truncate">Dependency arrows and link lines</span>
+                            </div>
+                            <div className="flex items-center space-x-1.5 shrink-0">
+                              <label className="relative cursor-pointer flex items-center">
+                                <input
+                                  type="color"
+                                  value={customTheme.relationshipLine && customTheme.relationshipLine.startsWith('#') && customTheme.relationshipLine.length >= 7 ? customTheme.relationshipLine.slice(0, 7) : '#0284C7'}
+                                  onChange={(e) => handleUpdateCustomColor('relationshipLine', e.target.value)}
+                                  className="w-7 h-7 rounded border border-slate-300 cursor-pointer p-0.5 bg-white shadow-2xs"
+                                />
+                              </label>
+                              <input
+                                type="text"
+                                value={customTheme.relationshipLine || '#0284C7'}
+                                onChange={(e) => handleUpdateCustomColor('relationshipLine', e.target.value)}
+                                className="w-20 px-1.5 py-1 text-[11px] font-mono font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 uppercase"
+                              />
+                            </div>
+                          </div>
+                          <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                            <span className="text-[11px] font-medium text-slate-600">Line Thickness</span>
+                            <div className="inline-flex rounded-md p-0.5 bg-slate-100 border border-slate-200">
+                              {(['thin', 'normal', 'thick'] as const).map((t) => {
+                                const isSelected = (settings.relationshipLineThickness || customTheme.relationshipLineThickness || 'normal') === t;
+                                return (
+                                  <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => {
+                                      onUpdateSettings({ relationshipLineThickness: t });
+                                      handleUpdateCustomColor('relationshipLineThickness', t);
+                                    }}
+                                    className={`px-2.5 py-0.5 text-[10px] font-semibold rounded capitalize transition-all cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-white text-indigo-700 shadow-2xs'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                  >
+                                    {t}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 

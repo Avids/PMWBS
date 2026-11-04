@@ -1,4 +1,4 @@
-import type { ColorTheme, FontFamilyChoice } from '../types/project';
+import type { ColorTheme, FontFamilyChoice, RelationshipLineThickness } from '../types/project';
 
 export interface FontOption {
   id: FontFamilyChoice;
@@ -78,6 +78,7 @@ export interface ThemeDefinition {
   baselineBorder?: string;
   signal: string;             // Signal / Selection / Today line
   relationshipLine: string;   // Relationship / Dependency link line
+  relationshipLineThickness?: RelationshipLineThickness; // 'thin' | 'normal' | 'thick'
   critical: string;           // Critical / Late / Alert
   criticalBorder?: string;
   criticalText?: string;
@@ -119,6 +120,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baselineBorder: '#64748B',
     signal: '#3B82F6',
     relationshipLine: '#0284C7',
+    relationshipLineThickness: 'normal',
     critical: '#EF4444',
     criticalBorder: '#DC2626',
     criticalText: '#DC2626',
@@ -158,6 +160,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baselineBorder: '#7E8890',
     signal: '#E8590C',
     relationshipLine: '#0284C7',
+    relationshipLineThickness: 'normal',
     critical: '#E63946',
     criticalBorder: '#BA1E2A',
     criticalText: '#E63946',
@@ -197,6 +200,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baselineBorder: '#4B5563',
     signal: '#2D6A4F',
     relationshipLine: '#0284C7',
+    relationshipLineThickness: 'normal',
     critical: '#9D0208',
     criticalBorder: '#6A0105',
     criticalText: '#9D0208',
@@ -236,6 +240,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baselineBorder: '#64748B',
     signal: '#D97706',
     relationshipLine: '#0284C7',
+    relationshipLineThickness: 'normal',
     critical: '#D97706',
     criticalBorder: '#B45309',
     criticalText: '#D97706',
@@ -276,6 +281,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baselineBorder: '#475569',
     signal: '#60A5FA',
     relationshipLine: '#38BDF8',
+    relationshipLineThickness: 'normal',
     critical: '#EF4444',
     criticalBorder: '#DC2626',
     criticalText: '#F87171',
@@ -316,6 +322,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baselineBorder: '#64748B',
     signal: '#3B82F6',
     relationshipLine: '#0284C7',
+    relationshipLineThickness: 'normal',
     critical: '#EF4444',
     criticalBorder: '#DC2626',
     criticalText: '#DC2626',
@@ -355,6 +362,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baselineBorder: '#7E8890',
     signal: '#E8590C',
     relationshipLine: '#0284C7',
+    relationshipLineThickness: 'normal',
     critical: '#E63946',
     criticalBorder: '#BA1E2A',
     criticalText: '#E63946',
@@ -395,6 +403,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baselineBorder: '#64748B',
     signal: '#2563EB',
     relationshipLine: '#0284C7',
+    relationshipLineThickness: 'normal',
     critical: '#DC2626',
     criticalBorder: '#B91C1C',
     criticalText: '#DC2626',
