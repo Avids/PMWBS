@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { BaselineData } from '../types/project';
 import { BookmarkCheck, Trash2, X, Plus } from 'lucide-react';
 
@@ -20,6 +20,18 @@ export const BaselineModal: React.FC<BaselineModalProps> = ({
   onDeleteBaseline
 }) => {
   const [baselineName, setBaselineName] = useState(`Baseline ${baselines.length + 1}`);
+
+  // Close on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

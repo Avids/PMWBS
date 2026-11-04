@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Task, ProjectSettings } from '../types/project';
 import { exportProjectDocument, DEFAULT_EXPORT_SETTINGS } from '../engine/pdfExport';
 import type { ExportSettings } from '../engine/pdfExport';
@@ -21,6 +21,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [exportComplete, setExportComplete] = useState(false);
+
+  // Close on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

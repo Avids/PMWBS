@@ -31,6 +31,18 @@ export const PredecessorModal: React.FC<PredecessorModalProps> = ({
     return detectDependencyCycle(allTasks, { taskId: task.id, newPredecessors: dependencies });
   }, [allTasks, task, dependencies]);
 
+  // Close on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !task) return null;
 
   // Available candidate predecessors (excluding self and summary tasks that enclose it)

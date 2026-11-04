@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ProjectSettings, FontFamilyChoice, ColorTheme } from '../types/project';
 import {
   SELECTABLE_THEMES,
@@ -75,6 +75,18 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   const [activeTab, setActiveTab] = useState<SettingsTab>('calendar');
   const [newHoliday, setNewHoliday] = useState('');
   const [showCustomEditor, setShowCustomEditor] = useState<boolean>(settings.colorTheme === 'custom');
+
+  // Close on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
