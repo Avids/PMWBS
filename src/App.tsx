@@ -319,11 +319,7 @@ export function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Strip legacy random colors so unified WBS-level colors apply
-        return parsed.map((t: Task) => {
-          const { color: _c, ...rest } = t;
-          return rest;
-        });
+        return parsed;
       } catch (e) {
         console.error(e);
       }
@@ -1384,7 +1380,15 @@ export function App() {
       tasks
     };
 
-    const fileName = `${settings.name.replace(/\s+/g, '_')}.wbs`;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const timeStr = `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+    const safeProjectName = (settings.name || 'Project')
+      .replace(/\.wbs$/i, '')
+      .trim()
+      .replace(/[\\/:*?"<>|]/g, '-');
+    const fileName = `${safeProjectName} - ${dateStr} ${timeStr}.wbs`;
     const res = await saveProjectWithDialog(fileData, fileName);
     if (res.success) {
       showToast(
