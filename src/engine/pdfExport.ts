@@ -499,11 +499,11 @@ export async function exportProjectDocument(
     });
 
     // Gantt Task Bars for this page
+    const theme = getTheme(settings.colorTheme, undefined, settings.customTheme);
     let taskBarsHTML = '';
     let dependencyPathsHTML = '';
 
     if (showGantt) {
-      const theme = getTheme(settings.colorTheme, undefined, settings.customTheme);
 
       pageTasks.forEach((t, localIdx) => {
         const startX = dateToX(t.startDate);
@@ -596,7 +596,7 @@ export async function exportProjectDocument(
           }
 
           const isCritical = !!(settings.showCriticalPath && sourceTask.isCritical && t.isCritical);
-          const stroke = isCritical ? '#dc2626' : '#0284c7';
+          const stroke = isCritical ? (theme.critical || '#dc2626') : (theme.relationshipLine || '#0284c7');
           const marker = isCritical ? 'url(#export-arrowhead-crit)' : 'url(#export-arrowhead)';
 
           dependencyPathsHTML += `
@@ -610,10 +610,10 @@ export async function exportProjectDocument(
       <svg style="position: absolute; inset: 0; width: ${timelineWidth}px; height: ${pageTasks.length * rowHeight}px; pointer-events: none; z-index: 5;">
         <defs>
           <marker id="export-arrowhead" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
-            <polygon points="0 0, 6 2.5, 0 5" fill="#0284c7" />
+            <polygon points="0 0, 6 2.5, 0 5" fill="${theme.relationshipLine || '#0284c7'}" />
           </marker>
           <marker id="export-arrowhead-crit" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
-            <polygon points="0 0, 6 2.5, 0 5" fill="#dc2626" />
+            <polygon points="0 0, 6 2.5, 0 5" fill="${theme.critical || '#dc2626'}" />
           </marker>
         </defs>
         ${dependencyPathsHTML}
@@ -621,7 +621,6 @@ export async function exportProjectDocument(
     ` : '';
 
     // Footer HTML with Schedule Legend
-    const theme = getTheme(settings.colorTheme, undefined, settings.customTheme);
     const legendHTML = `
       <div style="display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 10px; color: #334155;">
         <span style="font-weight: 700; color: #0f172a;">Legend:</span>

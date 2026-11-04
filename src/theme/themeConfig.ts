@@ -77,6 +77,7 @@ export interface ThemeDefinition {
   baseline: string;           // Baseline bar
   baselineBorder?: string;
   signal: string;             // Signal / Selection / Today line
+  relationshipLine: string;   // Relationship / Dependency link line
   critical: string;           // Critical / Late / Alert
   criticalBorder?: string;
   criticalText?: string;
@@ -117,6 +118,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baseline: '#94A3B8',
     baselineBorder: '#64748B',
     signal: '#3B82F6',
+    relationshipLine: '#0284C7',
     critical: '#EF4444',
     criticalBorder: '#DC2626',
     criticalText: '#DC2626',
@@ -155,6 +157,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baseline: '#9BA5AD',
     baselineBorder: '#7E8890',
     signal: '#E8590C',
+    relationshipLine: '#0284C7',
     critical: '#E63946',
     criticalBorder: '#BA1E2A',
     criticalText: '#E63946',
@@ -193,6 +196,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baseline: '#6B7280',
     baselineBorder: '#4B5563',
     signal: '#2D6A4F',
+    relationshipLine: '#0284C7',
     critical: '#9D0208',
     criticalBorder: '#6A0105',
     criticalText: '#9D0208',
@@ -231,6 +235,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baseline: '#94A3B8',
     baselineBorder: '#64748B',
     signal: '#D97706',
+    relationshipLine: '#0284C7',
     critical: '#D97706',
     criticalBorder: '#B45309',
     criticalText: '#D97706',
@@ -270,6 +275,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baseline: '#64748B',
     baselineBorder: '#475569',
     signal: '#60A5FA',
+    relationshipLine: '#38BDF8',
     critical: '#EF4444',
     criticalBorder: '#DC2626',
     criticalText: '#F87171',
@@ -309,6 +315,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baseline: '#94A3B8',
     baselineBorder: '#64748B',
     signal: '#3B82F6',
+    relationshipLine: '#0284C7',
     critical: '#EF4444',
     criticalBorder: '#DC2626',
     criticalText: '#DC2626',
@@ -347,6 +354,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baseline: '#9BA5AD',
     baselineBorder: '#7E8890',
     signal: '#E8590C',
+    relationshipLine: '#0284C7',
     critical: '#E63946',
     criticalBorder: '#BA1E2A',
     criticalText: '#E63946',
@@ -386,6 +394,7 @@ export const THEMES: Record<ColorTheme, ThemeDefinition> = {
     baseline: '#94A3B8',
     baselineBorder: '#64748B',
     signal: '#2563EB',
+    relationshipLine: '#0284C7',
     critical: '#DC2626',
     criticalBorder: '#B91C1C',
     criticalText: '#DC2626',

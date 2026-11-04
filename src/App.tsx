@@ -528,8 +528,46 @@ export function App() {
   const timelineScrollRef = useRef<HTMLDivElement>(null);
   const timelineApiRef = useRef<GanttTimelineRef>(null);
   const isSyncingScroll = useRef(false);
+  const isProgrammaticScroll = useRef(false);
+  const programmaticScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startProgrammaticScroll = useCallback(() => {
+    isProgrammaticScroll.current = true;
+    if (programmaticScrollTimer.current) {
+      clearTimeout(programmaticScrollTimer.current);
+    }
+    programmaticScrollTimer.current = setTimeout(() => {
+      isProgrammaticScroll.current = false;
+      // Re-align both containers at the end of the animation
+      if (timelineScrollRef.current && gridScrollRef.current) {
+        gridScrollRef.current.scrollTop = timelineScrollRef.current.scrollTop;
+      }
+    }, 700);
+  }, []);
+
+  // Cancel programmatic scroll lock immediately if user manually interacts (wheel or touch)
+  useEffect(() => {
+    const cancelProgrammatic = () => {
+      if (isProgrammaticScroll.current) {
+        isProgrammaticScroll.current = false;
+        if (programmaticScrollTimer.current) {
+          clearTimeout(programmaticScrollTimer.current);
+        }
+      }
+    };
+    window.addEventListener('wheel', cancelProgrammatic, { passive: true });
+    window.addEventListener('touchstart', cancelProgrammatic, { passive: true });
+    return () => {
+      window.removeEventListener('wheel', cancelProgrammatic);
+      window.removeEventListener('touchstart', cancelProgrammatic);
+      if (programmaticScrollTimer.current) {
+        clearTimeout(programmaticScrollTimer.current);
+      }
+    };
+  }, []);
 
   const handleGridScroll = useCallback((scrollTop: number) => {
+    if (isProgrammaticScroll.current) return;
     if (isSyncingScroll.current) return;
     isSyncingScroll.current = true;
     if (timelineScrollRef.current) {
@@ -541,6 +579,7 @@ export function App() {
   }, []);
 
   const handleTimelineScroll = useCallback((scrollTop: number) => {
+    if (isProgrammaticScroll.current) return;
     if (isSyncingScroll.current) return;
     isSyncingScroll.current = true;
     if (gridScrollRef.current) {
@@ -553,10 +592,11 @@ export function App() {
 
   // Focus chart view to Today
   const handleFocusToday = useCallback(() => {
+    startProgrammaticScroll();
     timelineApiRef.current?.scrollToToday();
-  }, []);
+  }, [startProgrammaticScroll]);
 
-  // Focus chart view to current selected task (uncollapsing ancestors if needed, centering in Gantt & Grid)
+  // Focus chart view to current selected task or milestone (uncollapsing ancestors if needed, centering in Gantt & Grid)
   const handleFocusTask = useCallback((targetTaskOrId?: Task | string) => {
     const targetId = typeof targetTaskOrId === 'string'
       ? targetTaskOrId
@@ -586,21 +626,23 @@ export function App() {
       curr = parent ? parent.parentId : null;
     }
 
-    if (ancestorsToExpand.size > 0) {
-      setRawTasks(prev => prev.map(t => ancestorsToExpand.has(t.id) ? { ...t, isCollapsed: false } : t));
+    const executeScroll = (delay = 0) => {
       setTimeout(() => {
+        startProgrammaticScroll();
         const pos = timelineApiRef.current?.scrollToTask(targetId);
         if (pos && gridScrollRef.current) {
           gridScrollRef.current.scrollTo({ top: pos.scrollTop, behavior: 'smooth' });
         }
-      }, 60);
+      }, delay);
+    };
+
+    if (ancestorsToExpand.size > 0) {
+      setRawTasks(prev => prev.map(t => ancestorsToExpand.has(t.id) ? { ...t, isCollapsed: false } : t));
+      executeScroll(100);
     } else {
-      const pos = timelineApiRef.current?.scrollToTask(targetId);
-      if (pos && gridScrollRef.current) {
-        gridScrollRef.current.scrollTo({ top: pos.scrollTop, behavior: 'smooth' });
-      }
+      executeScroll(0);
     }
-  }, [selectedTaskId, tasks, handleSelectTask, setRawTasks, showToast]);
+  }, [selectedTaskId, tasks, handleSelectTask, setRawTasks, showToast, startProgrammaticScroll]);
 
   // Project KPI rollups
   const { overallProgress, totalPlannedMH, totalActualMH, finishDate } = useMemo(() => {

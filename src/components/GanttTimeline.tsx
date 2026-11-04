@@ -76,6 +76,7 @@ export function getTaskLevelStyle(task: Task, isCritical: boolean = false, color
 
 export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   tasks,
+  allTasks,
   calendar,
   showBaseline,
   showCriticalPath = false,
@@ -157,8 +158,10 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     if (today > max) max = today;
 
     tasks.forEach((t) => {
-      if (t.startDate && t.startDate < min) min = t.startDate;
-      if (t.endDate && t.endDate > max) max = t.endDate;
+      const s = t.startDate || t.endDate;
+      const e = t.endDate || t.startDate;
+      if (s && s < min) min = s;
+      if (e && e > max) max = e;
     });
 
     // Add padding before and after
@@ -323,37 +326,45 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     });
   }, [containerRef, dateToX, dayWidth]);
 
-  // Focus chart view to current task (horizontal bar + vertical row centering)
+  // Focus chart view to current task / milestone (horizontal bar + vertical row centering)
   const scrollToTask = useCallback((taskId?: string) => {
     if (!containerRef.current) return null;
     const idToFind = taskId || selectedTaskId;
     if (!idToFind) return null;
 
     const taskIndex = tasks.findIndex((t) => t.id === idToFind);
-    const task = tasks[taskIndex];
+    const task = taskIndex >= 0 ? tasks[taskIndex] : (allTasks || tasks).find((t) => t.id === idToFind);
     if (!task) return null;
 
+    const isMilestone = task.isMilestone || task.duration === 0;
+    const taskDate = task.startDate || task.endDate;
     let targetScrollLeft = containerRef.current.scrollLeft;
-    if (task.startDate) {
-      const startX = dateToX(task.startDate);
-      const endX = (task.endDate ? dateToX(task.endDate) : startX) + dayWidth;
-      const taskWidth = endX - startX;
+
+    if (taskDate) {
+      const startX = dateToX(taskDate);
       const viewportWidth = containerRef.current.clientWidth;
 
-      if (taskWidth > viewportWidth) {
-        // Wide activity: align start with 40px left padding
-        targetScrollLeft = Math.max(0, Math.round(startX - 40));
+      if (isMilestone) {
+        // Milestone diamond is centered at startX + dayWidth / 2
+        const milestoneCenter = startX + dayWidth / 2;
+        targetScrollLeft = Math.max(0, Math.round(milestoneCenter - viewportWidth / 2));
       } else {
-        // Center task bar horizontally
-        targetScrollLeft = Math.max(0, Math.round((startX + endX) / 2 - viewportWidth / 2));
+        const endX = (task.endDate ? dateToX(task.endDate) : startX) + dayWidth;
+        const taskWidth = endX - startX;
+        if (taskWidth > viewportWidth) {
+          // If task bar is wider than viewport, align start with comfortable 50px margin
+          targetScrollLeft = Math.max(0, Math.round(startX - 50));
+        } else {
+          // Center task bar horizontally
+          targetScrollLeft = Math.max(0, Math.round((startX + endX) / 2 - viewportWidth / 2));
+        }
       }
     }
 
     let targetScrollTop = containerRef.current.scrollTop;
     if (taskIndex >= 0) {
-      const topY = headerHeight + taskIndex * rowHeight;
-      const viewportHeight = containerRef.current.clientHeight;
-      targetScrollTop = Math.max(0, Math.round(topY + rowHeight / 2 - viewportHeight / 2));
+      const visibleHeight = Math.max(100, containerRef.current.clientHeight - headerHeight);
+      targetScrollTop = Math.max(0, Math.round(taskIndex * rowHeight - visibleHeight / 2 + rowHeight / 2));
     }
 
     containerRef.current.scrollTo({
@@ -363,7 +374,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     });
 
     return { scrollTop: targetScrollTop, scrollLeft: targetScrollLeft };
-  }, [containerRef, selectedTaskId, tasks, dateToX, dayWidth, headerHeight, rowHeight]);
+  }, [containerRef, selectedTaskId, tasks, allTasks, dateToX, dayWidth, headerHeight, rowHeight]);
 
   useEffect(() => {
     if (timelineApiRef) {
@@ -750,7 +761,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                 refY="2.5"
                 orient="auto"
               >
-                <polygon points="0 0, 6 2.5, 0 5" fill="#0284c7" />
+                <polygon points="0 0, 6 2.5, 0 5" fill={theme.relationshipLine || '#0284c7'} />
               </marker>
               <marker
                 id="arrowhead-critical"
@@ -760,43 +771,47 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                 refY="2.5"
                 orient="auto"
               >
-                <polygon points="0 0, 6 2.5, 0 5" fill="#ef4444" />
+                <polygon points="0 0, 6 2.5, 0 5" fill={theme.critical || '#ef4444'} />
               </marker>
             </defs>
-            {visibleDependencyLines.map((line) => (
-              <g key={line.id} className="pointer-events-auto cursor-pointer group">
-                <path
-                  d={line.d}
-                  fill="none"
-                  stroke={line.isCritical ? '#ef4444' : '#0284c7'}
-                  strokeWidth={line.isCritical ? 1.75 : 1.25}
-                  markerEnd={line.isCritical ? 'url(#arrowhead-critical)' : 'url(#arrowhead-blue)'}
-                  className="opacity-90 group-hover:opacity-100 transition-all"
-                  onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
-                />
-                {/* Dependency Tag badge (e.g. FS+5d) */}
-                <rect
-                  x={line.labelX - 18}
-                  y={line.labelY - 8}
-                  width="36"
-                  height="16"
-                  rx="4"
-                  fill="#ffffff"
-                  stroke="#0284c7"
-                  strokeWidth="1.5"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
-                  onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
-                />
-                <text
-                  x={line.labelX}
-                  y={line.labelY + 4}
-                  textAnchor="middle"
-                  className="text-[9px] fill-sky-800 font-mono font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                >
-                  {line.label}
-                </text>
-              </g>
-            ))}
+            {visibleDependencyLines.map((line) => {
+              const lineColor = line.isCritical ? (theme.critical || '#ef4444') : (theme.relationshipLine || '#0284c7');
+              return (
+                <g key={line.id} className="pointer-events-auto cursor-pointer group">
+                  <path
+                    d={line.d}
+                    fill="none"
+                    stroke={lineColor}
+                    strokeWidth={line.isCritical ? 1.75 : 1.25}
+                    markerEnd={line.isCritical ? 'url(#arrowhead-critical)' : 'url(#arrowhead-blue)'}
+                    className="opacity-90 group-hover:opacity-100 transition-all"
+                    onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
+                  />
+                  {/* Dependency Tag badge (e.g. FS+5d) */}
+                  <rect
+                    x={line.labelX - 18}
+                    y={line.labelY - 8}
+                    width="36"
+                    height="16"
+                    rx="4"
+                    fill="#ffffff"
+                    stroke={lineColor}
+                    strokeWidth="1.5"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
+                    onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
+                  />
+                  <text
+                    x={line.labelX}
+                    y={line.labelY + 4}
+                    textAnchor="middle"
+                    fill={lineColor}
+                    className="text-[9px] font-mono font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  >
+                    {line.label}
+                  </text>
+                </g>
+              );
+            })}
             {connectingFrom && mousePos && (() => {
               const sourceTask = tasks.find((t) => t.id === connectingFrom.taskId);
               if (!sourceTask) return null;
@@ -812,7 +827,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                   y1={startY}
                   x2={mousePos.x}
                   y2={mousePos.y}
-                  stroke="#0284c7"
+                  stroke={theme.relationshipLine || '#0284c7'}
                   strokeWidth="1.5"
                   strokeDasharray="4 4"
                 />

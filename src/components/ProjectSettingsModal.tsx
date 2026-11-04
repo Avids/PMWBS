@@ -785,6 +785,12 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                           value={customTheme.baseline || '#94A3B8'}
                           onChange={(v) => handleUpdateCustomColor('baseline', v)}
                         />
+                        <ColorPickerRow
+                          label="Relationship Lines"
+                          description="Dependency arrows and link lines"
+                          value={customTheme.relationshipLine || '#0284C7'}
+                          onChange={(v) => handleUpdateCustomColor('relationshipLine', v)}
+                        />
                       </div>
                     </div>
 
