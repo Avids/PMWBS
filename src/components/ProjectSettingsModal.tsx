@@ -818,8 +818,13 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                                     key={t}
                                     type="button"
                                     onClick={() => {
-                                      onUpdateSettings({ relationshipLineThickness: t });
-                                      handleUpdateCustomColor('relationshipLineThickness', t);
+                                      onUpdateSettings({
+                                        relationshipLineThickness: t,
+                                        customTheme: {
+                                          ...customTheme,
+                                          relationshipLineThickness: t
+                                        }
+                                      });
                                     }}
                                     className={`px-2.5 py-0.5 text-[10px] font-semibold rounded capitalize transition-all cursor-pointer ${
                                       isSelected

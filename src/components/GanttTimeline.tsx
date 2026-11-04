@@ -754,50 +754,100 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
           {/* SVG Layer for Dependency Lines (High Contrast Electric Blue) */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
-            {(() => {
-              const effectiveThickness = relationshipLineThickness || customTheme?.relationshipLineThickness || 'normal';
-              const markerMetrics = effectiveThickness === 'thin'
-                ? { width: 4.5, height: 4, refX: 4, refY: 2, points: '0 0, 4.5 2, 0 4' }
-                : effectiveThickness === 'thick'
-                ? { width: 8, height: 7, refX: 7, refY: 3.5, points: '0 0, 8 3.5, 0 7' }
-                : { width: 6, height: 5, refX: 5, refY: 2.5, points: '0 0, 6 2.5, 0 5' };
+            <defs>
+              {/* Thin Arrowheads */}
+              <marker
+                id="arrowhead-blue-thin"
+                markerWidth="3.5"
+                markerHeight="3"
+                refX="3"
+                refY="1.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 3.5 1.5, 0 3" fill={theme.relationshipLine || '#0284c7'} />
+              </marker>
+              <marker
+                id="arrowhead-critical-thin"
+                markerWidth="3.5"
+                markerHeight="3"
+                refX="3"
+                refY="1.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 3.5 1.5, 0 3" fill={theme.critical || '#ef4444'} />
+              </marker>
 
-              return (
-                <defs>
-                  <marker
-                    id="arrowhead-blue"
-                    markerWidth={markerMetrics.width}
-                    markerHeight={markerMetrics.height}
-                    refX={markerMetrics.refX}
-                    refY={markerMetrics.refY}
-                    orient="auto"
-                  >
-                    <polygon points={markerMetrics.points} fill={theme.relationshipLine || '#0284c7'} />
-                  </marker>
-                  <marker
-                    id="arrowhead-critical"
-                    markerWidth={markerMetrics.width}
-                    markerHeight={markerMetrics.height}
-                    refX={markerMetrics.refX}
-                    refY={markerMetrics.refY}
-                    orient="auto"
-                  >
-                    <polygon points={markerMetrics.points} fill={theme.critical || '#ef4444'} />
-                  </marker>
-                </defs>
-              );
-            })()}
+              {/* Normal Arrowheads (Default) */}
+              <marker
+                id="arrowhead-blue-normal"
+                markerWidth="6"
+                markerHeight="5"
+                refX="5"
+                refY="2.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 6 2.5, 0 5" fill={theme.relationshipLine || '#0284c7'} />
+              </marker>
+              <marker
+                id="arrowhead-critical-normal"
+                markerWidth="6"
+                markerHeight="5"
+                refX="5"
+                refY="2.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 6 2.5, 0 5" fill={theme.critical || '#ef4444'} />
+              </marker>
+
+              {/* Thick Arrowheads */}
+              <marker
+                id="arrowhead-blue-thick"
+                markerWidth="8"
+                markerHeight="7"
+                refX="7"
+                refY="3.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 8 3.5, 0 7" fill={theme.relationshipLine || '#0284c7'} />
+              </marker>
+              <marker
+                id="arrowhead-critical-thick"
+                markerWidth="8"
+                markerHeight="7"
+                refX="7"
+                refY="3.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 8 3.5, 0 7" fill={theme.critical || '#ef4444'} />
+              </marker>
+            </defs>
             {visibleDependencyLines.map((line) => {
               const lineColor = line.isCritical ? (theme.critical || '#ef4444') : (theme.relationshipLine || '#0284c7');
+              const effectiveThickness = relationshipLineThickness || customTheme?.relationshipLineThickness || 'normal';
+
+              const strokeWidth = line.isCritical
+                ? (effectiveThickness === 'thin' ? 1.0 : effectiveThickness === 'thick' ? 3.0 : 1.75)
+                : (effectiveThickness === 'thin' ? 0.65 : effectiveThickness === 'thick' ? 2.5 : 1.25);
+
+              const opacityClass = effectiveThickness === 'thin'
+                ? 'opacity-65 group-hover:opacity-100'
+                : effectiveThickness === 'thick'
+                ? 'opacity-95 group-hover:opacity-100'
+                : 'opacity-85 group-hover:opacity-100';
+
+              const markerId = line.isCritical
+                ? `url(#arrowhead-critical-${effectiveThickness})`
+                : `url(#arrowhead-blue-${effectiveThickness})`;
+
               return (
                 <g key={line.id} className="pointer-events-auto cursor-pointer group">
                   <path
                     d={line.d}
                     fill="none"
                     stroke={lineColor}
-                    strokeWidth={line.isCritical ? ((relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thin' ? 1.25 : (relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thick' ? 3.0 : 1.75) : ((relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thin' ? 0.75 : (relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thick' ? 2.25 : 1.25)}
-                    markerEnd={line.isCritical ? 'url(#arrowhead-critical)' : 'url(#arrowhead-blue)'}
-                    className="opacity-90 group-hover:opacity-100 transition-all"
+                    strokeWidth={strokeWidth}
+                    markerEnd={markerId}
+                    className={`${opacityClass} transition-all`}
                     onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
                   />
                   {/* Dependency Tag badge (e.g. FS+5d) */}
@@ -809,7 +859,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     rx="4"
                     fill="#ffffff"
                     stroke={lineColor}
-                    strokeWidth="1.5"
+                    strokeWidth={effectiveThickness === 'thin' ? 1.0 : effectiveThickness === 'thick' ? 2.0 : 1.5}
                     className="opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
                     onClick={() => onOpenPredecessorModal && onOpenPredecessorModal(line.targetTask)}
                   />
@@ -833,6 +883,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                 ? dateToX(sourceTask.startDate)
                 : dateToX(sourceTask.endDate) + dayWidth;
               const startY = headerHeight + sourceIdx * rowHeight + rowHeight / 2;
+              const effectiveThickness = relationshipLineThickness || customTheme?.relationshipLineThickness || 'normal';
 
               return (
                 <line
@@ -841,8 +892,8 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                   x2={mousePos.x}
                   y2={mousePos.y}
                   stroke={theme.relationshipLine || '#0284c7'}
-                  strokeWidth={(relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thin' ? 1.0 : (relationshipLineThickness || customTheme?.relationshipLineThickness) === 'thick' ? 2.25 : 1.5}
-                  strokeDasharray="4 4"
+                  strokeWidth={effectiveThickness === 'thin' ? 0.75 : effectiveThickness === 'thick' ? 2.5 : 1.5}
+                  strokeDasharray={effectiveThickness === 'thin' ? '3 3' : effectiveThickness === 'thick' ? '5 5' : '4 4'}
                 />
               );
             })()}

@@ -599,10 +599,15 @@ export async function exportProjectDocument(
           const stroke = isCritical ? (theme.critical || '#dc2626') : (theme.relationshipLine || '#0284c7');
           const marker = isCritical ? 'url(#export-arrowhead-crit)' : 'url(#export-arrowhead)';
           const lineThickness = settings.relationshipLineThickness || settings.customTheme?.relationshipLineThickness || 'normal';
-          const strokeWidth = lineThickness === 'thin' ? (isCritical ? '1.25' : '0.75') : lineThickness === 'thick' ? (isCritical ? '3.0' : '2.25') : (isCritical ? '1.75' : '1.25');
+          const strokeWidth = lineThickness === 'thin'
+            ? (isCritical ? '1.0' : '0.65')
+            : lineThickness === 'thick'
+            ? (isCritical ? '3.25' : '2.5')
+            : (isCritical ? '1.75' : '1.25');
+          const strokeOpacity = lineThickness === 'thin' ? '0.65' : lineThickness === 'thick' ? '0.95' : '0.85';
 
           dependencyPathsHTML += `
-            <path d="${path}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" marker-end="${marker}" />
+            <path d="${path}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" opacity="${strokeOpacity}" marker-end="${marker}" />
           `;
         });
       });
@@ -610,7 +615,7 @@ export async function exportProjectDocument(
 
     const lineThickness = settings.relationshipLineThickness || settings.customTheme?.relationshipLineThickness || 'normal';
     const markerMetrics = lineThickness === 'thin'
-      ? { width: 4.5, height: 4, refX: 4, refY: 2, points: '0 0, 4.5 2, 0 4' }
+      ? { width: 3.5, height: 3, refX: 3, refY: 1.5, points: '0 0, 3.5 1.5, 0 3' }
       : lineThickness === 'thick'
       ? { width: 8, height: 7, refX: 7, refY: 3.5, points: '0 0, 8 3.5, 0 7' }
       : { width: 6, height: 5, refX: 5, refY: 2.5, points: '0 0, 6 2.5, 0 5' };
